@@ -279,8 +279,9 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
         }
         appendFileSync(join(pgData, "postgresql.conf"), POSTGRES_CONF.replace(/\n/g, "\r\n"));
         // PostgreSQL runs as NETWORK SERVICE; ordinary Windows users get no access to the database files.
+        run(log, "icacls.exe", [pgData, "/remove:g", `*${userSid}`, "/Q"], { code: "E_ACL" });
         restrictAcl(log, pgData, [SID.networkService]);
-        run(log, "icacls.exe", [pgData, "/remove:g", `*${userSid}`, "/T", "/C", "/Q"], { code: "E_ACL" });
+        run(log, "icacls.exe", [join(pgData, "postgresql.conf")], { allowFail: true }); // logged for support
       },
     },
     {

@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import type { SetupLog } from "./log";
 import { SetupError } from "./steps";
 
@@ -80,7 +82,12 @@ export function stopService(log: SetupLog, name: string): void {
 /** Restrict a folder to Administrators + SYSTEM (+ extra SIDs), dropping inherited rights (e.g. Users). */
 export function restrictAcl(log: SetupLog, dir: string, extraSids: string[] = []): void {
   const grants = [SID.administrators, SID.system, ...extraSids].flatMap((sid) => ["/grant:r", `${sid}:(OI)(CI)F`]);
-  run(log, "icacls.exe", [dir, "/inheritance:r", ...grants, "/T", "/C", "/Q"], { code: "E_ACL" });
+  // Set the rights on the folder itself only...
+  run(log, "icacls.exe", [dir, "/inheritance:r", ...grants, "/Q"], { code: "E_ACL" });
+  // ...then make everything inside inherit exactly those rights (and drop any other explicit rights).
+  if (readdirSync(dir).length > 0) {
+    run(log, "icacls.exe", [join(dir, "*"), "/reset", "/T", "/C", "/Q"], { code: "E_ACL" });
+  }
 }
 
 /** SID of the account running setup, e.g. "S-1-5-21-...". */

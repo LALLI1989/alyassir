@@ -27,8 +27,8 @@ export interface RunResult {
   stderr: string;
 }
 
-export function run(log: SetupLog, file: string, args: string[], options: RunOptions = {}): RunResult {
-  log.info(`RUN ${file} ${args.join(" ")}`);
+export function run(log: SetupLog, file: string, args: string[], options: RunOptions & { display?: string } = {}): RunResult {
+  log.info(`RUN ${options.display ?? `${file} ${args.join(" ")}`}`);
   const result = spawnSync(file, args, {
     cwd: options.cwd,
     env: options.env ?? process.env,
@@ -42,7 +42,13 @@ export function run(log: SetupLog, file: string, args: string[], options: RunOpt
     stderr: (result.stderr ?? "") + (result.error ? ` ${result.error.message}` : ""),
   };
   if (out.stdout.trim()) log.info(`  stdout: ${out.stdout.trim().slice(0, 2000)}`);
-  if (out.stderr.trim()) log.info(`  stderr: ${out.stderr.trim().slice(0, 2000)}`);
+  const stderr = out.stderr
+    .replace(/#< CLIXML/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/_x000D__x000A_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (stderr) log.info(`  stderr: ${stderr.slice(0, 2000)}`);
   if (out.status !== 0 && !options.allowFail) {
     throw new SetupError(options.code ?? "E_COMMAND", `${file} exited with ${out.status}`);
   }
@@ -53,8 +59,10 @@ export function run(log: SetupLog, file: string, args: string[], options: RunOpt
 export function powershell(log: SetupLog, script: string, options: RunOptions = {}): RunResult {
   // Silence PowerShell progress output (it pollutes stderr with CLIXML).
   const encoded = Buffer.from(`$ProgressPreference='SilentlyContinue'; ${script}`, "utf16le").toString("base64");
+  // Log the script itself (scripts never contain secrets; those are passed as environment variables).
+  const display = `powershell: ${script.replace(/\s+/g, " ").trim().slice(0, 300)}`;
   return run(log, "powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-    "-EncodedCommand", encoded], options);
+    "-EncodedCommand", encoded], { ...options, display });
 }
 
 function psQuote(value: string): string {

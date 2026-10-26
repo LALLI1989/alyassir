@@ -229,7 +229,8 @@ begin
       Result := False;
       Exit;
     end;
-    if PortInUse(Port) then
+    { In silent installs the chosen port is kept as is; setup then reports E_API_PORT_IN_USE. }
+    if (not WizardSilent) and PortInUse(Port) then
     begin
       Alt := SuggestPort(Port);
       if Alt = 0 then
@@ -272,7 +273,11 @@ begin
   if ExpandConstant('{param:SIMULATEFAIL|}') <> '' then
     Params := Params + ' --simulate-failure-at ' + ExpandConstant('{param:SIMULATEFAIL|}');
   Log('Provision: node ' + Params);
-  if not Exec(ExpandConstant('{app}\server\node.exe'), Params, ExpandConstant('{app}\server'), SW_HIDE,
+  { Through cmd.exe so that any crash message of the helper itself lands in a log file. }
+  ForceDirectories(AddBackslash(DataPage.Values[0]) + 'logs');
+  Params := '/S /C ""' + ExpandConstant('{app}\server\node.exe') + '" ' + Params + ' 2>"' +
+    AddBackslash(DataPage.Values[0]) + 'logs\setup-helper-errors.log""';
+  if not Exec(ExpandConstant('{cmd}'), Params, ExpandConstant('{app}\server'), SW_HIDE,
     ewWaitUntilTerminated, Code) then
     Code := -1;
   Log('Provision exit code: ' + IntToStr(Code));

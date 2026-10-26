@@ -14,11 +14,15 @@ Copy-Item "$repo\apps\desktop\src-tauri\target\release\alyassir-desktop.exe" "$s
 
 # Server: production dependencies only, plus the Node runtime
 Push-Location $repo
-pnpm --filter "@alyassir/server" deploy --prod --legacy "$stage\server"
+# Flat node_modules (no links), so Inno Setup copies a plain folder tree.
+pnpm --filter "@alyassir/server" --config.node-linker=hoisted deploy --prod --legacy "$stage\server"
 if ($LASTEXITCODE -ne 0) { throw "pnpm deploy failed" }
 Pop-Location
 Copy-Item "$vendor\node.exe" "$stage\server\node.exe"
 if (-not (Test-Path "$stage\server\dist\main.js")) { throw "Server build missing from stage" }
+# Smoke test: the setup helper and all its modules load with the bundled Node.js.
+$smoke = & "$stage\server\node.exe" "$stage\server\dist\setup\cli.js" check-port --port 4999 2>&1
+if ($LASTEXITCODE -ne 0) { throw "Setup helper does not start from the stage folder: $smoke" }
 
 # PostgreSQL and WinSW
 Copy-Item -Recurse "$vendor\pgsql" "$stage\pgsql"

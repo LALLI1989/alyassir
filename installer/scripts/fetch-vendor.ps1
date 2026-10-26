@@ -15,7 +15,8 @@ New-Item -ItemType Directory -Force -Path $vendor | Out-Null
 
 function Get-File($url, $out) {
   Write-Host "Downloading $url"
-  Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+  try { Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing }
+  catch { throw "Download failed: $url ($($_.Exception.Message))" }
   $hash = (Get-FileHash -Algorithm SHA256 $out).Hash
   Write-Host "  SHA256 $hash"
   return $hash
@@ -55,7 +56,24 @@ foreach ($extra in @("pgAdmin 4", "StackBuilder", "doc", "include", "symbols")) 
 # WinSW: runs the Node server as a Windows service.
 Get-File "https://github.com/winsw/winsw/releases/download/v$WinSWVersion/WinSW-x64.exe" (Join-Path $vendor "WinSW-x64.exe") | Out-Null
 
-# Arabic wizard texts for Inno Setup (unofficial translation from the Inno Setup project).
+# Arabic wizard texts for Inno Setup: use the copy shipped with Inno Setup if present,
+# otherwise download it from the Inno Setup project.
 $langDir = Join-Path $root "languages"
 New-Item -ItemType Directory -Force -Path $langDir | Out-Null
-Get-File "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/Arabic.isl" (Join-Path $langDir "Arabic.isl") | Out-Null
+$arabic = Join-Path $langDir "Arabic.isl"
+$local = @("${env:ProgramFiles(x86)}\Inno Setup 6\Languages\Arabic.isl", "$env:ProgramFiles\Inno Setup 6\Languages\Arabic.isl") |
+  Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($local) {
+  Copy-Item $local $arabic -Force
+  Write-Host "::notice title=Arabic.isl::Using Inno Setup's own $local"
+} else {
+  $ok = $false
+  foreach ($u in @(
+      "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Arabic.isl",
+      "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/Arabic.isl",
+      "https://raw.githubusercontent.com/jrsoftware/issrc/is-6_4_3/Files/Languages/Unofficial/Arabic.isl")) {
+    try { Get-File $u $arabic | Out-Null; $ok = $true; Write-Host "::notice title=Arabic.isl::$u"; break }
+    catch { Write-Host "::warning title=Arabic.isl::$u -> $($_.Exception.Message)" }
+  }
+  if (-not $ok) { throw "Arabic.isl could not be found" }
+}

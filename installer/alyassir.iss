@@ -284,8 +284,8 @@ begin
     for I := 0 to UrlCount - 1 do
       Urls := Urls + '    ' + GetIniString('result', 'url' + IntToStr(I), '', Ini) + #13#10;
     ResultText := CustomMessage('DoneAddress') + #13#10 + Urls + #13#10 +
-      CustomMessage('DoneFingerprint') + #13#10 + '    ' + GetIniString('result', 'fingerprint', '', Ini) + #13#10 +
-      #13#10 + AddBackslash(DataPage.Values[0]) + 'setup-result.json';
+      CustomMessage('DoneFingerprint') + #13#10 + '    ' + GetIniString('result', 'fingerprint', '', Ini) + #13#10#13#10 +
+      AddBackslash(DataPage.Values[0]) + 'setup-result.json';
     Log('Provision OK. ' + ResultText);
   end
   else

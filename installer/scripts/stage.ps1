@@ -1,6 +1,7 @@
 # Collects everything the installer ships into installer/stage, then compiles setup.exe.
 param([string]$Version = "0.0.1")
 $ErrorActionPreference = "Stop"
+trap { Write-Host "::error title=stage::$($_.Exception.Message) (line $($_.InvocationInfo.ScriptLineNumber))"; exit 1 }
 $root = Split-Path -Parent $PSScriptRoot
 $repo = Split-Path -Parent $root
 $vendor = Join-Path $root "vendor"
@@ -26,6 +27,7 @@ Copy-Item "$vendor\WinSW-x64.exe" "$stage\service\WinSW-x64.exe"
 $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
   Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) not found" }
-& $iscc "/DAppVersion=$Version" "/DStageDir=$stage" (Join-Path $root "alyassir.iss")
-if ($LASTEXITCODE -ne 0) { throw "Inno Setup compile failed" }
+$isccOut = & $iscc "/DAppVersion=$Version" "/DStageDir=$stage" (Join-Path $root "alyassir.iss") 2>&1
+$isccOut | Write-Host
+if ($LASTEXITCODE -ne 0) { throw "Inno Setup compile failed: $(($isccOut | Select-Object -Last 8) -join ' | ')" }
 Get-ChildItem (Join-Path $root "output")

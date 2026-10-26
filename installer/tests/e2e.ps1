@@ -11,9 +11,18 @@ $Rule = "Alyassir Server (TCP $Port)"
 $Logs = Join-Path $env:RUNNER_TEMP "alyassir-logs"
 New-Item -ItemType Directory -Force -Path $Logs | Out-Null
 $script:Run = 0
+$script:Passed = @()
+
+# GitHub annotations are the only output readable without the raw log: put the essentials there.
+function Annotate($level, $title, $text) {
+  $enc = $text -replace "%", "%25" -replace "`r", "" -replace "`n", "%0A"
+  Write-Host "::$level title=$title::$enc"
+}
+function Tail($path, $n = 25) { if (Test-Path $path) { (Get-Content $path -Tail $n) -join "`n" } else { "(no $path)" } }
 
 function Check($ok, $what) {
-  if ($ok) { Write-Host "  PASS  $what" } else { Write-Host "  FAIL  $what"; throw "FAILED: $what" }
+  if ($ok) { Write-Host "  PASS  $what"; $script:Passed += $what }
+  else { Write-Host "  FAIL  $what"; throw "FAILED: $what" }
 }
 
 function Install([string[]]$extra) {
@@ -172,6 +181,10 @@ try {
   Check (-not (Test-Path "$App\desktop\Alyassir.exe")) "user computer uninstall removes the app"
 
   Write-Host "`nALL INSTALLER TESTS PASSED"
+  Annotate "notice" "Installer tests passed ($($script:Passed.Count) checks)" ($script:Passed -join "`n")
+} catch {
+  Annotate "error" "Installer test failed" ("$($_.Exception.Message)`n--- passed so far: $($script:Passed.Count)`n--- setup.log tail:`n" + (Tail "$Data\logs\setup.log") + "`n--- last Inno log tail:`n" + (Tail (Join-Path $Logs "setup-$($script:Run).log") 15))
+  throw
 } finally {
   # Keep every log for diagnosis (uploaded by the workflow). Secrets are never written to these logs.
   if (Test-Path "$Data\logs") { Copy-Item -Recurse -Force "$Data\logs" (Join-Path $Logs "data-logs") }

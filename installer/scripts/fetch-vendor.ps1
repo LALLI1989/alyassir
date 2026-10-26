@@ -7,6 +7,8 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+# Report errors as GitHub annotations, so they are readable without the raw log.
+trap { Write-Host "::error title=fetch-vendor::$($_.Exception.Message) (line $($_.InvocationInfo.ScriptLineNumber))"; exit 1 }
 $root = Split-Path -Parent $PSScriptRoot
 $vendor = Join-Path $root "vendor"
 New-Item -ItemType Directory -Force -Path $vendor | Out-Null
@@ -33,7 +35,16 @@ Write-Host "Node: $nodeZipName"
 
 # PostgreSQL 16 binaries (EDB zip), trimmed to what the server needs.
 $pgZip = Join-Path $vendor "pgsql.zip"
-Get-File "https://get.enterprisedb.com/postgresql/postgresql-$PgVersion-windows-x64-binaries.zip" $pgZip | Out-Null
+$pgOk = $false
+foreach ($v in @($PgVersion, "16.14-1", "16.13-1", "16.12-1", "16.11-1", "16.10-1")) {
+  try {
+    Get-File "https://get.enterprisedb.com/postgresql/postgresql-$v-windows-x64-binaries.zip" $pgZip | Out-Null
+    Write-Host "::notice title=PostgreSQL::Bundled PostgreSQL $v"
+    $pgOk = $true
+    break
+  } catch { Write-Host "::warning title=PostgreSQL::$v not downloadable: $($_.Exception.Message)" }
+}
+if (-not $pgOk) { throw "No PostgreSQL 16 binaries could be downloaded" }
 Expand-Archive -Force $pgZip $vendor
 foreach ($extra in @("pgAdmin 4", "StackBuilder", "doc", "include", "symbols")) {
   $p = Join-Path $vendor "pgsql\$extra"

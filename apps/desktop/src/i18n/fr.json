@@ -1,0 +1,43 @@
+{
+  "app": {
+    "name": "Alyassir — Gestion d'agences d'assurance",
+    "switchLanguage": "العربية"
+  },
+  "setup": {
+    "title": "Connexion au serveur",
+    "intro": "Saisissez l'adresse de l'ordinateur serveur, telle qu'affichée à la fin de l'installation du serveur.",
+    "addressLabel": "Adresse du serveur",
+    "addressHint": "Exemple : 192.168.1.50:4100",
+    "test": "Tester la connexion",
+    "testing": "Test en cours…",
+    "cancel": "Annuler"
+  },
+  "confirm": {
+    "title": "Confirmer l'empreinte du serveur",
+    "intro": "Comparez cette empreinte avec celle affichée sur l'écran du serveur. Elles doivent être identiques, caractère par caractère.",
+    "fingerprint": "Empreinte du serveur",
+    "server": "Serveur",
+    "match": "Identiques, enregistrer le serveur",
+    "noMatch": "Différentes, ne pas enregistrer"
+  },
+  "status": {
+    "title": "État de la connexion",
+    "connected": "Connecté au serveur",
+    "databaseOk": "La base de données fonctionne",
+    "databaseDown": "Le serveur fonctionne mais la base de données ne répond pas",
+    "checking": "Vérification…",
+    "version": "Version du serveur : {{version}}",
+    "lastCheck": "Dernière vérification : {{time}}",
+    "serverLabel": "Serveur",
+    "change": "Changer l'adresse du serveur",
+    "retry": "Réessayer"
+  },
+  "errors": {
+    "invalid_address": "Adresse invalide. Saisissez-la comme : 192.168.1.50:4100",
+    "unreachable": "Serveur injoignable. Vérifiez que l'ordinateur serveur est allumé et sur le même réseau.",
+    "fingerprint_mismatch": "Attention : l'appareil qui répond n'est pas le serveur confirmé auparavant. Ne continuez pas et contactez le gérant.",
+    "not_alyassir": "Cette adresse n'est pas celle d'un serveur Alyassir.",
+    "protocol": "Erreur de connexion inattendue.",
+    "code": "Code d'erreur : {{code}}"
+  }
+}

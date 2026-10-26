@@ -1,0 +1,97 @@
+/* Phase 0 minimal styles. Logical properties only (works in RTL and LTR). */
+:root {
+  --bg: #f4f6f7;
+  --card: #ffffff;
+  --text: #1c2b33;
+  --muted: #5b6b73;
+  --primary: #155e75;
+  --ok: #166534;
+  --ok-bg: #dcfce7;
+  --warn: #92400e;
+  --warn-bg: #fef3c7;
+  --error: #991b1b;
+  --error-bg: #fee2e2;
+  --border: #d6dde1;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11181c;
+    --card: #1a2328;
+    --text: #e6edf0;
+    --muted: #9aa9b0;
+    --primary: #38bdf8;
+    --ok: #86efac;
+    --ok-bg: #14301f;
+    --warn: #fcd34d;
+    --warn-bg: #3a2e10;
+    --error: #fca5a5;
+    --error-bg: #3b1515;
+    --border: #2d3a40;
+  }
+}
+
+body { margin: 0; background: var(--bg); }
+main { max-inline-size: 640px; margin-inline: auto; padding: 24px 16px; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+h1 { font-size: 1.25rem; margin: 0; }
+h2 { font-size: 1.1rem; margin-block-start: 0; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-block-start: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+label { font-weight: 600; }
+input {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  text-align: start;
+}
+small { color: var(--muted); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block-start: 8px; }
+button {
+  font: inherit;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: default; }
+button.secondary { background: transparent; color: var(--primary); }
+button.link { background: transparent; border: none; color: var(--primary); padding: 4px; }
+
+.fingerprint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.95rem;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  text-align: start; /* The element is dir="ltr": hex reads left to right in both languages. */
+}
+
+.ok, .warn, .error { border-radius: 8px; padding: 12px; }
+.ok { background: var(--ok-bg); color: var(--ok); }
+.warn { background: var(--warn-bg); color: var(--warn); }
+.error { background: var(--error-bg); color: var(--error); }
+.ok p, .warn p, .error p { margin: 4px 0; }
+.big { font-size: 1.2rem; font-weight: 700; }

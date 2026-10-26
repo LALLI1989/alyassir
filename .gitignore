@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.turbo/
+target/
+*.log
+.env
+.env.*
+# Installer build outputs and downloaded third-party binaries
+installer/stage/
+installer/output/
+installer/vendor/
+# Never commit certificates or keys
+*.pfx
+*.pem
+*.key
+*.cer

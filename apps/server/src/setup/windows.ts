@@ -61,8 +61,12 @@ export function powershell(log: SetupLog, script: string, options: RunOptions = 
   const encoded = Buffer.from(`$ProgressPreference='SilentlyContinue'; ${script}`, "utf16le").toString("base64");
   // Log the script itself (scripts never contain secrets; those are passed as environment variables).
   const display = `powershell: ${script.replace(/\s+/g, " ").trim().slice(0, 300)}`;
+  // Windows PowerShell must use its own modules: an inherited PSModulePath (e.g. from PowerShell 7)
+  // breaks built-in features such as the Cert: drive.
+  const env = { ...(options.env ?? process.env) };
+  for (const key of Object.keys(env)) if (key.toLowerCase() === "psmodulepath") delete env[key];
   return run(log, "powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-    "-EncodedCommand", encoded], { ...options, display });
+    "-EncodedCommand", encoded], { ...options, env, display });
 }
 
 function psQuote(value: string): string {

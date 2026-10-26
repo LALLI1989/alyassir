@@ -339,6 +339,7 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
       run: () => {
         const script = `
 $ErrorActionPreference = 'Stop'
+Import-Module Microsoft.PowerShell.Security, PKI
 $c = New-SelfSignedCertificate -Subject 'CN=Alyassir Server' -FriendlyName 'Alyassir Server' -DnsName @($env:COMPUTERNAME, 'localhost') -CertStoreLocation 'Cert:\\LocalMachine\\My' -KeyAlgorithm RSA -KeyLength 2048 -HashAlgorithm SHA256 -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(20) -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.1')
 try {
   $pw = ConvertTo-SecureString -String $env:ALYASSIR_PFX_PASS -Force -AsPlainText

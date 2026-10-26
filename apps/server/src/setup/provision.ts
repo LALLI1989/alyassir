@@ -287,7 +287,9 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
       name: "pg-service",
       code: "E_PG_SERVICE",
       run: () => {
-        run(log, join(pgBin, "pg_ctl.exe"), ["register", "-N", PG_SERVICE, "-D", pgData, "-S", "auto", "-w", "-t", "120"],
+        run(log, join(pgBin, "pg_ctl.exe"), ["register", "-N", PG_SERVICE, "-D", pgData, "-S", "auto", "-w", "-t", "120",
+          // Without -U, pg_ctl uses LocalSystem; the database must run with low rights instead.
+          "-U", "NT AUTHORITY\\NetworkService"],
           { code: "E_PG_SERVICE" });
       },
       undo: () => {

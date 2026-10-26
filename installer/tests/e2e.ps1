@@ -183,7 +183,7 @@ try {
   Write-Host "`nALL INSTALLER TESTS PASSED"
   Annotate "notice" "Installer tests passed ($($script:Passed.Count) checks)" ($script:Passed -join "`n")
 } catch {
-  Annotate "error" "Installer test failed" ("$($_.Exception.Message)`n--- passed so far: $($script:Passed.Count)`n--- setup.log tail:`n" + (Tail "$Data\logs\setup.log") + "`n--- helper errors:`n" + (Tail "$Data\logs\setup-helper-errors.log" 15) + "`n--- last Inno log tail:`n" + (Tail (Join-Path $Logs "setup-$($script:Run).log") 15))
+  Annotate "error" "Installer test failed" ("$($_.Exception.Message)`n--- passed so far: $($script:Passed.Count)`n--- setup.log tail:`n" + (Tail "$Data\logs\setup.log" 40) + "`n--- helper errors:`n" + (Tail "$Data\logs\setup-helper-errors.log" 15) + "`n--- last Inno log tail:`n" + (Tail (Join-Path $Logs "setup-$($script:Run).log") 15))
   throw
 } finally {
   # Keep every log for diagnosis (uploaded by the workflow). Secrets are never written to these logs.

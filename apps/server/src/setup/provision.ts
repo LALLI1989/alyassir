@@ -153,6 +153,28 @@ export function probeHealth(port: number): Promise<HealthProbe> {
   });
 }
 
+/** Writes into the setup log why PostgreSQL could not start, for support. */
+function logPostgresDiagnostics(log: SetupLog, pgBin: string, pgData: string): void {
+  try {
+    powershell(log, `Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue |
+      Where-Object { $_.ProviderName -like '*PostgreSQL*' -or $_.ProviderName -like '*pg_ctl*' } |
+      Select-Object -First 15 | ForEach-Object { 'EVENT ' + $_.ProviderName + ': ' + $_.Message }`, { allowFail: true });
+    powershell(log, `Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Service Control Manager'; StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue |
+      Select-Object -First 5 | ForEach-Object { 'SCM: ' + $_.Message }`, { allowFail: true });
+    const logDir = join(pgData, "log");
+    if (existsSync(logDir)) {
+      for (const f of readdirSync(logDir)) log.info(`PGLOG ${f}: ${readFileSync(join(logDir, f), "utf8").slice(-3000)}`);
+    }
+    // Same start as the current user (pg_ctl drops admin rights itself) to capture the real error message.
+    const trial = join(pgData, "..", "logs", "pg-trial-start.log");
+    run(log, join(pgBin, "pg_ctl.exe"), ["start", "-D", pgData, "-w", "-t", "30", "-l", trial], { allowFail: true });
+    if (existsSync(trial)) log.info(`PG TRIAL START: ${readFileSync(trial, "utf8").slice(-3000)}`);
+    run(log, join(pgBin, "pg_ctl.exe"), ["stop", "-D", pgData, "-m", "fast", "-w"], { allowFail: true });
+  } catch (error) {
+    log.info(`Diagnostics failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 function makeDir(dir: string, created: string[]): void {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
@@ -277,8 +299,13 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
       name: "pg-start",
       code: "E_PG_START",
       run: async () => {
-        startService(log, PG_SERVICE, "E_PG_START");
-        if (!(await waitFor(pgReady, 90_000))) throw new SetupError("E_PG_START", "PostgreSQL did not become ready");
+        try {
+          startService(log, PG_SERVICE, "E_PG_START");
+          if (!(await waitFor(pgReady, 90_000))) throw new SetupError("E_PG_START", "PostgreSQL did not become ready");
+        } catch (error) {
+          logPostgresDiagnostics(log, pgBin, pgData);
+          throw error;
+        }
       },
       undo: () => stopService(log, PG_SERVICE),
     },

@@ -49,7 +49,8 @@ export function run(log: SetupLog, file: string, args: string[], options: RunOpt
 
 /** Runs a PowerShell script without any quoting problems (-EncodedCommand). */
 export function powershell(log: SetupLog, script: string, options: RunOptions = {}): RunResult {
-  const encoded = Buffer.from(script, "utf16le").toString("base64");
+  // Silence PowerShell progress output (it pollutes stderr with CLIXML).
+  const encoded = Buffer.from(`$ProgressPreference='SilentlyContinue'; ${script}`, "utf16le").toString("base64");
   return run(log, "powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
     "-EncodedCommand", encoded], options);
 }

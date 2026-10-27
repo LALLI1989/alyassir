@@ -80,7 +80,7 @@ export async function createPolicy(
   clientId: string,
   vehicleIds: string[],
   over: Record<string, unknown> = {},
-): Promise<{ status: number; body: PolicyDto & { code?: string } }> {
+): Promise<{ status: number; body: PolicyDto & { code?: string; message?: string; fields?: Record<string, string> } }> {
   return t.call("POST", "/api/policies", {
     token,
     body: {

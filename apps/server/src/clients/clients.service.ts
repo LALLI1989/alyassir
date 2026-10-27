@@ -62,7 +62,7 @@ export class ClientsService {
   private activeCount(today: string) {
     return sql<number>`(
       SELECT count(*)::int FROM policies p
-      WHERE p.client_id = ${schema.clients.id}
+      WHERE p.client_id = ${sql.raw('"clients"."id"')}
         AND EXISTS (SELECT 1 FROM policy_periods pp WHERE pp.policy_id = p.id AND pp.validity_status = 'active'
                     AND pp.start_date <= ${today} AND pp.end_date >= ${today})
     )`;

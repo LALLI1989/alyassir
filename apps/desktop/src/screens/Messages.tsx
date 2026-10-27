@@ -133,14 +133,14 @@ function ThreadView({ id }: { id: string }) {
   if (!thread.data) return <ErrorMessage error={thread.error ? asClientError(thread.error) : null} />;
   return (
     <div className="grid gap-3">
-      <h2 className="text-lg font-semibold">{subjectOf(thread.data.subject, thread.data.kind)}</h2>
+      <h2 className="text-lg font-semibold"><bdi>{subjectOf(thread.data.subject, thread.data.kind)}</bdi></h2>
       {thread.data.messages.map((m) => (
         <Card key={m.id} className="p-4">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
             <span className="font-semibold">{m.senderName ?? t("messages.system")}</span>
             <span className="text-muted-foreground">{formatDateTime(m.createdAt)}</span>
           </div>
-          <p className="whitespace-pre-wrap text-sm">{m.body}</p>
+          <p dir="auto" className="whitespace-pre-wrap text-start text-sm">{m.body}</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
             {m.recipients.map((r) => (
               <span key={r.userId} className="inline-flex items-center gap-1" title={r.readAt ? formatDateTime(r.readAt) : t("messages.notRead")}>
@@ -185,7 +185,7 @@ export function Messages({ initialThreadId }: { initialThreadId?: string }) {
               className={cn("grid w-full gap-0.5 rounded-md px-3 py-2 text-start text-sm hover:bg-accent", selected === th.id && "bg-accent")}
             >
               <span className="flex items-center justify-between gap-2">
-                <span className={cn("truncate", th.unread > 0 && "font-bold")}>{subjectOf(th.subject, th.kind)}</span>
+                <span className={cn("truncate", th.unread > 0 && "font-bold")}><bdi>{subjectOf(th.subject, th.kind)}</bdi></span>
                 {th.unread > 0 && <Badge>{th.unread}</Badge>}
               </span>
               <span className="flex justify-between gap-2 text-xs text-muted-foreground">

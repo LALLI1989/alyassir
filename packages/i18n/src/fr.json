@@ -134,7 +134,7 @@
     "managerHasAll": "Le gérant a toujours tous les droits.",
     "safeBankNote": "Le superviseur ne voit le coffre et la banque que s'il a « Transferts » ou « Paiements aux compagnies et retraits bancaires ».",
     "codes": {
-      "export": "Export (PDF et Excel)",
+      "export": "Export vers PDF ou Excel",
       "drawer_balance_view": "Voir les soldes de la caisse",
       "sup_policy_edit_after_48h": "Modifier une police après 48 heures",
       "sup_confirm_collection": "Confirmer les encaissements (chèque, virement, carte)",

@@ -210,7 +210,9 @@ try {
   $innoLine = (Get-ChildItem $Logs -Filter "setup-*.log" | Sort-Object LastWriteTime | Select-Object -Last 1 | Get-Content | Select-String "Agency name" | Select-Object -Last 1)
   $innoCodes = if ($innoLine) { (([int[]][char[]]"$innoLine".Split(": ")[-1]) | ForEach-Object { $_.ToString("X4") }) -join " " } else { "none" }
   $helperLine = (Get-Content "$Data\logs\setup.log" | Select-String "Agency name code points" | Select-Object -Last 1)
-  Check ($agency.body.nameAr -eq $expectedName) "agency name in Arabic saved correctly (api: $gotCodes / expected: $wantCodes / installer saw: $innoCodes / helper: $helperLine)"
+  $diag = (Get-ChildItem $Logs -Filter "setup-*.log" | Sort-Object LastWriteTime | Select-Object -Last 1 | Get-Content -Encoding utf8 | Select-String "DIAG" | ForEach-Object { $l = "$_"; $l + " [" + ((([int[]][char[]]$l.Split(": ")[-1]) | ForEach-Object { $_.ToString("X4") }) -join " ") + "]" }) -join " || "
+  Write-Host "  $diag"
+  Check ($agency.body.nameAr -eq $expectedName) "agency name in Arabic saved correctly (api: $gotCodes / expected: $wantCodes / installer saw: $innoCodes / helper: $helperLine / $diag)"
   Check ($agency.body.backupDir -eq $BackupDir) "Google Drive backup folder saved"
   $emp = Api "POST" "/api/users" @{ username = "salma"; displayName = "سلمى"; password = "salma-pass" } $token
   Check ($emp.status -eq 201) "the manager creates an employee"

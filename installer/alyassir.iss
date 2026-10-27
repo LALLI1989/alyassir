@@ -332,7 +332,12 @@ begin
   { Automated tests: command-line options lose Arabic letters, so an Arabic name comes from the
     messages file instead. A person types the name in the page, which keeps it intact. }
   if ExpandConstant('{param:TESTAGENCY|}') = '1' then
+  begin
+    Log('DIAG message: ' + CustomMessage('TestAgencyName'));
     AgencyPage.Values[0] := CustomMessage('TestAgencyName');
+    Log('DIAG edit value: ' + AgencyPage.Values[0]);
+    Log('DIAG edit control text: ' + AgencyPage.Edits[0].Text);
+  end;
   AgencyPage.Values[1] := ExpandConstant('{param:MANAGER|}');
   AgencyPage.Values[2] := ExpandConstant('{param:MANAGERPASS|}');
   AgencyPage.Values[3] := ExpandConstant('{param:MANAGERPASS|}');

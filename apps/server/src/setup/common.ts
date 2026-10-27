@@ -355,8 +355,8 @@ export async function bootstrapData(ownerUrl: string, b: Bootstrap): Promise<voi
       );
       await c.query(
         `INSERT INTO audit_log (user_id, action, entity_type, entity_id, after, device)
-         VALUES ($1, 'system.install', 'user', $1, $2, 'setup')`,
-        [user.rows[0]?.id, JSON.stringify({ agencyName: b.agencyName, managerUsername: b.managerUsername, backupDir: b.backupDir })],
+         VALUES ($1, 'system.install', 'user', $2, $3, 'setup')`,
+        [user.rows[0]?.id, user.rows[0]?.id, JSON.stringify({ agencyName: b.agencyName, managerUsername: b.managerUsername, backupDir: b.backupDir })],
       );
       await c.query("COMMIT");
     } catch (error) {

@@ -16,7 +16,7 @@ interface Route {
 function routes(): Route[] {
   const out: Route[] = [];
   for (const controller of CONTROLLERS) {
-    const proto = controller.prototype as Record<string, unknown>;
+    const proto = controller.prototype as unknown as Record<string, unknown>;
     for (const key of Object.getOwnPropertyNames(proto)) {
       if (key === "constructor") continue;
       const handler = proto[key];

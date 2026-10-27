@@ -336,7 +336,6 @@ begin
   if ExpandConstant('{param:TESTAGENCY|}') = '1' then
   begin
     AgencyPage.Values[0] := CustomMessage('TestAgencyName');
-    Log('DIAG init value: ' + AgencyPage.Values[0]);
   end;
   AgencyPage.Values[1] := ExpandConstant('{param:MANAGER|}');
   AgencyPage.Values[2] := ExpandConstant('{param:MANAGERPASS|}');
@@ -412,7 +411,6 @@ begin
   if CurPageID = AgencyPage.ID then
   begin
     Result := CheckAgencyPage;
-    Log('DIAG next value: ' + AgencyPage.Values[0]);
     AgencyName := Trim(AgencyPage.Values[0]);
     ManagerName := Trim(AgencyPage.Values[1]);
     ManagerPassword := AgencyPage.Values[2];
@@ -464,7 +462,6 @@ begin
   { Pages never shown (some silent runs): read them now. }
   if AgencyName = '' then
   begin
-    Log('DIAG agency page values read at install time');
     AgencyName := Trim(AgencyPage.Values[0]);
     ManagerName := Trim(AgencyPage.Values[1]);
     ManagerPassword := AgencyPage.Values[2];

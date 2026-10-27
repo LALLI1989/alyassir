@@ -95,7 +95,7 @@ export async function provision(o: ProvisionOptions): Promise<SetupResult> {
       code: "E_PREFLIGHT",
       run: async () => {
         // Read (and delete) the manager's password file first, whatever happens next.
-        bootstrap = readBootstrap(o.bootstrapFile);
+        bootstrap = readBootstrap(o.bootstrapFile, log);
         log.addSecret(bootstrap.managerPassword);
         if (process.platform !== "win32") throw new SetupError("E_NOT_WINDOWS", "Setup runs on Windows only");
         for (const f of [join(p.pgBin, "initdb.exe"), join(p.pgBin, "pg_ctl.exe"), p.nodeExe, p.mainJs, p.winswSource]) {

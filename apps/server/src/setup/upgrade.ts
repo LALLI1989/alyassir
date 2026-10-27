@@ -111,7 +111,7 @@ export async function upgrade(o: UpgradeOptions): Promise<SetupResult> {
       code: "E_PREFLIGHT",
       run: () => {
         if (o.bootstrapFile && existsSync(o.bootstrapFile)) {
-          bootstrap = readBootstrap(o.bootstrapFile);
+          bootstrap = readBootstrap(o.bootstrapFile, log);
           log.addSecret(bootstrap.managerPassword);
         }
         if (serviceStatus(log, PG_SERVICE) === null || serviceStatus(log, API_SERVICE) === null) {

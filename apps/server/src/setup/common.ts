@@ -115,7 +115,7 @@ export function writeSecrets(log: SetupLog, file: string, secrets: Secrets, secr
  * Reads the agency/manager file written by the installer, then deletes it at once (it holds
  * the manager's password). Format: UTF-8, one "key=value" per line.
  */
-export function readBootstrap(file: string): Bootstrap {
+export function readBootstrap(file: string, log?: SetupLog): Bootstrap {
   let text: string;
   try {
     text = readFileSync(file, "utf8").replace(/^﻿/, "");
@@ -134,6 +134,8 @@ export function readBootstrap(file: string): Bootstrap {
     language: values.get("language") === "fr" ? "fr" : "ar",
     backupDir: (values.get("backupDir") ?? "").trim(),
   };
+  // Code points, for support: shows at once if a non-Unicode step damaged the Arabic text.
+  log?.info(`Agency name code points: ${[...b.agencyName].map((c) => c.codePointAt(0)?.toString(16)).join(" ")}`);
   if (!b.agencyName || b.agencyName.length > 150) throw new SetupError("E_BOOTSTRAP_AGENCY", "Agency name missing or too long");
   if (!USERNAME_PATTERN.test(b.managerUsername)) throw new SetupError("E_BOOTSTRAP_USERNAME", "Invalid manager username");
   if (b.managerPassword.length < PASSWORD_MIN_LENGTH) throw new SetupError("E_BOOTSTRAP_PASSWORD", "Manager password too short");

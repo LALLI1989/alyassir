@@ -90,8 +90,8 @@ test("first sign-in of the employee: chooses French, sees only what he may see",
   await page.getByRole("button", { name: fr.shell.messages, exact: true }).click();
   await page.getByRole("button", { name: fr.messages.new }).click();
   await page.getByRole("dialog").getByRole("group", { name: fr.messages.to }).getByRole("checkbox").first().click();
-  await page.getByLabel(fr.messages.subject).fill("Question sur un client");
-  await page.getByLabel(fr.messages.body).fill("Bonjour, pouvez-vous vérifier ?");
+  await page.getByLabel(fr.messages.subject, { exact: true }).fill("Question sur un client");
+  await page.getByLabel(fr.messages.body, { exact: true }).fill("Bonjour, pouvez-vous vérifier ?");
   await page.getByRole("button", { name: fr.messages.send }).click();
   await expect(page.getByRole("heading", { name: "Question sur un client" })).toBeVisible();
   await logout(page, fr);

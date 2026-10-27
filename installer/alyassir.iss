@@ -473,7 +473,10 @@ begin
   { Logged before the bootstrap file is added: the log never shows where the password is. }
   Log('Setup helper: node ' + Params);
   if NeedsBootstrap then
+  begin
+    Log('Agency name (' + IntToStr(Length(Trim(AgencyPage.Values[0]))) + ' characters): ' + Trim(AgencyPage.Values[0]));
     Params := Params + ' --bootstrap "' + WriteBootstrap + '"';
+  end;
   { Through cmd.exe so that any crash message of the helper itself lands in a log file. }
   ForceDirectories(AddBackslash(DataDir) + 'logs');
   Params := '/S /C ""' + ExpandConstant('{app}\server\node.exe') + '" ' + Params + ' 2>"' +

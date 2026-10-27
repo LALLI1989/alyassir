@@ -1,6 +1,6 @@
 // Dependency boundaries (SPEC 24): the desktop app must never import the database
 // or the financial domain package. Fails the build otherwise.
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const forbidden = ["@alyassir/db", "@alyassir/domain", "pg", "drizzle-orm"];
@@ -10,6 +10,7 @@ for (const dep of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })) 
   if (forbidden.includes(dep)) errors.push(`apps/desktop/package.json depends on ${dep}`);
 }
 function walk(dir) {
+  if (!existsSync(dir)) return;
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p);

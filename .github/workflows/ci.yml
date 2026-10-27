@@ -67,14 +67,18 @@ jobs:
       - name: Install
         run: tooling/ci-run.sh install pnpm install --no-frozen-lockfile
       - name: Dependency boundaries
+        if: ${{ !cancelled() }}
         run: tooling/ci-run.sh boundaries node tooling/check-boundaries.mjs
       - name: Build packages
         run: tooling/ci-run.sh build pnpm turbo run build --filter=@alyassir/server...
       - name: Type check
-        run: tooling/ci-run.sh typecheck pnpm turbo run typecheck
+        if: ${{ !cancelled() }}
+        run: tooling/ci-run.sh typecheck pnpm turbo run typecheck --continue
       - name: Tests (server on real PostgreSQL, packages, app)
-        run: tooling/ci-run.sh tests pnpm turbo run test --concurrency=1
+        if: ${{ !cancelled() }}
+        run: tooling/ci-run.sh tests pnpm turbo run test --concurrency=1 --continue
       - name: Desktop connection logic (Rust unit tests)
+        if: ${{ !cancelled() }}
         working-directory: apps/desktop/src-tauri
         run: ../../../tooling/ci-run.sh rust cargo test -p server-link
 

@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
 import type { ApiError, ErrorCode } from "@alyassir/shared";
 
-const STATUS: Partial<Record<ErrorCode, HttpStatus>> = {
+const STATUS: Partial<Record<ErrorCode, number>> = {
   VALIDATION: HttpStatus.BAD_REQUEST,
   UNAUTHENTICATED: HttpStatus.UNAUTHORIZED,
   INVALID_CREDENTIALS: HttpStatus.UNAUTHORIZED,
@@ -21,7 +21,7 @@ const STATUS: Partial<Record<ErrorCode, HttpStatus>> = {
   INVALID_RECIPIENTS: HttpStatus.BAD_REQUEST,
   EDIT_REQUEST_NOT_PENDING: HttpStatus.CONFLICT,
   REASON_REQUIRED: HttpStatus.BAD_REQUEST,
-  CLIENT_TOO_OLD: HttpStatus.UPGRADE_REQUIRED,
+  CLIENT_TOO_OLD: 426, // Upgrade Required
   RATE_LIMITED: HttpStatus.TOO_MANY_REQUESTS,
   INTERNAL: HttpStatus.INTERNAL_SERVER_ERROR,
 };

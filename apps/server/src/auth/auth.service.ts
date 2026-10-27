@@ -114,7 +114,7 @@ export class AuthService {
       return { user, sessionId: session.id, refreshToken: refresh.token, me: await this.me(tx, user) };
     });
 
-    if ("error" in outcome) {
+    if (outcome.error) {
       const extra = outcome.error === "ACCOUNT_LOCKED" && outcome.lockedUntil ? { lockedUntil: outcome.lockedUntil.toISOString() } : {};
       throw new ApiException(outcome.error, extra);
     }
@@ -149,7 +149,7 @@ export class AuthService {
       await tx.update(s).set({ refreshTokenHash: next.hash }).where(eq(s.id, row.session.id));
       return { userId: row.user.id, sessionId: row.session.id, refreshToken: next.token };
     });
-    if ("error" in result) throw new ApiException(result.error);
+    if (result.error) throw new ApiException(result.error);
     return {
       accessToken: this.accessToken(result.userId, result.sessionId),
       refreshToken: result.refreshToken,

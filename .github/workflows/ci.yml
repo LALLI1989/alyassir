@@ -97,7 +97,10 @@ jobs:
   windows-installer:
     name: Build installer and test it on clean Windows
     runs-on: windows-2022
-    timeout-minutes: 75
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -122,17 +125,29 @@ jobs:
         run: ./installer/scripts/fetch-vendor.ps1
       - name: Build installer
         shell: pwsh
-        run: ./installer/scripts/stage.ps1 -Version 0.0.1
+        run: ./installer/scripts/stage.ps1 -Version 0.1.0
       - uses: actions/upload-artifact@v4
         with:
           name: Alyassir-Setup
           path: installer/output/*.exe
           retention-days: 30
+      # The Phase 0 installer, to test updating a server installed by the previous phase.
+      - name: Download the previous installer (Phase 0)
+        id: previous
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: Alyassir-Setup
+          run-id: 40374788473
+          github-token: ${{ github.token }}
+          path: installer/previous
       - name: Test installer end to end
         shell: pwsh
         run: |
           $setup = (Get-ChildItem installer/output/*.exe | Select-Object -First 1).FullName
-          ./installer/tests/e2e.ps1 -Setup $setup
+          $previous = (Get-ChildItem installer/previous/*.exe -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          if (-not $previous) { Write-Host "::warning title=Update test::Phase 0 installer not available; update-from-Phase-0 scenario skipped" }
+          ./installer/tests/e2e.ps1 -Setup $setup -PreviousSetup "$previous"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -30,13 +30,13 @@ test("the manager signs in in Arabic (right to left) and switches to French inst
   await login(page, "manager", "manager-pass");
   await expect(page.getByTestId("current-user")).toHaveText("manager");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.getByRole("button", { name: ar.shell.users })).toBeVisible();
+  await expect(page.getByRole("button", { name: ar.shell.users, exact: true })).toBeVisible();
   await expect(page.getByText(ar.status.connected)).toBeVisible();
 
   await page.getByRole("button", { name: ar.app.switchLanguage }).click();
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
-  await expect(page.getByRole("button", { name: fr.shell.users })).toBeVisible();
+  await expect(page.getByRole("button", { name: fr.shell.users, exact: true })).toBeVisible();
   await page.getByRole("button", { name: fr.app.switchLanguage }).click();
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 });
@@ -49,7 +49,7 @@ test("wrong password: clear message in the user's language", async ({ page }) =>
 
 test("the manager creates an employee and gives one permission", async ({ page }) => {
   await login(page, "manager", "manager-pass");
-  await page.getByRole("button", { name: ar.shell.users }).click();
+  await page.getByRole("button", { name: ar.shell.users, exact: true }).click();
   await page.getByRole("button", { name: ar.users.add }).click();
 
   // Instant check with the same rule as the server: 6 characters at least.
@@ -81,13 +81,13 @@ test("first sign-in of the employee: chooses French, sees only what he may see",
 
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(page.getByTestId("current-user")).toHaveText("كريم");
-  await expect(page.getByRole("button", { name: fr.modules.clients })).toBeVisible();
-  await expect(page.getByRole("button", { name: fr.modules.policies })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: fr.shell.users })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: fr.shell.audit })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: fr.modules.clients, exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: fr.modules.policies, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: fr.shell.users, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: fr.shell.audit, exact: true })).toHaveCount(0);
 
   // Message to the manager.
-  await page.getByRole("button", { name: fr.shell.messages }).click();
+  await page.getByRole("button", { name: fr.shell.messages, exact: true }).click();
   await page.getByRole("button", { name: fr.messages.new }).click();
   await page.getByRole("dialog").getByRole("group", { name: fr.messages.to }).getByRole("checkbox").first().click();
   await page.getByLabel(fr.messages.subject).fill("Question sur un client");
@@ -111,7 +111,7 @@ test("the manager sees the new message at once, reads it and replies", async ({ 
 
 test("the audit log shows what happened, with the device", async ({ page }) => {
   await login(page, "manager", "manager-pass");
-  await page.getByRole("button", { name: ar.shell.audit }).click();
+  await page.getByRole("button", { name: ar.shell.audit, exact: true }).click();
   await expect(page.getByRole("cell", { name: ar.audit.actions.user_create })).toBeVisible();
   await expect(page.getByRole("cell", { name: ar.audit.actions.user_permissions })).toBeVisible();
   await expect(page.getByRole("cell", { name: "BROWSER-TEST" }).first()).toBeVisible();

@@ -1,4 +1,4 @@
-# End-to-end test of the real installer on a clean GitHub Windows machine.
+﻿# End-to-end test of the real installer on a clean GitHub Windows machine.
 # Each scenario prints PASS/FAIL in plain words; any FAIL stops the run.
 param(
   [Parameter(Mandatory = $true)][string]$Setup,
@@ -197,7 +197,12 @@ try {
   Check ($s.status -eq 200 -and $s.body.me.role -eq "manager" -and $s.body.me.language -eq "ar") "the manager typed in the installer signs in"
   $token = $s.body.accessToken
   $agency = Api "GET" "/api/settings/agency" $null $token
-  Check ($agency.body.nameAr -eq "وكالة اليسير للتأمين") "agency name in Arabic saved correctly"
+  $expectedName = "وكالة اليسير للتأمين"
+  $gotCodes = (([int[]][char[]]"$($agency.body.nameAr)") | ForEach-Object { $_.ToString("X4") }) -join " "
+  $wantCodes = (([int[]][char[]]$expectedName) | ForEach-Object { $_.ToString("X4") }) -join " "
+  Write-Host "  agency name received: $gotCodes"
+  Write-Host "  agency name expected: $wantCodes"
+  Check ($agency.body.nameAr -eq $expectedName) "agency name in Arabic saved correctly (received: $gotCodes / expected: $wantCodes)"
   Check ($agency.body.backupDir -eq $BackupDir) "Google Drive backup folder saved"
   $emp = Api "POST" "/api/users" @{ username = "salma"; displayName = "سلمى"; password = "salma-pass" } $token
   Check ($emp.status -eq 201) "the manager creates an employee"

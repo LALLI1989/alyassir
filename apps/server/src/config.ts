@@ -7,8 +7,14 @@ import { readFileSync } from "node:fs";
 export interface ServerConfig {
   host: string;
   port: number;
+  /** Connection as the application role (no rights to change the structure). */
   databaseUrl: string;
+  jwtSecret: string;
   tls: { pfx: Buffer; passphrase: string } | null;
+  /** Browser origin allowed in automated UI tests only. */
+  testCorsOrigin?: string;
+  /** Sign-in attempts per minute and per network address. */
+  loginRateLimitPerMinute?: number;
 }
 
 export class ConfigError extends Error {}
@@ -24,13 +30,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new ConfigError("ALYASSIR_PORT must be a valid TCP port");
   }
+  const jwtSecret = required(env, "ALYASSIR_JWT_SECRET");
+  if (jwtSecret.length < 32) throw new ConfigError("ALYASSIR_JWT_SECRET must be at least 32 characters");
 
   // HTTPS is mandatory. Plain HTTP is allowed only for automated tests.
+  const testMode = env.NODE_ENV === "test";
   let tls: ServerConfig["tls"] = null;
   if (env.ALYASSIR_INSECURE_HTTP === "1") {
-    if (env.NODE_ENV !== "test") {
-      throw new ConfigError("ALYASSIR_INSECURE_HTTP is only allowed when NODE_ENV=test");
-    }
+    if (!testMode) throw new ConfigError("ALYASSIR_INSECURE_HTTP is only allowed when NODE_ENV=test");
   } else {
     tls = {
       pfx: readFileSync(required(env, "ALYASSIR_TLS_PFX")),
@@ -42,6 +49,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     host: env.ALYASSIR_HOST ?? "0.0.0.0",
     port,
     databaseUrl: required(env, "DATABASE_URL"),
+    jwtSecret,
     tls,
+    testCorsOrigin: testMode ? env.ALYASSIR_TEST_CORS_ORIGIN : undefined,
   };
 }

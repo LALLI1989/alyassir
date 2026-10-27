@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { createApp } from "../src/app";
 import { ConfigError, loadConfig } from "../src/config";
+import { JWT_SECRET } from "./harness";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("Tests need DATABASE_URL pointing to a real PostgreSQL 16");
@@ -16,7 +17,7 @@ describe("GET /api/health", () => {
   let app: NestFastifyApplication;
 
   beforeAll(async () => {
-    app = await createApp({ host: "127.0.0.1", port: 0, databaseUrl: DATABASE_URL, tls: null });
+    app = await createApp({ host: "127.0.0.1", port: 0, databaseUrl: DATABASE_URL, jwtSecret: JWT_SECRET, tls: null });
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
   });
@@ -26,7 +27,7 @@ describe("GET /api/health", () => {
     const res = await app.inject({ method: "GET", url: "/api/health" });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body).toMatchObject({ app: "alyassir", status: "ok", database: "ok", version: "0.0.1" });
+    expect(body).toMatchObject({ app: "alyassir", status: "ok", database: "ok", version: "0.1.0" });
     expect(Number.isNaN(Date.parse(body.serverTime))).toBe(false);
   });
 });
@@ -40,6 +41,7 @@ describe("GET /api/health with a dead database", () => {
       host: "127.0.0.1",
       port: 0,
       databaseUrl: "postgres://nobody:wrong@127.0.0.1:1/none",
+      jwtSecret: JWT_SECRET,
       tls: null,
     });
     await app.init();
@@ -74,6 +76,7 @@ describe("HTTPS from a PFX file", () => {
     const config = loadConfig({
       ALYASSIR_PORT: "4100",
       DATABASE_URL,
+      ALYASSIR_JWT_SECRET: JWT_SECRET,
       ALYASSIR_TLS_PFX: pfx,
       ALYASSIR_TLS_PFX_PASSPHRASE: "s3cret",
     });
@@ -107,13 +110,16 @@ describe("HTTPS from a PFX file", () => {
 
 describe("loadConfig", () => {
   it("refuses plain HTTP outside tests", () => {
-    expect(() => loadConfig({ DATABASE_URL: "x", ALYASSIR_INSECURE_HTTP: "1", NODE_ENV: "production" }))
+    expect(() => loadConfig({ DATABASE_URL: "x", ALYASSIR_JWT_SECRET: JWT_SECRET, ALYASSIR_INSECURE_HTTP: "1", NODE_ENV: "production" }))
       .toThrow(ConfigError);
   });
   it("requires a certificate when HTTPS is on", () => {
-    expect(() => loadConfig({ DATABASE_URL: "x" })).toThrow(/ALYASSIR_TLS_PFX/);
+    expect(() => loadConfig({ DATABASE_URL: "x", ALYASSIR_JWT_SECRET: JWT_SECRET })).toThrow(/ALYASSIR_TLS_PFX/);
   });
   it("rejects an invalid port", () => {
-    expect(() => loadConfig({ DATABASE_URL: "x", ALYASSIR_PORT: "99999" })).toThrow(/port/);
+    expect(() => loadConfig({ DATABASE_URL: "x", ALYASSIR_JWT_SECRET: JWT_SECRET, ALYASSIR_PORT: "99999" })).toThrow(/port/);
+  });
+  it("requires a long JWT secret", () => {
+    expect(() => loadConfig({ DATABASE_URL: "x", ALYASSIR_JWT_SECRET: "short" })).toThrow(/32/);
   });
 });

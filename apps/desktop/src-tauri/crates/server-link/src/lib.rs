@@ -141,19 +141,23 @@ impl ServerCertVerifier for FingerprintVerifier {
     }
 }
 
-fn client(pinned: Option<Vec<u8>>, seen: Arc<Mutex<Option<Vec<u8>>>>) -> Result<reqwest::Client, LinkError> {
+/// TLS settings that accept only the pinned certificate (or record it, when probing).
+fn tls_config(pinned: Option<Vec<u8>>, seen: Arc<Mutex<Option<Vec<u8>>>>) -> Result<rustls::ClientConfig, LinkError> {
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let verifier = FingerprintVerifier { pinned, seen, provider: provider.clone() };
-    let config = rustls::ClientConfig::builder_with_provider(provider)
+    Ok(rustls::ClientConfig::builder_with_provider(provider)
         .with_safe_default_protocol_versions()
         .map_err(|e| LinkError::Protocol { detail: e.to_string() })?
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(verifier))
-        .with_no_client_auth();
+        .with_no_client_auth())
+}
+
+fn client(pinned: Option<Vec<u8>>, seen: Arc<Mutex<Option<Vec<u8>>>>) -> Result<reqwest::Client, LinkError> {
     reqwest::Client::builder()
-        .use_preconfigured_tls(config)
+        .use_preconfigured_tls(tls_config(pinned, seen)?)
         .connect_timeout(Duration::from_secs(5))
-        .timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(30))
         .build()
         .map_err(|e| LinkError::Protocol { detail: e.to_string() })
 }
@@ -196,6 +200,88 @@ pub async fn check(url: &str, fingerprint: &str) -> Result<Health, LinkError> {
     let base = normalize_address(url)?;
     let pinned = parse_fingerprint(fingerprint).ok_or(LinkError::InvalidAddress)?;
     get_health(&base, Some(pinned)).await.map(|(health, _)| health)
+}
+
+pub mod socket;
+
+/// A confirmed server: every request must meet the pinned certificate.
+#[derive(Clone)]
+pub struct Server {
+    base: Url,
+    fingerprint: Vec<u8>,
+    seen: Arc<Mutex<Option<Vec<u8>>>>,
+    http: reqwest::Client,
+}
+
+/// An HTTP answer: status and JSON body (Null when empty).
+#[derive(Debug, Clone)]
+pub struct Reply {
+    pub status: u16,
+    pub body: serde_json::Value,
+}
+
+impl Server {
+    pub fn new(url: &str, fingerprint: &str) -> Result<Self, LinkError> {
+        let base = normalize_address(url)?;
+        let fingerprint = parse_fingerprint(fingerprint).ok_or(LinkError::InvalidAddress)?;
+        let seen = Arc::new(Mutex::new(None));
+        let http = client(Some(fingerprint.clone()), seen.clone())?;
+        Ok(Self { base, fingerprint, seen, http })
+    }
+
+    pub fn base(&self) -> &Url {
+        &self.base
+    }
+
+    pub fn fingerprint(&self) -> &[u8] {
+        &self.fingerprint
+    }
+
+    /// Sends one request. Network and certificate problems are errors; HTTP errors are not.
+    pub async fn send(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<&serde_json::Value>,
+        headers: &[(String, String)],
+    ) -> Result<Reply, LinkError> {
+        if !path.starts_with("/api/") {
+            return Err(LinkError::InvalidAddress);
+        }
+        let url = self.base.join(path).map_err(|_| LinkError::InvalidAddress)?;
+        let method = reqwest::Method::from_bytes(method.as_bytes()).map_err(|_| LinkError::InvalidAddress)?;
+        let mut request = self.http.request(method, url);
+        for (name, value) in headers {
+            request = request.header(name.as_str(), value.as_str());
+        }
+        if let Some(body) = body {
+            request = request.json(body);
+        }
+        let response = match request.send().await {
+            Ok(r) => r,
+            Err(e) => {
+                let seen = self.seen.lock().ok().and_then(|s| s.clone());
+                if let Some(seen) = seen {
+                    if seen != self.fingerprint {
+                        return Err(LinkError::FingerprintMismatch { seen: format_fingerprint(&seen) });
+                    }
+                }
+                return Err(LinkError::Unreachable { detail: e.to_string() });
+            }
+        };
+        let status = response.status().as_u16();
+        let bytes = response.bytes().await.map_err(|e| LinkError::Unreachable { detail: e.to_string() })?;
+        let body = if bytes.is_empty() {
+            serde_json::Value::Null
+        } else {
+            serde_json::from_slice(&bytes).map_err(|_| LinkError::NotAlyassir)?
+        };
+        Ok(Reply { status, body })
+    }
+
+    pub(crate) fn tls(&self) -> Result<rustls::ClientConfig, LinkError> {
+        tls_config(Some(self.fingerprint.clone()), Arc::new(Mutex::new(None)))
+    }
 }
 
 #[cfg(test)]

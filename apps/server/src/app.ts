@@ -1,30 +1,72 @@
 import "reflect-metadata";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import { Module, type DynamicModule } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD, NestFactory } from "@nestjs/core";
+import { JwtModule } from "@nestjs/jwt";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
+import type { Server as HttpServer } from "node:http";
+import { AuditService } from "./audit/audit.service";
+import { AuthService } from "./auth/auth.service";
+import { LOGIN_RATE_LIMIT, LoginThrottle } from "./auth/login-throttle";
+import { AccessGuard } from "./common/access.guard";
+import { ErrorFilter } from "./common/error.filter";
 import type { ServerConfig } from "./config";
+import { CONTROLLERS } from "./controllers";
 import { DatabaseService } from "./database.service";
-import { HealthController } from "./health.controller";
+import { EditRequestsService } from "./edit-requests/edit-requests.service";
+import { MessagesService } from "./messages/messages.service";
+import { RealtimeService } from "./realtime/realtime.service";
+import { SettingsService } from "./settings/settings.service";
+import { SystemService } from "./system/system.service";
+import { UsersService } from "./users/users.service";
 
 @Module({})
-class AppModule {
+export class AppModule {
   static register(config: ServerConfig): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController],
-      providers: [{ provide: DatabaseService, useFactory: () => new DatabaseService(config.databaseUrl) }],
+      imports: [JwtModule.register({ secret: config.jwtSecret, signOptions: { algorithm: "HS256" }, verifyOptions: { algorithms: ["HS256"] } })],
+      controllers: CONTROLLERS,
+      providers: [
+        { provide: DatabaseService, useFactory: () => new DatabaseService(config.databaseUrl) },
+        { provide: LOGIN_RATE_LIMIT, useValue: config.loginRateLimitPerMinute ?? 20 },
+        { provide: APP_GUARD, useClass: AccessGuard },
+        { provide: APP_FILTER, useClass: ErrorFilter },
+        AuditService,
+        AuthService,
+        LoginThrottle,
+        RealtimeService,
+        SettingsService,
+        SystemService,
+        UsersService,
+        MessagesService,
+        EditRequestsService,
+      ],
     };
   }
 }
 
 export async function createApp(config: ServerConfig): Promise<NestFastifyApplication> {
-  const adapter = new FastifyAdapter(
-    config.tls ? { https: { pfx: config.tls.pfx, passphrase: config.tls.passphrase } } : {},
-  );
+  const adapter = new FastifyAdapter({
+    ...(config.tls ? { https: { pfx: config.tls.pfx, passphrase: config.tls.passphrase } } : {}),
+    // Logo upload (base64, at most 500 KB) is the largest request.
+    bodyLimit: 1_048_576,
+    trustProxy: false,
+  });
   const app = await NestFactory.create<NestFastifyApplication>(AppModule.register(config), adapter, {
     logger: ["error", "warn", "log"],
   });
+  // Security headers and a general request limit (SPEC 4.15).
+  await app.register(helmet as never, { contentSecurityPolicy: false });
+  await app.register(rateLimit as never, { max: 1200, timeWindow: "1 minute" });
+  // Browser tests only (the desktop app does not use CORS). All methods the API uses.
+  if (config.testCorsOrigin) app.enableCors({ origin: config.testCorsOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"] });
   app.setGlobalPrefix("api");
   app.enableShutdownHooks();
+
+  const realtime = app.get(RealtimeService);
+  const auth = app.get(AuthService);
+  realtime.attach(app.getHttpServer() as HttpServer, (token) => auth.socketUserId(token), config.testCorsOrigin);
   return app;
 }

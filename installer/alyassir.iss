@@ -73,6 +73,32 @@ ar.Err_E_API_PORT_IN_USE=المنفذ المختار أصبح مستعملًا �
 ar.Err_E_PG_PORT_IN_USE=المنفذ 5433 الخاص بقاعدة البيانات مستعمل من برنامج آخر على هذا الحاسوب.
 ar.Err_E_HEALTH=الخادم لم يُجب على الاختبار النهائي.
 ar.Err_Generic=حدث خطأ أثناء الإعداد.
+ar.AgencyTitle=الوكالة والمدير
+ar.TestAgencyName=وكالة اليسير للتأمين
+ar.AgencyDesc=اسم الوكالة وحساب المدير الأول
+ar.AgencySub=المدير هو صاحب كل الصلاحيات. احفظ كلمة المرور في مكان آمن: لا توجد استعادة عبر البريد.
+ar.AgencyName=اسم الوكالة:
+ar.ManagerUser=اسم مستخدم المدير (حروف لاتينية وأرقام، دون مسافات):
+ar.ManagerPass=كلمة مرور المدير (6 أحرف على الأقل):
+ar.ManagerPass2=أعد كتابة كلمة المرور:
+ar.ErrAgency=اكتب اسم الوكالة.
+ar.ErrUser=اسم المستخدم: من 3 إلى 32 حرفًا لاتينيًا أو رقمًا أو . _ - دون مسافات.
+ar.ErrPass=كلمة المرور قصيرة: 6 أحرف على الأقل.
+ar.ErrPass2=كلمتا المرور غير متطابقتين.
+ar.BackupTitle=مجلد النسخ الاحتياطي
+ar.BackupDesc=مجلد Google Drive المتزامن على هذا الحاسوب
+ar.BackupSub=اختر مجلدًا داخل Google Drive، تُحفظ فيه النسخ الاحتياطية اليومية لاحقًا.
+ar.ErrBackupDir=المجلد غير موجود. اختر مجلدًا موجودًا.
+ar.Updating=جارٍ تحديث الخادم: نسخة احتياطية، ثم تحديث قاعدة البيانات، ثم إعادة التشغيل…
+ar.UpdateDoneTitle=اكتمل تحديث الخادم
+ar.UpdateFailTitle=تعذّر تحديث الخادم
+ar.UpdateFailDesc=البيانات سليمة: أعيدت قاعدة البيانات كما كانت قبل التحديث. أعد تثبيت الإصدار السابق أو اتصل بالدعم.
+ar.StopFailed=تعذّر إيقاف خدمات اليسير لتحديثها. أعد تشغيل الحاسوب ثم أعد المحاولة.
+ar.Err_E_BOOTSTRAP_USERNAME=اسم مستخدم المدير غير صحيح.
+ar.Err_E_BOOTSTRAP_PASSWORD=كلمة مرور المدير قصيرة.
+ar.Err_E_BOOTSTRAP_BACKUP_DIR=مجلد النسخ الاحتياطي غير موجود.
+ar.Err_E_BACKUP=تعذّرت النسخة الاحتياطية قبل التحديث، فلم يُغيَّر شيء.
+ar.Err_E_MIGRATION=تعذّر تحديث قاعدة البيانات. أعيدت كما كانت قبل التحديث.
 
 fr.ModeTitle=Type de cet ordinateur
 fr.ModeDesc=Cet ordinateur est-il le serveur ou un poste utilisateur ?
@@ -105,6 +131,32 @@ fr.Err_E_API_PORT_IN_USE=Le port choisi est maintenant utilisé par un autre pro
 fr.Err_E_PG_PORT_IN_USE=Le port 5433 de la base de données est utilisé par un autre programme sur cet ordinateur.
 fr.Err_E_HEALTH=Le serveur n'a pas répondu au test final.
 fr.Err_Generic=Une erreur est survenue pendant la configuration.
+fr.AgencyTitle=Agence et gérant
+fr.TestAgencyName=وكالة اليسير للتأمين
+fr.AgencyDesc=Nom de l'agence et compte du premier gérant
+fr.AgencySub=Le gérant a tous les droits. Conservez son mot de passe en lieu sûr : il n'y a pas de récupération par e-mail.
+fr.AgencyName=Nom de l'agence :
+fr.ManagerUser=Nom d'utilisateur du gérant (lettres latines et chiffres, sans espace) :
+fr.ManagerPass=Mot de passe du gérant (6 caractères au minimum) :
+fr.ManagerPass2=Répétez le mot de passe :
+fr.ErrAgency=Saisissez le nom de l'agence.
+fr.ErrUser=Nom d'utilisateur : de 3 à 32 lettres latines, chiffres ou . _ - sans espace.
+fr.ErrPass=Mot de passe trop court : 6 caractères au minimum.
+fr.ErrPass2=Les deux mots de passe ne correspondent pas.
+fr.BackupTitle=Dossier de sauvegarde
+fr.BackupDesc=Dossier Google Drive synchronisé sur cet ordinateur
+fr.BackupSub=Choisissez un dossier dans Google Drive ; les sauvegardes quotidiennes y seront enregistrées plus tard.
+fr.ErrBackupDir=Ce dossier n'existe pas. Choisissez un dossier existant.
+fr.Updating=Mise à jour du serveur : sauvegarde, puis mise à jour de la base de données, puis redémarrage…
+fr.UpdateDoneTitle=Serveur mis à jour
+fr.UpdateFailTitle=La mise à jour du serveur a échoué
+fr.UpdateFailDesc=Les données sont intactes : la base de données a été remise dans son état d'avant la mise à jour. Réinstallez la version précédente ou contactez le support.
+fr.StopFailed=Impossible d'arrêter les services Alyassir pour la mise à jour. Redémarrez l'ordinateur puis réessayez.
+fr.Err_E_BOOTSTRAP_USERNAME=Nom d'utilisateur du gérant incorrect.
+fr.Err_E_BOOTSTRAP_PASSWORD=Mot de passe du gérant trop court.
+fr.Err_E_BOOTSTRAP_BACKUP_DIR=Le dossier de sauvegarde n'existe pas.
+fr.Err_E_BACKUP=La sauvegarde avant mise à jour a échoué ; rien n'a été modifié.
+fr.Err_E_MIGRATION=La mise à jour de la base de données a échoué. Elle a été remise dans son état d'avant.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -133,14 +185,47 @@ var
   ModePage: TInputOptionWizardPage;
   PortPage: TInputQueryWizardPage;
   DataPage: TInputDirWizardPage;
+  AgencyPage: TInputQueryWizardPage;
+  BackupPage: TInputDirWizardPage;
   ResultPage: TOutputMsgMemoWizardPage;
   ProvisionRan: Boolean;
   ProvisionFailed: Boolean;
+  IsUpgrade: Boolean;
+  UpgradeNeedsBootstrap: Boolean;
+  UpgradeDataDir: String;
   ResultText: String;
+  { Agency page values, copied when Next is clicked: later reads of the page can lose Arabic letters. }
+  AgencyName, ManagerName, ManagerPassword, BackupFolder: String;
+
+function StateFile: String;
+begin
+  Result := ExpandConstant('{autopf}\Alyassir\provision-state.json');
+end;
+
+{ Reads a string value from the small JSON state file written by setup. }
+function JsonString(Json, Key: String): String;
+var
+  P: Integer;
+  Rest: String;
+begin
+  Result := '';
+  P := Pos('"' + Key + '": "', Json);
+  if P = 0 then Exit;
+  Rest := Copy(Json, P + Length(Key) + 5, Length(Json));
+  P := Pos('"', Rest);
+  if P = 0 then Exit;
+  Result := Copy(Rest, 1, P - 1);
+  StringChangeEx(Result, '\\', '\', True);
+end;
 
 function IsServerMode: Boolean;
 begin
-  Result := ModePage.Values[0];
+  Result := IsUpgrade or ModePage.Values[0];
+end;
+
+function NeedsBootstrap: Boolean;
+begin
+  Result := IsServerMode and ((not IsUpgrade) or UpgradeNeedsBootstrap);
 end;
 
 function ProvisionFailedCheck: Boolean;
@@ -148,9 +233,17 @@ begin
   Result := ProvisionFailed;
 end;
 
+function DataDir: String;
+begin
+  if IsUpgrade then
+    Result := UpgradeDataDir
+  else
+    Result := DataPage.Values[0];
+end;
+
 function ResultIni: String;
 begin
-  Result := AddBackslash(DataPage.Values[0]) + 'setup-result.json.ini';
+  Result := AddBackslash(DataDir) + 'setup-result.json.ini';
 end;
 
 { Asks Windows whether something listens on the port (works on any Windows language). }
@@ -177,10 +270,39 @@ begin
     end;
 end;
 
+function ValidUsername(U: String): Boolean;
+var
+  I: Integer;
+  C: Char;
+begin
+  Result := (Length(U) >= 3) and (Length(U) <= 32);
+  if not Result then Exit;
+  for I := 1 to Length(U) do
+  begin
+    C := U[I];
+    if not (((C >= 'a') and (C <= 'z')) or ((C >= 'A') and (C <= 'Z')) or ((C >= '0') and (C <= '9')) or
+      (C = '.') or (C = '_') or (C = '-')) then
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
+end;
+
 procedure InitializeWizard;
 var
-  Mode, DataDir: String;
+  Mode, Dir: String;
+  State: AnsiString;
 begin
+  IsUpgrade := FileExists(StateFile);
+  if IsUpgrade then
+  begin
+    LoadStringFromFile(StateFile, State);
+    UpgradeDataDir := JsonString(String(State), 'dataDir');
+    UpgradeNeedsBootstrap := Pos('"bootstrapped": true', String(State)) = 0;
+    Log('Update of an existing server. Data folder: ' + UpgradeDataDir);
+  end;
+
   ModePage := CreateInputOptionPage(wpWelcome, CustomMessage('ModeTitle'), CustomMessage('ModeDesc'),
     CustomMessage('ModeSub'), True, False);
   ModePage.Add(CustomMessage('ModeServer'));
@@ -197,10 +319,32 @@ begin
   DataPage := CreateInputDirPage(PortPage.ID, CustomMessage('DataTitle'), CustomMessage('DataDesc'),
     CustomMessage('DataSub'), False, '');
   DataPage.Add('');
-  DataDir := ExpandConstant('{param:DATADIR|}');
-  if DataDir = '' then
-    DataDir := ExpandConstant('{commonappdata}\Alyassir');
-  DataPage.Values[0] := DataDir;
+  Dir := ExpandConstant('{param:DATADIR|}');
+  if Dir = '' then
+    Dir := ExpandConstant('{commonappdata}\Alyassir');
+  DataPage.Values[0] := Dir;
+
+  AgencyPage := CreateInputQueryPage(DataPage.ID, CustomMessage('AgencyTitle'), CustomMessage('AgencyDesc'),
+    CustomMessage('AgencySub'));
+  AgencyPage.Add(CustomMessage('AgencyName'), False);
+  AgencyPage.Add(CustomMessage('ManagerUser'), False);
+  AgencyPage.Add(CustomMessage('ManagerPass'), True);
+  AgencyPage.Add(CustomMessage('ManagerPass2'), True);
+  AgencyPage.Values[0] := ExpandConstant('{param:AGENCY|}');
+  { Automated tests: command-line options lose Arabic letters, so an Arabic name comes from the
+    messages file instead. A person types the name in the page, which keeps it intact. }
+  if ExpandConstant('{param:TESTAGENCY|}') = '1' then
+  begin
+    AgencyPage.Values[0] := CustomMessage('TestAgencyName');
+  end;
+  AgencyPage.Values[1] := ExpandConstant('{param:MANAGER|}');
+  AgencyPage.Values[2] := ExpandConstant('{param:MANAGERPASS|}');
+  AgencyPage.Values[3] := ExpandConstant('{param:MANAGERPASS|}');
+
+  BackupPage := CreateInputDirPage(AgencyPage.ID, CustomMessage('BackupTitle'), CustomMessage('BackupDesc'),
+    CustomMessage('BackupSub'), False, '');
+  BackupPage.Add('');
+  BackupPage.Values[0] := ExpandConstant('{param:BACKUPDIR|}');
 
   ResultPage := CreateOutputMsgMemoPage(wpInstalling, CustomMessage('DoneTitle'), CustomMessage('DoneDesc'),
     CustomMessage('DoneSub'), '');
@@ -209,10 +353,29 @@ end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
+  if PageID = ModePage.ID then
+    Result := IsUpgrade;
   if (PageID = PortPage.ID) or (PageID = DataPage.ID) then
-    Result := not IsServerMode;
+    Result := IsUpgrade or (not IsServerMode);
+  if (PageID = AgencyPage.ID) or (PageID = BackupPage.ID) then
+    Result := not NeedsBootstrap;
   if PageID = ResultPage.ID then
     Result := not ProvisionRan;
+end;
+
+function CheckAgencyPage: Boolean;
+begin
+  Result := False;
+  if Trim(AgencyPage.Values[0]) = '' then
+    SuppressibleMsgBox(CustomMessage('ErrAgency'), mbError, MB_OK, IDOK)
+  else if not ValidUsername(Trim(AgencyPage.Values[1])) then
+    SuppressibleMsgBox(CustomMessage('ErrUser'), mbError, MB_OK, IDOK)
+  else if Length(AgencyPage.Values[2]) < 6 then
+    SuppressibleMsgBox(CustomMessage('ErrPass'), mbError, MB_OK, IDOK)
+  else if AgencyPage.Values[2] <> AgencyPage.Values[3] then
+    SuppressibleMsgBox(CustomMessage('ErrPass2'), mbError, MB_OK, IDOK)
+  else
+    Result := True;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -245,15 +408,73 @@ begin
         Result := False;
     end;
   end;
+  if CurPageID = AgencyPage.ID then
+  begin
+    Result := CheckAgencyPage;
+    AgencyName := Trim(AgencyPage.Values[0]);
+    ManagerName := Trim(AgencyPage.Values[1]);
+    ManagerPassword := AgencyPage.Values[2];
+  end;
+  if CurPageID = BackupPage.ID then
+  begin
+    BackupFolder := BackupPage.Values[0];
+    if not DirExists(BackupFolder) then
+    begin
+      SuppressibleMsgBox(CustomMessage('ErrBackupDir'), mbError, MB_OK, IDOK);
+      Result := False;
+    end;
+  end;
+end;
+
+{ Update: the services must stop so their program files can be replaced. }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Code: Integer;
+begin
+  Result := '';
+  if not IsUpgrade then Exit;
+  Exec('powershell.exe', '-NoProfile -NonInteractive -Command "Stop-Service -Name AlyassirServer -Force -ErrorAction SilentlyContinue; ' +
+    'Stop-Service -Name AlyassirPostgres -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; ' +
+    'if ((Get-Service AlyassirServer -ErrorAction SilentlyContinue).Status -eq ''Running'') { exit 4 }"',
+    '', SW_HIDE, ewWaitUntilTerminated, Code);
+  if Code = 4 then
+    Result := CustomMessage('StopFailed');
 end;
 
 function ErrorText(Code: String): String;
 begin
   if (Code = 'E_ALREADY_INSTALLED') or (Code = 'E_DATA_EXISTS') or (Code = 'E_API_PORT_IN_USE') or
-     (Code = 'E_PG_PORT_IN_USE') or (Code = 'E_HEALTH') then
+     (Code = 'E_PG_PORT_IN_USE') or (Code = 'E_HEALTH') or (Code = 'E_BOOTSTRAP_USERNAME') or
+     (Code = 'E_BOOTSTRAP_PASSWORD') or (Code = 'E_BOOTSTRAP_BACKUP_DIR') or (Code = 'E_BACKUP') or
+     (Code = 'E_MIGRATION') then
     Result := CustomMessage('Err_' + Code)
   else
     Result := CustomMessage('Err_Generic');
+end;
+
+{ Agency and manager for the setup helper. UTF-8 file in setup's private temporary folder;
+  the helper deletes it as soon as it has read it (it holds the manager's password). }
+function WriteBootstrap: String;
+var
+  Lines: TArrayOfString;
+begin
+  Result := ExpandConstant('{tmp}\bootstrap.txt');
+  { Pages never shown (some silent runs): read them now. }
+  if AgencyName = '' then
+  begin
+    AgencyName := Trim(AgencyPage.Values[0]);
+    ManagerName := Trim(AgencyPage.Values[1]);
+    ManagerPassword := AgencyPage.Values[2];
+  end;
+  if BackupFolder = '' then
+    BackupFolder := BackupPage.Values[0];
+  SetArrayLength(Lines, 5);
+  Lines[0] := 'agencyName=' + AgencyName;
+  Lines[1] := 'managerUsername=' + ManagerName;
+  Lines[2] := 'managerPassword=' + ManagerPassword;
+  Lines[3] := 'language=' + ActiveLanguage;
+  Lines[4] := 'backupDir=' + BackupFolder;
+  SaveStringsToUTF8File(Result, Lines, False);
 end;
 
 procedure RunProvision;
@@ -262,47 +483,69 @@ var
   Params, Ini, ErrCode, Step, Urls: String;
 begin
   ProvisionRan := True;
-  WizardForm.StatusLabel.Caption := CustomMessage('Configuring');
+  if IsUpgrade then
+    WizardForm.StatusLabel.Caption := CustomMessage('Updating')
+  else
+    WizardForm.StatusLabel.Caption := CustomMessage('Configuring');
   Ini := ResultIni;
   DeleteFile(Ini);
-  Params := '"' + ExpandConstant('{app}\server\dist\setup\cli.js') + '" provision' +
-    ' --app-dir "' + ExpandConstant('{app}') + '"' +
-    ' --data-dir "' + DataPage.Values[0] + '"' +
-    ' --port ' + Trim(PortPage.Values[0]) +
-    ' --result "' + AddBackslash(DataPage.Values[0]) + 'setup-result.json"';
+  Params := '"' + ExpandConstant('{app}\server\dist\setup\cli.js') + '"';
+  if IsUpgrade then
+    Params := Params + ' upgrade --app-dir "' + ExpandConstant('{app}') + '"'
+  else
+    Params := Params + ' provision --app-dir "' + ExpandConstant('{app}') + '"' +
+      ' --data-dir "' + DataDir + '"' + ' --port ' + Trim(PortPage.Values[0]);
+  Params := Params + ' --result "' + AddBackslash(DataDir) + 'setup-result.json"';
   if ExpandConstant('{param:SIMULATEFAIL|}') <> '' then
     Params := Params + ' --simulate-failure-at ' + ExpandConstant('{param:SIMULATEFAIL|}');
-  Log('Provision: node ' + Params);
+  { Logged before the bootstrap file is added: the log never shows where the password is. }
+  Log('Setup helper: node ' + Params);
+  if NeedsBootstrap then
+  begin
+    Log('Agency name (' + IntToStr(Length(AgencyName)) + ' characters): ' + AgencyName);
+    Params := Params + ' --bootstrap "' + WriteBootstrap + '"';
+  end;
   { Through cmd.exe so that any crash message of the helper itself lands in a log file. }
-  ForceDirectories(AddBackslash(DataPage.Values[0]) + 'logs');
+  ForceDirectories(AddBackslash(DataDir) + 'logs');
   Params := '/S /C ""' + ExpandConstant('{app}\server\node.exe') + '" ' + Params + ' 2>"' +
-    AddBackslash(DataPage.Values[0]) + 'logs\setup-helper-errors.log""';
+    AddBackslash(DataDir) + 'logs\setup-helper-errors.log""';
   if not Exec(ExpandConstant('{cmd}'), Params, ExpandConstant('{app}\server'), SW_HIDE,
     ewWaitUntilTerminated, Code) then
     Code := -1;
-  Log('Provision exit code: ' + IntToStr(Code));
+  DeleteFile(ExpandConstant('{tmp}\bootstrap.txt'));
+  Log('Setup helper exit code: ' + IntToStr(Code));
 
   if (Code = 0) and (GetIniString('result', 'ok', '0', Ini) = '1') then
   begin
+    if IsUpgrade then
+      ResultPage.Caption := CustomMessage('UpdateDoneTitle');
     Urls := '';
     UrlCount := StrToIntDef(GetIniString('result', 'urlCount', '0', Ini), 0);
     for I := 0 to UrlCount - 1 do
       Urls := Urls + '    ' + GetIniString('result', 'url' + IntToStr(I), '', Ini) + #13#10;
     ResultText := CustomMessage('DoneAddress') + #13#10 + Urls + #13#10 +
       CustomMessage('DoneFingerprint') + #13#10 + '    ' + GetIniString('result', 'fingerprint', '', Ini) + #13#10#13#10 +
-      AddBackslash(DataPage.Values[0]) + 'setup-result.json';
-    Log('Provision OK. ' + ResultText);
+      AddBackslash(DataDir) + 'setup-result.json';
+    Log('Setup OK. ' + ResultText);
   end
   else
   begin
     ProvisionFailed := True;
     ErrCode := GetIniString('result', 'code', 'E_SETUP_HELPER', Ini);
     Step := GetIniString('result', 'step', '-', Ini);
-    ResultPage.Caption := CustomMessage('FailTitle');
-    ResultPage.Description := CustomMessage('FailDesc');
+    if IsUpgrade then
+    begin
+      ResultPage.Caption := CustomMessage('UpdateFailTitle');
+      ResultPage.Description := CustomMessage('UpdateFailDesc');
+    end
+    else
+    begin
+      ResultPage.Caption := CustomMessage('FailTitle');
+      ResultPage.Description := CustomMessage('FailDesc');
+    end;
     ResultText := ErrorText(ErrCode) + #13#10#13#10 + FmtMessage(CustomMessage('FailCode'), [ErrCode, Step]) + #13#10 +
-      FmtMessage(CustomMessage('FailLog'), [AddBackslash(DataPage.Values[0]) + 'logs\setup.log']);
-    Log('Provision FAILED: ' + ErrCode + ' at ' + Step);
+      FmtMessage(CustomMessage('FailLog'), [AddBackslash(DataDir) + 'logs\setup.log']);
+    Log('Setup FAILED: ' + ErrCode + ' at ' + Step);
     SuppressibleMsgBox(ResultText, mbCriticalError, MB_OK, IDOK);
   end;
 end;
@@ -328,11 +571,12 @@ begin
     Result := 0;
 end;
 
-{ After a failed server setup, remove the installed files too, so nothing is left behind. }
+{ After a failed FIRST installation, remove the installed files too, so nothing is left behind.
+  Never after a failed update: the existing installation and its data must stay. }
 procedure DeinitializeSetup;
 var
   Code: Integer;
 begin
-  if ProvisionFailed then
+  if ProvisionFailed and (not IsUpgrade) then
     Exec(ExpandConstant('{uninstallexe}'), '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewNoWait, Code);
 end;

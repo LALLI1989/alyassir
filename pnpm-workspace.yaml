@@ -5,3 +5,4 @@ packages:
 # Only these packages may run install scripts.
 onlyBuiltDependencies:
   - esbuild
+  - argon2

@@ -3,12 +3,14 @@
  *
  *   check-port   --port N [--out FILE]        exit 0 free, 3 in use
  *   suggest-port --from N --out FILE          writes the first free port
- *   provision    --app-dir D --data-dir D --port N --result FILE [--simulate-failure-at STEP]
+ *   provision    --app-dir D --data-dir D --port N --result FILE --bootstrap FILE [--simulate-failure-at STEP]
+ *   upgrade      --app-dir D --result FILE [--bootstrap FILE] [--simulate-failure-at STEP]
  *   unprovision  --app-dir D
  */
 import { writeFileSync } from "node:fs";
 import { isPortFree, suggestPort } from "./ports";
 import { PG_PORT, provision, unprovision } from "./provision";
+import { upgrade } from "./upgrade";
 
 export function parseArgs(argv: string[]): { command: string; flags: Record<string, string> } {
   const [command = "", ...rest] = argv;
@@ -56,6 +58,16 @@ async function main(): Promise<number> {
         dataDir: need(flags, "data-dir"),
         port: port(need(flags, "port")),
         resultFile: need(flags, "result"),
+        bootstrapFile: need(flags, "bootstrap"),
+        simulateFailureAt: flags["simulate-failure-at"],
+      });
+      return result.ok ? 0 : 1;
+    }
+    case "upgrade": {
+      const result = await upgrade({
+        appDir: need(flags, "app-dir"),
+        resultFile: need(flags, "result"),
+        bootstrapFile: flags.bootstrap,
         simulateFailureAt: flags["simulate-failure-at"],
       });
       return result.ok ? 0 : 1;

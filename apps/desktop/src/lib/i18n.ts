@@ -1,11 +1,11 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import ar from "./ar.json";
-import fr from "./fr.json";
+import { resources } from "@alyassir/i18n";
+import type { Language } from "@alyassir/shared";
 
-export type Language = "ar" | "fr";
 const STORAGE_KEY = "alyassir.language";
 
+/** Before sign-in the device's last language is used; after sign-in, the user's own choice. */
 function savedLanguage(): Language {
   try {
     return localStorage.getItem(STORAGE_KEY) === "fr" ? "fr" : "ar";
@@ -21,7 +21,7 @@ function applyDirection(lng: string): void {
 }
 
 void i18n.use(initReactI18next).init({
-  resources: { ar: { translation: ar }, fr: { translation: fr } },
+  resources,
   lng: savedLanguage(),
   fallbackLng: false,
   interpolation: { escapeValue: false },
@@ -34,8 +34,12 @@ i18n.on("languageChanged", (lng) => {
   try {
     localStorage.setItem(STORAGE_KEY, lng);
   } catch {
-    // Language still switches; it just is not remembered.
+    // The language still switches; it just is not remembered on this device.
   }
 });
+
+export function currentLanguage(): Language {
+  return i18n.language === "fr" ? "fr" : "ar";
+}
 
 export default i18n;

@@ -1,0 +1,5 @@
+{
+  "extends": "../../tooling/tsconfig.base.json",
+  "compilerOptions": { "module": "ESNext", "moduleResolution": "bundler", "noEmit": true, "types": [] },
+  "include": ["src"]
+}

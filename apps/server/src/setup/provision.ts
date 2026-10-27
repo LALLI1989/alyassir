@@ -1,178 +1,65 @@
-import { X509Certificate, randomBytes } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
-import { request } from "node:https";
-import { networkInterfaces } from "node:os";
+/**
+ * First installation of the server computer (SPEC 6.1). Every step can be undone: if any step
+ * fails, the finished ones are undone in reverse order and the computer is left as before.
+ */
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { TLSSocket } from "node:tls";
-import { Client } from "pg";
+import { migrate } from "@alyassir/db";
 import { SetupLog } from "./log";
 import { isPortFree } from "./ports";
+import {
+  API_SERVICE,
+  APP_ROLE,
+  DB_NAME,
+  DB_OWNER,
+  PG_PORT,
+  PG_SERVICE,
+  bootstrapData,
+  certFingerprint,
+  dbUrl,
+  ensureAppRole,
+  firewallRuleName,
+  lanUrls,
+  logPostgresDiagnostics,
+  logServiceTail,
+  paths,
+  pgReady,
+  readBootstrap,
+  secret,
+  serviceEnv,
+  stateFilePath,
+  waitHealthy,
+  winswXml,
+  withClient,
+  writeResult,
+  writeSecrets,
+  POSTGRES_CONF,
+  type Bootstrap,
+  type ProvisionState,
+  type SetupResult,
+} from "./common";
 import { SetupError, runSteps, type Step } from "./steps";
 import { SID, currentUserSid, powershell, restrictAcl, run, serviceStatus, startService, stopService, waitFor } from "./windows";
+import { SERVER_VERSION } from "../version";
 
-export const PG_PORT = 5433;
-export const PG_SERVICE = "AlyassirPostgres";
-export const API_SERVICE = "AlyassirServer";
-export const DB_NAME = "alyassir";
-export const DB_USER = "alyassir";
+export {
+  API_SERVICE,
+  PG_PORT,
+  PG_SERVICE,
+  POSTGRES_CONF,
+  firewallRuleName,
+  stateFilePath,
+  winswXml,
+  type ProvisionState,
+} from "./common";
 
 export interface ProvisionOptions {
   appDir: string;
   dataDir: string;
   port: number;
   resultFile: string;
+  bootstrapFile: string;
   simulateFailureAt?: string;
-}
-
-/** What setup created, so uninstall can remove exactly that (and nothing else). */
-export interface ProvisionState {
-  dataDir: string;
-  port: number;
-  pgBin: string;
-  pgData: string;
-  pgService: string;
-  apiService: string;
-  winswExe: string;
-  firewallRule: string;
-}
-
-export interface ProvisionResult {
-  ok: boolean;
-  errorCode?: string;
-  failedStep?: string;
-  message?: string;
-  port?: number;
-  urls?: string[];
-  fingerprint?: string;
-  dataDir?: string;
-}
-
-export function firewallRuleName(port: number): string {
-  return `Alyassir Server (TCP ${port})`;
-}
-
-export function stateFilePath(appDir: string): string {
-  return join(appDir, "provision-state.json");
-}
-
-function secret(): string {
-  // base64url: letters, digits, '-' and '_' only. Safe in URLs, SQL literals and XML.
-  return randomBytes(24).toString("base64url");
-}
-
-function xmlEscape(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-export function winswXml(o: {
-  nodeExe: string;
-  mainJs: string;
-  workDir: string;
-  logDir: string;
-  env: Record<string, string>;
-}): string {
-  const env = Object.entries(o.env)
-    .map(([name, value]) => `  <env name="${xmlEscape(name)}" value="${xmlEscape(value)}" />`)
-    .join("\n");
-  return `<service>
-  <id>${API_SERVICE}</id>
-  <name>Alyassir Server</name>
-  <description>Alyassir insurance agency server (API + realtime).</description>
-  <executable>${xmlEscape(o.nodeExe)}</executable>
-  <arguments>"${xmlEscape(o.mainJs)}"</arguments>
-  <workingdirectory>${xmlEscape(o.workDir)}</workingdirectory>
-  <startmode>Automatic</startmode>
-  <depend>${PG_SERVICE}</depend>
-  <onfailure action="restart" delay="5 sec" />
-  <onfailure action="restart" delay="10 sec" />
-  <onfailure action="restart" delay="30 sec" />
-  <resetfailure>1 hour</resetfailure>
-  <stoptimeout>15 sec</stoptimeout>
-  <logpath>${xmlEscape(o.logDir)}</logpath>
-  <log mode="roll-by-size">
-    <sizeThreshold>10240</sizeThreshold>
-    <keepFiles>8</keepFiles>
-  </log>
-${env}
-</service>
-`;
-}
-
-/** Durability settings for power cuts (SPEC 4.17): never trade safety for speed. */
-export const POSTGRES_CONF = `
-# --- Alyassir settings (written by setup) ---
-listen_addresses = '127.0.0.1'
-port = ${PG_PORT}
-fsync = on
-synchronous_commit = on
-full_page_writes = on
-wal_log_hints = on
-password_encryption = 'scram-sha-256'
-logging_collector = on
-log_directory = 'log'
-log_filename = 'postgresql-%a.log'
-log_truncate_on_rotation = on
-log_rotation_age = 1d
-log_timezone = 'UTC'
-timezone = 'UTC'
-`;
-
-export function lanUrls(port: number): string[] {
-  const urls: string[] = [];
-  for (const list of Object.values(networkInterfaces())) {
-    for (const ni of list ?? []) {
-      if (ni.family !== "IPv4" || ni.internal || ni.address.startsWith("169.254.")) continue;
-      urls.push(`https://${ni.address}:${port}`);
-    }
-  }
-  return urls;
-}
-
-export interface HealthProbe {
-  status: number;
-  fingerprint: string;
-  body: string;
-}
-
-export function probeHealth(port: number): Promise<HealthProbe> {
-  return new Promise((resolve, reject) => {
-    const req = request(
-      // The certificate is self-signed: identity is checked by fingerprint below, not by a CA.
-      { host: "127.0.0.1", port, path: "/api/health", rejectUnauthorized: false, timeout: 5000 },
-      (res) => {
-        const fingerprint = (res.socket as TLSSocket).getPeerCertificate().fingerprint256 ?? "";
-        let body = "";
-        res.setEncoding("utf8");
-        res.on("data", (chunk: string) => (body += chunk));
-        res.on("end", () => resolve({ status: res.statusCode ?? 0, fingerprint, body }));
-      },
-    );
-    req.on("timeout", () => req.destroy(new Error("timeout")));
-    req.on("error", reject);
-    req.end();
-  });
-}
-
-/** Writes into the setup log why PostgreSQL could not start, for support. */
-function logPostgresDiagnostics(log: SetupLog, pgBin: string, pgData: string): void {
-  try {
-    powershell(log, `Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue |
-      Where-Object { $_.ProviderName -like '*PostgreSQL*' -or $_.ProviderName -like '*pg_ctl*' } |
-      Select-Object -First 15 | ForEach-Object { 'EVENT ' + $_.ProviderName + ': ' + $_.Message }`, { allowFail: true });
-    powershell(log, `Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Service Control Manager'; StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue |
-      Select-Object -First 5 | ForEach-Object { 'SCM: ' + $_.Message }`, { allowFail: true });
-    const logDir = join(pgData, "log");
-    if (existsSync(logDir)) {
-      for (const f of readdirSync(logDir)) log.info(`PGLOG ${f}: ${readFileSync(join(logDir, f), "utf8").slice(-3000)}`);
-    }
-    // Same start as the current user (pg_ctl drops admin rights itself) to capture the real error message.
-    const trial = join(pgData, "..", "logs", "pg-trial-start.log");
-    run(log, join(pgBin, "pg_ctl.exe"), ["start", "-D", pgData, "-w", "-t", "30", "-l", trial], { allowFail: true });
-    if (existsSync(trial)) log.info(`PG TRIAL START: ${readFileSync(trial, "utf8").slice(-3000)}`);
-    run(log, join(pgBin, "pg_ctl.exe"), ["stop", "-D", pgData, "-m", "fast", "-w"], { allowFail: true });
-  } catch (error) {
-    log.info(`Diagnostics failed: ${error instanceof Error ? error.message : String(error)}`);
-  }
 }
 
 function makeDir(dir: string, created: string[]): void {
@@ -182,52 +69,44 @@ function makeDir(dir: string, created: string[]): void {
   }
 }
 
-export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
-  const pgBin = join(o.appDir, "pgsql", "bin");
-  const nodeExe = join(o.appDir, "server", "node.exe");
-  const mainJs = join(o.appDir, "server", "dist", "main.js");
-  const winswSource = join(o.appDir, "service", "WinSW-x64.exe");
-
-  const pgData = join(o.dataDir, "pgdata");
-  const certDir = join(o.dataDir, "certs");
-  const serviceDir = join(o.dataDir, "service");
-  const secretDir = join(o.dataDir, "secrets");
-  const logDir = join(o.dataDir, "logs");
-  const pfxPath = join(certDir, "server.pfx");
-  const cerPath = join(certDir, "server.cer");
-  const winswExe = join(serviceDir, `${API_SERVICE}.exe`);
-  const winswXmlPath = join(serviceDir, `${API_SERVICE}.xml`);
+export async function provision(o: ProvisionOptions): Promise<SetupResult> {
+  const p = paths(o.appDir, o.dataDir);
   const rule = firewallRuleName(o.port);
-
-  mkdirSync(logDir, { recursive: true });
-  const log = new SetupLog(join(logDir, "setup.log"));
-  log.info(`Provision start: dataDir=${o.dataDir} port=${o.port}`);
+  mkdirSync(p.logDir, { recursive: true });
+  const log = new SetupLog(join(p.logDir, "setup.log"));
+  log.info(`Provision start: version=${SERVER_VERSION} dataDir=${o.dataDir} port=${o.port}`);
 
   const pgSuperPassword = secret();
-  const dbPassword = secret();
+  const ownerPassword = secret();
+  const appPassword = secret();
   const pfxPassphrase = secret();
-  [pgSuperPassword, dbPassword, pfxPassphrase].forEach((s) => log.addSecret(s));
+  const jwtSecret = secret(48);
+  [pgSuperPassword, ownerPassword, appPassword, pfxPassphrase, jwtSecret].forEach((s) => log.addSecret(s));
+  const superUrl = dbUrl("postgres", pgSuperPassword, "postgres");
+  const ownerUrl = dbUrl(DB_OWNER, ownerPassword);
 
+  let bootstrap: Bootstrap | null = null;
   const createdDirs: string[] = [];
   let fingerprint = "";
-  const pgReady = (): boolean =>
-    run(log, join(pgBin, "pg_isready.exe"), ["-h", "127.0.0.1", "-p", String(PG_PORT)], { allowFail: true }).status === 0;
 
   const steps: Step[] = [
     {
       name: "preflight",
       code: "E_PREFLIGHT",
       run: async () => {
+        // Read (and delete) the manager's password file first, whatever happens next.
+        bootstrap = readBootstrap(o.bootstrapFile, log);
+        log.addSecret(bootstrap.managerPassword);
         if (process.platform !== "win32") throw new SetupError("E_NOT_WINDOWS", "Setup runs on Windows only");
-        for (const f of [join(pgBin, "initdb.exe"), join(pgBin, "pg_ctl.exe"), nodeExe, mainJs, winswSource]) {
+        for (const f of [join(p.pgBin, "initdb.exe"), join(p.pgBin, "pg_ctl.exe"), p.nodeExe, p.mainJs, p.winswSource]) {
           if (!existsSync(f)) throw new SetupError("E_FILES_MISSING", `Missing installed file ${f}`);
         }
         if (serviceStatus(log, PG_SERVICE) !== null || serviceStatus(log, API_SERVICE) !== null) {
           throw new SetupError("E_ALREADY_INSTALLED", "Alyassir services already exist on this computer");
         }
         // Never overwrite an existing database: it may hold the agency's data.
-        if (existsSync(pgData) && readdirSync(pgData).length > 0) {
-          throw new SetupError("E_DATA_EXISTS", `Data folder already contains a database: ${pgData}`);
+        if (existsSync(p.pgData) && readdirSync(p.pgData).length > 0) {
+          throw new SetupError("E_DATA_EXISTS", `Data folder already contains a database: ${p.pgData}`);
         }
         if (!(await isPortFree(o.port))) throw new SetupError("E_API_PORT_IN_USE", `Port ${o.port} is in use`);
         if (!(await isPortFree(PG_PORT))) throw new SetupError("E_PG_PORT_IN_USE", `Port ${PG_PORT} is in use`);
@@ -237,10 +116,8 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
       name: "folders",
       code: "E_FOLDERS",
       run: () => {
-        for (const d of [o.dataDir, pgData, certDir, serviceDir, secretDir]) makeDir(d, createdDirs);
-        restrictAcl(log, secretDir);
-        restrictAcl(log, certDir);
-        restrictAcl(log, serviceDir);
+        for (const d of [o.dataDir, p.pgData, p.certDir, p.serviceDir, p.secretDir, p.backupDir]) makeDir(d, createdDirs);
+        for (const d of [p.secretDir, p.certDir, p.serviceDir, p.backupDir]) restrictAcl(log, d);
       },
       undo: () => {
         // Remove only what this setup created. The logs folder is kept for support.
@@ -254,9 +131,16 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
       name: "secrets",
       code: "E_SECRETS",
       run: () => {
-        const file = join(secretDir, "secrets.json");
-        writeFileSync(file, JSON.stringify({ pgSuperuser: "postgres", pgSuperPassword, dbUser: DB_USER, dbPassword }, null, 2));
-        restrictAcl(log, secretDir);
+        writeSecrets(log, p.secretsFile, {
+          pgSuperuser: "postgres",
+          pgSuperPassword,
+          dbUser: DB_OWNER,
+          dbPassword: ownerPassword,
+          appUser: APP_ROLE,
+          appPassword,
+          jwtSecret,
+          pfxPassphrase,
+        }, p.secretDir);
       },
     },
     {
@@ -266,36 +150,34 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
         // initdb drops admin rights while it runs (restricted token), so it needs its own
         // explicit access to the empty data folder. Removed again right after.
         const userSid = currentUserSid(log);
-        run(log, "icacls.exe", [pgData, "/grant", `*${userSid}:(OI)(CI)F`, "/Q"], { code: "E_ACL" });
+        run(log, "icacls.exe", [p.pgData, "/grant", `*${userSid}:(OI)(CI)F`, "/Q"], { code: "E_ACL" });
         // The password file must be readable by that restricted initdb process too.
-        const pwFile = join(pgData, "..", "initdb.pw");
+        const pwFile = join(p.pgData, "..", "initdb.pw");
         writeFileSync(pwFile, pgSuperPassword);
         try {
-          run(log, join(pgBin, "initdb.exe"), ["-D", pgData, "-U", "postgres", `--pwfile=${pwFile}`,
+          run(log, join(p.pgBin, "initdb.exe"), ["-D", p.pgData, "-U", "postgres", `--pwfile=${pwFile}`,
             "--auth=scram-sha-256", "--encoding=UTF8", "--locale=C", "--data-checksums"],
             { code: "E_PG_INIT", timeoutMs: 300_000 });
         } finally {
           rmSync(pwFile, { force: true });
         }
-        appendFileSync(join(pgData, "postgresql.conf"), POSTGRES_CONF.replace(/\n/g, "\r\n"));
+        appendFileSync(join(p.pgData, "postgresql.conf"), POSTGRES_CONF.replace(/\n/g, "\r\n"));
         // PostgreSQL runs as NETWORK SERVICE; ordinary Windows users get no access to the database files.
-        run(log, "icacls.exe", [pgData, "/remove:g", `*${userSid}`, "/Q"], { code: "E_ACL" });
-        restrictAcl(log, pgData, [SID.networkService]);
-        run(log, "icacls.exe", [join(pgData, "postgresql.conf")], { allowFail: true }); // logged for support
+        run(log, "icacls.exe", [p.pgData, "/remove:g", `*${userSid}`, "/Q"], { code: "E_ACL" });
+        restrictAcl(log, p.pgData, [SID.networkService]);
       },
     },
     {
       name: "pg-service",
       code: "E_PG_SERVICE",
       run: () => {
-        run(log, join(pgBin, "pg_ctl.exe"), ["register", "-N", PG_SERVICE, "-D", pgData, "-S", "auto", "-w", "-t", "120",
+        run(log, join(p.pgBin, "pg_ctl.exe"), ["register", "-N", PG_SERVICE, "-D", p.pgData, "-S", "auto", "-w", "-t", "120",
           // Without -U, pg_ctl uses LocalSystem; the database must run with low rights instead.
-          "-U", "NT AUTHORITY\\NetworkService"],
-          { code: "E_PG_SERVICE" });
+          "-U", "NT AUTHORITY\\NetworkService"], { code: "E_PG_SERVICE" });
       },
       undo: () => {
         stopService(log, PG_SERVICE);
-        run(log, join(pgBin, "pg_ctl.exe"), ["unregister", "-N", PG_SERVICE], { allowFail: true });
+        run(log, join(p.pgBin, "pg_ctl.exe"), ["unregister", "-N", PG_SERVICE], { allowFail: true });
       },
     },
     {
@@ -304,9 +186,9 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
       run: async () => {
         try {
           startService(log, PG_SERVICE, "E_PG_START");
-          if (!(await waitFor(pgReady, 90_000))) throw new SetupError("E_PG_START", "PostgreSQL did not become ready");
+          if (!(await waitFor(() => pgReady(log, p.pgBin), 90_000))) throw new SetupError("E_PG_START", "PostgreSQL did not become ready");
         } catch (error) {
-          logPostgresDiagnostics(log, pgBin, pgData);
+          logPostgresDiagnostics(log, p.pgBin, p.pgData);
           throw error;
         }
       },
@@ -316,21 +198,31 @@ export async function provision(o: ProvisionOptions): Promise<ProvisionResult> {
       name: "database",
       code: "E_DB_CREATE",
       run: async () => {
-        const client = new Client({ host: "127.0.0.1", port: PG_PORT, user: "postgres", password: pgSuperPassword, database: "postgres" });
-        await client.connect();
-        try {
+        await withClient(superUrl, async (c) => {
           // Passwords are base64url (no quotes), so they are safe inside the SQL literal.
-          await client.query(`CREATE ROLE ${DB_USER} LOGIN PASSWORD '${dbPassword}'`);
-          await client.query(`CREATE DATABASE ${DB_NAME} OWNER ${DB_USER} ENCODING 'UTF8' TEMPLATE template0`);
-          await client.query(`REVOKE ALL ON DATABASE ${DB_NAME} FROM PUBLIC`);
-        } finally {
-          await client.end();
-        }
-        // Prove the application account works before going further.
-        const app = new Client({ host: "127.0.0.1", port: PG_PORT, user: DB_USER, password: dbPassword, database: DB_NAME });
-        await app.connect();
-        await app.query("SELECT 1");
-        await app.end();
+          await c.query(`CREATE ROLE ${DB_OWNER} LOGIN PASSWORD '${ownerPassword}'`);
+          await c.query(`CREATE DATABASE ${DB_NAME} OWNER ${DB_OWNER} ENCODING 'UTF8' TEMPLATE template0`);
+          await c.query(`REVOKE ALL ON DATABASE ${DB_NAME} FROM PUBLIC`);
+        });
+        await ensureAppRole(superUrl, appPassword);
+      },
+    },
+    {
+      name: "migrations",
+      code: "E_MIGRATION",
+      run: async () => {
+        const applied = await migrate(ownerUrl);
+        log.info(`Migrations applied: ${applied.join(", ") || "none"}`);
+      },
+    },
+    {
+      name: "bootstrap",
+      code: "E_BOOTSTRAP",
+      run: async () => {
+        if (!bootstrap) throw new SetupError("E_BOOTSTRAP", "No agency information");
+        await bootstrapData(ownerUrl, bootstrap);
+        // The application account must work before going further.
+        await withClient(dbUrl(APP_ROLE, appPassword), (c) => c.query("SELECT count(*) FROM users"));
       },
     },
     {
@@ -350,9 +242,9 @@ try {
 }`;
         powershell(log, script, {
           code: "E_CERT",
-          env: { ...process.env, ALYASSIR_PFX_PASS: pfxPassphrase, ALYASSIR_PFX_PATH: pfxPath, ALYASSIR_CER_PATH: cerPath },
+          env: { ...process.env, ALYASSIR_PFX_PASS: pfxPassphrase, ALYASSIR_PFX_PATH: p.pfxPath, ALYASSIR_CER_PATH: p.cerPath },
         });
-        fingerprint = new X509Certificate(readFileSync(cerPath)).fingerprint256;
+        fingerprint = certFingerprint(p.cerPath);
         log.info(`Certificate fingerprint (SHA-256): ${fingerprint}`);
       },
     },
@@ -360,27 +252,20 @@ try {
       name: "api-service",
       code: "E_SERVICE_INSTALL",
       run: () => {
-        copyFileSync(winswSource, winswExe);
-        writeFileSync(winswXmlPath, winswXml({
-          nodeExe,
-          mainJs,
+        copyFileSync(p.winswSource, p.winswExe);
+        writeFileSync(p.winswXml, winswXml({
+          nodeExe: p.nodeExe,
+          mainJs: p.mainJs,
           workDir: join(o.appDir, "server"),
-          logDir,
-          env: {
-            NODE_ENV: "production",
-            ALYASSIR_HOST: "0.0.0.0",
-            ALYASSIR_PORT: String(o.port),
-            ALYASSIR_TLS_PFX: pfxPath,
-            ALYASSIR_TLS_PFX_PASSPHRASE: pfxPassphrase,
-            DATABASE_URL: `postgres://${DB_USER}:${dbPassword}@127.0.0.1:${PG_PORT}/${DB_NAME}`,
-          },
+          logDir: p.logDir,
+          env: serviceEnv({ port: o.port, pfxPath: p.pfxPath, pfxPassphrase, appPassword, jwtSecret }),
         }));
-        restrictAcl(log, serviceDir);
-        run(log, winswExe, ["install"], { code: "E_SERVICE_INSTALL" });
+        restrictAcl(log, p.serviceDir);
+        run(log, p.winswExe, ["install"], { code: "E_SERVICE_INSTALL" });
       },
       undo: () => {
         stopService(log, API_SERVICE);
-        run(log, winswExe, ["uninstall"], { allowFail: true });
+        run(log, p.winswExe, ["uninstall"], { allowFail: true });
       },
     },
     {
@@ -404,23 +289,12 @@ try {
       name: "health",
       code: "E_HEALTH",
       run: async () => {
-        let last = "no answer";
-        const ok = await waitFor(async () => {
-          try {
-            const probe = await probeHealth(o.port);
-            last = `HTTP ${probe.status} ${probe.body}`;
-            if (probe.fingerprint !== fingerprint) {
-              last = "certificate fingerprint mismatch";
-              return false;
-            }
-            const body = JSON.parse(probe.body) as { status?: string; database?: string };
-            return probe.status === 200 && body.status === "ok" && body.database === "ok";
-          } catch (error) {
-            last = error instanceof Error ? error.message : String(error);
-            return false;
-          }
-        }, 120_000, 2000);
-        if (!ok) throw new SetupError("E_HEALTH", `Server health check failed: ${last}`);
+        try {
+          await waitHealthy(log, o.port, fingerprint);
+        } catch (error) {
+          logServiceTail(log, p.logDir);
+          throw error;
+        }
       },
     },
     {
@@ -428,8 +302,9 @@ try {
       code: "E_STATE",
       run: () => {
         const state: ProvisionState = {
-          dataDir: o.dataDir, port: o.port, pgBin, pgData,
-          pgService: PG_SERVICE, apiService: API_SERVICE, winswExe, firewallRule: rule,
+          dataDir: o.dataDir, port: o.port, pgBin: p.pgBin, pgData: p.pgData,
+          pgService: PG_SERVICE, apiService: API_SERVICE, winswExe: p.winswExe, firewallRule: rule,
+          bootstrapped: true, version: SERVER_VERSION,
         };
         writeFileSync(stateFilePath(o.appDir), JSON.stringify(state, null, 2));
       },
@@ -437,25 +312,11 @@ try {
   ];
 
   const outcome = await runSteps(steps, log, o.simulateFailureAt);
-  const result: ProvisionResult = outcome.ok
+  const result: SetupResult = outcome.ok
     ? { ok: true, port: o.port, urls: lanUrls(o.port), fingerprint, dataDir: o.dataDir }
     : { ok: false, errorCode: outcome.errorCode, failedStep: outcome.failedStep, message: outcome.message };
-  writeFileSync(o.resultFile, JSON.stringify(result, null, 2));
-  // Same result as INI, which the installer (Inno Setup) reads natively.
-  writeFileSync(`${o.resultFile}.ini`, resultIni(result));
-  log.info(`Provision end: ${outcome.ok ? "SUCCESS" : `FAILED ${outcome.errorCode}`}`);
+  writeResult(log, o.resultFile, result);
   return result;
-}
-
-export function resultIni(r: ProvisionResult): string {
-  const lines = ["[result]", `ok=${r.ok ? 1 : 0}`];
-  if (r.errorCode) lines.push(`code=${r.errorCode}`);
-  if (r.failedStep) lines.push(`step=${r.failedStep}`);
-  if (r.fingerprint) lines.push(`fingerprint=${r.fingerprint}`);
-  if (r.port) lines.push(`port=${r.port}`);
-  (r.urls ?? []).forEach((url, i) => lines.push(`url${i}=${url}`));
-  lines.push(`urlCount=${(r.urls ?? []).length}`);
-  return lines.join("\r\n") + "\r\n";
 }
 
 /** Uninstall: remove services and the firewall rule. The data folder is always kept. */

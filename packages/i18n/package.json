@@ -1,0 +1,18 @@
+{
+  "name": "@alyassir/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interface texts (ar / fr), from the glossary in docs/glossary.md.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

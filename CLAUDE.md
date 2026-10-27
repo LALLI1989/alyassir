@@ -22,8 +22,10 @@ pnpm + Turborepo monorepo. Desktop: Tauri 2 + React + TypeScript strict + Tailwi
 - No hard deletes. Archive / cancel / reverse with trace. `audit_log` and `financial_transactions` are append-only (DB trigger).
 - Every API route declares its permission; an automated test fails the build otherwise.
 - Business day = Africa/Casablanca. Renewal/cancellation rules use dates, not hours.
-- UI text only through i18n files (ar/fr), terms from the glossary in `docs/SPEC.md` section 29. Use logical CSS (ms-/me-/start/end), never left/right.
+- UI text only through i18n files (`packages/i18n`, ar/fr), terms from `docs/glossary.md` (SPEC section 29). Use logical CSS (ms-/me-/start/end), never left/right.
 - Code and comments in English.
 
 ## Where we are
-Phase 0 (installer spike) is first. Do not start Phase 1 before the owner approves Phase 0.
+Phase 0 approved and merged (27/10/2026). Phase 1 in progress on branch `phase-1`.
+Do not start Phase 2 before the owner approves Phase 1. Owner decisions: `docs/SPEC.md` section 30.
+All testing happens on GitHub (CI), never on the owner's computer.

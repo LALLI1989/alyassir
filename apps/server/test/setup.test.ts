@@ -1,6 +1,10 @@
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseArgs } from "../src/setup/cli";
+import { readBootstrap, readWinswEnv } from "../src/setup/common";
 import { SetupLog } from "../src/setup/log";
 import { isPortFree, suggestPort } from "../src/setup/ports";
 import { POSTGRES_CONF, winswXml } from "../src/setup/provision";
@@ -105,5 +109,36 @@ describe("generated configuration", () => {
     expect(xml).toContain("<depend>AlyassirPostgres</depend>");
     expect(xml).toContain('"C:\\a&amp;b\\main.js"');
     expect(xml).toContain('value="v&quot;&lt;&gt;&amp;"');
+  });
+});
+
+describe("installer data file (agency and first manager)", () => {
+  function file(content: string): string {
+    const dir = mkdtempSync(join(tmpdir(), "boot-"));
+    const f = join(dir, "bootstrap.txt");
+    writeFileSync(f, content, "utf8");
+    return f;
+  }
+
+  it("reads Arabic text and a password with '=' and spaces, then deletes the file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "backup-"));
+    const f = file(`﻿agencyName=وكالة اليسير للتأمين\r\nmanagerUsername=gerant\r\nmanagerPassword= a=b c \r\nlanguage=fr\r\nbackupDir=${dir}\r\n`);
+    const b = readBootstrap(f);
+    expect(b).toEqual({ agencyName: "وكالة اليسير للتأمين", managerUsername: "gerant", managerPassword: " a=b c ", language: "fr", backupDir: dir });
+    expect(existsSync(f)).toBe(false);
+  });
+
+  it("refuses a short password or a missing backup folder (and still deletes the file)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "backup-"));
+    const short = file(`agencyName=A\nmanagerUsername=gerant\nmanagerPassword=12345\nbackupDir=${dir}\n`);
+    expect(() => readBootstrap(short)).toThrow(/too short/);
+    expect(existsSync(short)).toBe(false);
+    const noDir = file(`agencyName=A\nmanagerUsername=gerant\nmanagerPassword=123456\nbackupDir=${join(dir, "missing")}\n`);
+    expect(() => readBootstrap(noDir)).toThrow(/Backup folder/);
+  });
+
+  it("reads back the environment of a service file (used by the update)", () => {
+    const text = winswXml({ nodeExe: "n", mainJs: "m", workDir: "w", logDir: "l", env: { A: "x&y", B: 'q"<' } });
+    expect(readWinswEnv(text)).toEqual({ A: "x&y", B: 'q"<' });
   });
 });

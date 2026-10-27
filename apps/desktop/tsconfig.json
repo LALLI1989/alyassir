@@ -1,12 +1,24 @@
 {
   "extends": "../../tooling/tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": [
+      "vite/client",
+      "node"
+    ]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": [
+    "src",
+    "vite.config.ts",
+    "e2e",
+    "playwright.config.ts"
+  ]
 }

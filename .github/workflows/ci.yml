@@ -77,6 +77,18 @@ jobs:
       - name: Tests (server on real PostgreSQL, packages, app)
         if: ${{ !cancelled() }}
         run: tooling/ci-run.sh tests pnpm turbo run test --concurrency=1 --continue
+      - name: Interface tests in a browser (Playwright)
+        if: ${{ !cancelled() }}
+        working-directory: apps/desktop
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          ../../tooling/ci-run.sh playwright pnpm exec playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/desktop/test-results
+          retention-days: 7
       - name: Desktop connection logic (Rust unit tests)
         if: ${{ !cancelled() }}
         working-directory: apps/desktop/src-tauri

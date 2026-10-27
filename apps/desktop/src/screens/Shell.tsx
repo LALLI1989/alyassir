@@ -1,0 +1,196 @@
+import { useQuery } from "@tanstack/react-query";
+import {
+  Building2,
+  ClipboardList,
+  Home as HomeIcon,
+  KeyRound,
+  LogOut,
+  Mail,
+  Moon,
+  ScrollText,
+  Server,
+  Settings as SettingsIcon,
+  Sun,
+  UserCog,
+  Users as UsersIcon,
+} from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { MODULES, type AgencySettingsDto, type Module, type PermissionCode } from "@alyassir/shared";
+import { Alert, Badge, Button, cn } from "@alyassir/ui";
+import { api, useSession } from "../lib/session";
+import { Account } from "./Account";
+import { Audit } from "./Audit";
+import { EditRequests } from "./EditRequests";
+import { Home } from "./Home";
+import { Messages } from "./Messages";
+import { ServerStatusPage } from "./ServerSetup";
+import { Settings } from "./Settings";
+import { Users } from "./Users";
+
+export type Page =
+  | { kind: "home" }
+  | { kind: "messages"; threadId?: string }
+  | { kind: "editRequests" }
+  | { kind: "users" }
+  | { kind: "audit" }
+  | { kind: "settings" }
+  | { kind: "account" }
+  | { kind: "server" }
+  | { kind: "module"; module: Module };
+
+const THEME_KEY = "alyassir.theme";
+
+function useTheme(): [boolean, () => void] {
+  const [dark, setDark] = useState(() => {
+    try {
+      return localStorage.getItem(THEME_KEY) === "dark";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    try {
+      localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+    } catch {
+      // Theme still applies; it just is not remembered.
+    }
+  }, [dark]);
+  return [dark, () => setDark((d) => !d)];
+}
+
+function NavItem({ active, icon, label, badge, onClick, disabled }: { active: boolean; icon: ReactNode; label: string; badge?: number; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-md px-3 py-2 text-start text-sm transition-colors [&_svg]:size-4",
+        active ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+        disabled && "opacity-60",
+      )}
+    >
+      {icon}
+      <span className="flex-1">{label}</span>
+      {badge ? <Badge variant={active ? "secondary" : "default"}>{badge}</Badge> : null}
+    </button>
+  );
+}
+
+function ComingSoon({ title }: { title: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="grid gap-3">
+      <h1 className="text-xl font-bold">{title}</h1>
+      <Alert>{t("common.comingSoonHint")}</Alert>
+    </div>
+  );
+}
+
+/** Main layout: side menu built from the user's permissions, header, current page. */
+export function Shell() {
+  const { t, i18n } = useTranslation();
+  const { me, isManager, signOut, link, can } = useSession();
+  const [page, setPage] = useState<Page>({ kind: "home" });
+  const [dark, toggleTheme] = useTheme();
+  const unread = useQuery({ queryKey: ["unread"], queryFn: () => api<{ count: number }>("GET", "/api/messages/unread-count") }).data?.count ?? 0;
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => api<AgencySettingsDto>("GET", "/api/settings/agency") }).data;
+  if (!me) return null;
+
+  const agencyName = settings ? (i18n.language === "fr" ? settings.nameFr : settings.nameAr) : t("app.short");
+  const visibleModules = MODULES.filter((m) => can(`${m}.view` as PermissionCode));
+  const roleBadge = isManager ? t("shell.managerBadge") : me.isSupervisor ? t("shell.supervisorBadge") : t("shell.employeeBadge");
+
+  let content: ReactNode;
+  switch (page.kind) {
+    case "home":
+      content = <Home onOpen={setPage} />;
+      break;
+    case "messages":
+      content = <Messages initialThreadId={page.threadId} />;
+      break;
+    case "editRequests":
+      content = <EditRequests onOpenThread={(threadId) => setPage({ kind: "messages", threadId })} />;
+      break;
+    case "users":
+      content = isManager ? <Users /> : null;
+      break;
+    case "audit":
+      content = isManager ? <Audit /> : null;
+      break;
+    case "settings":
+      content = isManager ? <Settings /> : null;
+      break;
+    case "account":
+      content = <Account />;
+      break;
+    case "server":
+      content = <ServerStatusPage />;
+      break;
+    case "module":
+      content = <ComingSoon title={t(`modules.${page.module}`)} />;
+      break;
+  }
+
+  const is = (kind: Page["kind"], module?: Module) => page.kind === kind && (!module || (page.kind === "module" && page.module === module));
+
+  return (
+    <div className="flex min-h-screen">
+      <aside className="flex w-64 shrink-0 flex-col gap-4 border-e bg-card p-3">
+        <div className="flex items-center gap-2 px-2 pt-2">
+          <Building2 className="size-5 text-primary" />
+          <span className="font-bold leading-tight">{agencyName}</span>
+        </div>
+        <nav className="grid gap-1" aria-label={t("shell.sectionWork")}>
+          <NavItem active={is("home")} icon={<HomeIcon />} label={t("shell.home")} onClick={() => setPage({ kind: "home" })} />
+          <NavItem active={is("messages")} icon={<Mail />} label={t("shell.messages")} badge={unread} onClick={() => setPage({ kind: "messages" })} />
+          <NavItem active={is("editRequests")} icon={<ClipboardList />} label={t("shell.editRequests")} onClick={() => setPage({ kind: "editRequests" })} />
+          {visibleModules.map((m) => (
+            <NavItem key={m} active={is("module", m)} icon={<span className="size-4" />} label={t(`modules.${m}`)} disabled onClick={() => setPage({ kind: "module", module: m })} />
+          ))}
+        </nav>
+        {isManager && (
+          <nav className="grid gap-1" aria-label={t("shell.sectionManage")}>
+            <p className="px-3 text-xs font-semibold text-muted-foreground">{t("shell.sectionManage")}</p>
+            <NavItem active={is("users")} icon={<UsersIcon />} label={t("shell.users")} onClick={() => setPage({ kind: "users" })} />
+            <NavItem active={is("audit")} icon={<ScrollText />} label={t("shell.audit")} onClick={() => setPage({ kind: "audit" })} />
+            <NavItem active={is("settings")} icon={<SettingsIcon />} label={t("shell.settings")} onClick={() => setPage({ kind: "settings" })} />
+          </nav>
+        )}
+        <nav className="mt-auto grid gap-1" aria-label={t("shell.sectionMe")}>
+          <NavItem active={is("account")} icon={<UserCog />} label={t("shell.account")} onClick={() => setPage({ kind: "account" })} />
+          <NavItem active={is("server")} icon={<Server />} label={t("shell.server")} onClick={() => setPage({ kind: "server" })} />
+        </nav>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center justify-between gap-3 border-b bg-card px-5 py-3">
+          <div className="flex items-center gap-2 text-sm">
+            <KeyRound className="size-4 text-muted-foreground" />
+            <span className="font-medium" data-testid="current-user">{me.displayName}</span>
+            <Badge variant="outline">{roleBadge}</Badge>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className={cn("me-2 inline-flex items-center gap-1 text-xs", link === "connected" ? "text-success" : "text-warning")} role="status">
+              <span className={cn("size-2 rounded-full", link === "connected" ? "bg-success" : "bg-warning")} />
+              {link === "connected" ? t("status.connected") : t("status.reconnecting")}
+            </span>
+            <Button variant="ghost" size="sm" onClick={() => void i18n.changeLanguage(i18n.language === "ar" ? "fr" : "ar")}>
+              {t("app.switchLanguage")}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={dark ? t("theme.light") : t("theme.dark")}>
+              {dark ? <Sun /> : <Moon />}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void signOut()}>
+              <LogOut />
+              {t("shell.logout")}
+            </Button>
+          </div>
+        </header>
+        <main className="flex-1 overflow-auto p-5">{content}</main>
+      </div>
+    </div>
+  );
+}

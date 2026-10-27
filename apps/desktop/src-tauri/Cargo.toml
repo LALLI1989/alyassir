@@ -1,6 +1,6 @@
 [package]
 name = "alyassir-desktop"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
 description = "Alyassir desktop client"
 
@@ -15,6 +15,7 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 server-link = { path = "crates/server-link" }
+tokio = { version = "1", features = ["sync", "time"] }
 
 [profile.release]
 codegen-units = 1

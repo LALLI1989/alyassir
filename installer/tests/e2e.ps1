@@ -16,7 +16,7 @@ $Logs = Join-Path $env:RUNNER_TEMP "alyassir-logs"
 $BackupDir = "C:\AlyassirDrive"
 $ManagerPass = "Gerant-2026"
 New-Item -ItemType Directory -Force -Path $Logs, $BackupDir | Out-Null
-$Bootstrap = @("/AGENCY=وكالة اليسير للتأمين", "/MANAGER=gerant", "/MANAGERPASS=$ManagerPass", "/BACKUPDIR=$BackupDir")
+$Bootstrap = @("/TESTAGENCY=1", "/MANAGER=gerant", "/MANAGERPASS=$ManagerPass", "/BACKUPDIR=$BackupDir")
 $script:Run = 0
 $script:Passed = @()
 

@@ -74,6 +74,7 @@ ar.Err_E_PG_PORT_IN_USE=المنفذ 5433 الخاص بقاعدة البيانا
 ar.Err_E_HEALTH=الخادم لم يُجب على الاختبار النهائي.
 ar.Err_Generic=حدث خطأ أثناء الإعداد.
 ar.AgencyTitle=الوكالة والمدير
+ar.TestAgencyName=وكالة اليسير للتأمين
 ar.AgencyDesc=اسم الوكالة وحساب المدير الأول
 ar.AgencySub=المدير هو صاحب كل الصلاحيات. احفظ كلمة المرور في مكان آمن: لا توجد استعادة عبر البريد.
 ar.AgencyName=اسم الوكالة:
@@ -131,6 +132,7 @@ fr.Err_E_PG_PORT_IN_USE=Le port 5433 de la base de données est utilisé par un 
 fr.Err_E_HEALTH=Le serveur n'a pas répondu au test final.
 fr.Err_Generic=Une erreur est survenue pendant la configuration.
 fr.AgencyTitle=Agence et gérant
+fr.TestAgencyName=وكالة اليسير للتأمين
 fr.AgencyDesc=Nom de l'agence et compte du premier gérant
 fr.AgencySub=Le gérant a tous les droits. Conservez son mot de passe en lieu sûr : il n'y a pas de récupération par e-mail.
 fr.AgencyName=Nom de l'agence :
@@ -327,6 +329,10 @@ begin
   AgencyPage.Add(CustomMessage('ManagerPass'), True);
   AgencyPage.Add(CustomMessage('ManagerPass2'), True);
   AgencyPage.Values[0] := ExpandConstant('{param:AGENCY|}');
+  { Automated tests: command-line options lose Arabic letters, so an Arabic name comes from the
+    messages file instead. A person types the name in the page, which keeps it intact. }
+  if ExpandConstant('{param:TESTAGENCY|}') = '1' then
+    AgencyPage.Values[0] := CustomMessage('TestAgencyName');
   AgencyPage.Values[1] := ExpandConstant('{param:MANAGER|}');
   AgencyPage.Values[2] := ExpandConstant('{param:MANAGERPASS|}');
   AgencyPage.Values[3] := ExpandConstant('{param:MANAGERPASS|}');

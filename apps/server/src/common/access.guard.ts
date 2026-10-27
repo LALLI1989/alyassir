@@ -35,7 +35,7 @@ export class AccessGuard implements CanActivate {
     const user = await this.auth.authenticate(token, header(req, HEADER_USER_ACTIVE) === "1");
     req.auth = user;
 
-    if (access.kind === "authenticated") return true;
+    if (access.kind === "authenticated" || access.kind === "grantable") return true;
     if (access.kind === "manager") {
       if (user.role !== "manager") throw new ApiException("FORBIDDEN");
       return true;

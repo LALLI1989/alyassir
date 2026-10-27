@@ -19,6 +19,10 @@ const TOPIC_KEYS: Record<ChangeTopic, string[]> = {
   messages: ["threads", "thread", "unread"],
   edit_requests: ["editRequests"],
   audit: ["audit"],
+  insurance: ["catalog"],
+  clients: ["clients", "client"],
+  vehicles: ["vehicles", "vehicle", "client"],
+  policies: ["policies", "policy", "client"],
 };
 
 export function api<T>(method: string, path: string, body?: unknown): Promise<T> {

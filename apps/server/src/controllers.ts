@@ -25,6 +25,7 @@ import {
   type SystemInfoDto,
 } from "@alyassir/shared";
 import { AuditService } from "./audit/audit.service";
+import { INSURANCE_CONTROLLERS } from "./controllers-insurance";
 import { AuthService } from "./auth/auth.service";
 import { LoginThrottle } from "./auth/login-throttle";
 import { Authenticated, ManagerOnly, Public } from "./common/access";
@@ -348,4 +349,5 @@ export const CONTROLLERS = [
   AuditController,
   MessagesController,
   EditRequestsController,
+  ...INSURANCE_CONTROLLERS,
 ];

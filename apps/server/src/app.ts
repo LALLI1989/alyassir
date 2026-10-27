@@ -10,6 +10,13 @@ import { AuditService } from "./audit/audit.service";
 import { AuthService } from "./auth/auth.service";
 import { LOGIN_RATE_LIMIT, LoginThrottle } from "./auth/login-throttle";
 import { AccessGuard } from "./common/access.guard";
+import { AccessService } from "./common/access.service";
+import { ClientsService } from "./clients/clients.service";
+import { CatalogService } from "./insurance/catalog.service";
+import { PoliciesService } from "./policies/policies.service";
+import { PolicyOperationsService } from "./policies/policy-operations.service";
+import { PolicyReader } from "./policies/policy-reader";
+import { VehiclesService } from "./vehicles/vehicles.service";
 import { ErrorFilter } from "./common/error.filter";
 import type { ServerConfig } from "./config";
 import { CONTROLLERS } from "./controllers";
@@ -42,6 +49,13 @@ export class AppModule {
         UsersService,
         MessagesService,
         EditRequestsService,
+        AccessService,
+        CatalogService,
+        ClientsService,
+        VehiclesService,
+        PolicyReader,
+        PoliciesService,
+        PolicyOperationsService,
       ],
     };
   }

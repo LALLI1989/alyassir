@@ -4,3 +4,6 @@ export * from "./errors";
 export * from "./permissions";
 export * from "./schemas";
 export * from "./version";
+export * from "./insurance";
+export * from "./schemas-insurance";
+export * from "./dto-insurance";

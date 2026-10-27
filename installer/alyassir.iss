@@ -194,6 +194,8 @@ var
   UpgradeNeedsBootstrap: Boolean;
   UpgradeDataDir: String;
   ResultText: String;
+  { Agency page values, copied when Next is clicked: later reads of the page can lose Arabic letters. }
+  AgencyName, ManagerName, ManagerPassword, BackupFolder: String;
 
 function StateFile: String;
 begin
@@ -333,10 +335,8 @@ begin
     messages file instead. A person types the name in the page, which keeps it intact. }
   if ExpandConstant('{param:TESTAGENCY|}') = '1' then
   begin
-    Log('DIAG message: ' + CustomMessage('TestAgencyName'));
     AgencyPage.Values[0] := CustomMessage('TestAgencyName');
-    Log('DIAG edit value: ' + AgencyPage.Values[0]);
-    Log('DIAG edit control text: ' + AgencyPage.Edits[0].Text);
+    Log('DIAG init value: ' + AgencyPage.Values[0]);
   end;
   AgencyPage.Values[1] := ExpandConstant('{param:MANAGER|}');
   AgencyPage.Values[2] := ExpandConstant('{param:MANAGERPASS|}');
@@ -410,11 +410,21 @@ begin
     end;
   end;
   if CurPageID = AgencyPage.ID then
-    Result := CheckAgencyPage;
-  if (CurPageID = BackupPage.ID) and (not DirExists(BackupPage.Values[0])) then
   begin
-    SuppressibleMsgBox(CustomMessage('ErrBackupDir'), mbError, MB_OK, IDOK);
-    Result := False;
+    Result := CheckAgencyPage;
+    Log('DIAG next value: ' + AgencyPage.Values[0]);
+    AgencyName := Trim(AgencyPage.Values[0]);
+    ManagerName := Trim(AgencyPage.Values[1]);
+    ManagerPassword := AgencyPage.Values[2];
+  end;
+  if CurPageID = BackupPage.ID then
+  begin
+    BackupFolder := BackupPage.Values[0];
+    if not DirExists(BackupFolder) then
+    begin
+      SuppressibleMsgBox(CustomMessage('ErrBackupDir'), mbError, MB_OK, IDOK);
+      Result := False;
+    end;
   end;
 end;
 
@@ -452,11 +462,11 @@ var
 begin
   Result := ExpandConstant('{tmp}\bootstrap.txt');
   SetArrayLength(Lines, 5);
-  Lines[0] := 'agencyName=' + Trim(AgencyPage.Values[0]);
-  Lines[1] := 'managerUsername=' + Trim(AgencyPage.Values[1]);
-  Lines[2] := 'managerPassword=' + AgencyPage.Values[2];
+  Lines[0] := 'agencyName=' + AgencyName;
+  Lines[1] := 'managerUsername=' + ManagerName;
+  Lines[2] := 'managerPassword=' + ManagerPassword;
   Lines[3] := 'language=' + ActiveLanguage;
-  Lines[4] := 'backupDir=' + BackupPage.Values[0];
+  Lines[4] := 'backupDir=' + BackupFolder;
   SaveStringsToUTF8File(Result, Lines, False);
 end;
 
@@ -485,7 +495,7 @@ begin
   Log('Setup helper: node ' + Params);
   if NeedsBootstrap then
   begin
-    Log('Agency name (' + IntToStr(Length(Trim(AgencyPage.Values[0]))) + ' characters): ' + Trim(AgencyPage.Values[0]));
+    Log('Agency name (' + IntToStr(Length(AgencyName)) + ' characters): ' + AgencyName);
     Params := Params + ' --bootstrap "' + WriteBootstrap + '"';
   end;
   { Through cmd.exe so that any crash message of the helper itself lands in a log file. }

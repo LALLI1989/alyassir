@@ -24,6 +24,11 @@ export class SystemService {
     return value;
   }
 
+  /** Forget the cached value (after a change, and in tests). */
+  clearCache(): void {
+    this.cache = null;
+  }
+
   /** Refuses a desktop app older than the server accepts, with a clear message (SPEC 6.3). */
   async assertClientVersion(req: FastifyRequest, required: boolean): Promise<void> {
     const raw = req.headers[HEADER_CLIENT_VERSION];

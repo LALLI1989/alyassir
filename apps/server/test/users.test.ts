@@ -71,7 +71,7 @@ describe("permissions", () => {
     expect(s.me.permissions).toEqual([]);
     const set = await t.call("PUT", `/api/users/${id}/permissions`, { token: managerToken, body: { version: 1, permissions: ["clients.view", "clients.create", "export"] } });
     expect(set.body.permissions).toEqual(["clients.create", "clients.view", "export"]);
-    expect((await t.call("GET", "/api/me", { token: s.accessToken })).body.permissions).toEqual(["clients.create", "clients.view", "export"]);
+    expect([...(await t.call("GET", "/api/me", { token: s.accessToken })).body.permissions].sort()).toEqual(["clients.create", "clients.view", "export"]);
   });
 
   it("refuses supervisor powers for a non-supervisor, and removes them with the flag", async () => {

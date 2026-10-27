@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { SystemService } from "../src/system/system.service";
 import { CLIENT_HEADERS, MANAGER, createEmployee, ownerQuery, startApp, type TestApp } from "./harness";
 
 let t: TestApp;
@@ -33,11 +34,13 @@ describe("sign in", () => {
 
   it("refuses an app too old for this server", async () => {
     await ownerQuery(t.db, "UPDATE system_info SET min_client_version = '9.0.0'");
+    t.app.get(SystemService).clearCache();
     try {
       const res = await t.call("POST", "/api/auth/login", { body: MANAGER });
       expect(res).toMatchObject({ status: 426, body: { code: "CLIENT_TOO_OLD" } });
     } finally {
       await ownerQuery(t.db, "UPDATE system_info SET min_client_version = '0.1.0'");
+      t.app.get(SystemService).clearCache();
     }
   });
 

@@ -58,7 +58,7 @@ describe("new policy (SPEC 11)", () => {
     const otherInsurer = await createPolicy(t, manager, s, c, [await createVehicle(t, manager, c)], { policyNumber: "RMA-2026-0001", insuranceTypeId: (await t.call("GET", "/api/insurance/catalog", { token: manager })).body.types.find((x: { insurerId: string }) => x.insurerId === s.other).id });
     expect(otherInsurer.status).toBe(201);
     const missing = await createPolicy(t, manager, s, c, [await createVehicle(t, manager, c)], { policyNumber: "" });
-    expect(missing.body.fields.policyNumber).toBe("required");
+    expect(missing.body.fields?.policyNumber).toBe("required");
   });
 
   it("needs a certificate for a vehicle policy, unique within the insurer and never reused", async () => {

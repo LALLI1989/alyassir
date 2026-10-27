@@ -620,7 +620,6 @@
     "by": "Par",
     "details": "Détails",
     "settlement": {
-      "none": "",
       "pending": "En attente de règlement (étape 3)",
       "settled": "Réglé"
     },
@@ -651,8 +650,8 @@
     "difference": "Différence",
     "fee": "Frais d'attestation",
     "net": "Net",
-    "clientPays": "Le client paie {{amount}} MAD",
-    "clientReceives": "Le client reçoit {{amount}} MAD",
+    "clientPays": "Le client paie",
+    "clientReceives": "Le client reçoit",
     "paperReceipt": "N° du reçu papier",
     "preview": "Aperçu",
     "plateChange": "Changement d'immatriculation",
@@ -702,6 +701,6 @@
     "operationTypes": "Types d'opération",
     "addOperationType": "Ajouter un type d'opération",
     "system": "De base",
-    "fee": "Frais fixes d'attestation : {{amount}} MAD"
+    "fee": "Frais fixes d'attestation :"
   }
 }

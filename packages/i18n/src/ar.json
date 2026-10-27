@@ -620,7 +620,6 @@
     "by": "المنفذ",
     "details": "التفاصيل",
     "settlement": {
-      "none": "",
       "pending": "تنتظر التسوية المالية (المرحلة 3)",
       "settled": "سُوّيت"
     },
@@ -651,8 +650,8 @@
     "difference": "الفرق",
     "fee": "رسم الشهادة",
     "net": "الصافي",
-    "clientPays": "يدفع العميل {{amount}} درهم",
-    "clientReceives": "يستلم العميل {{amount}} درهم",
+    "clientPays": "يدفع العميل",
+    "clientReceives": "يستلم العميل",
     "paperReceipt": "رقم الوصل الورقي",
     "preview": "معاينة",
     "plateChange": "تغيير الترقيم",
@@ -702,6 +701,6 @@
     "operationTypes": "أنواع العمليات",
     "addOperationType": "إضافة نوع عملية",
     "system": "أساسي",
-    "fee": "رسم الشهادة الثابت: {{amount}} درهم"
+    "fee": "رسم الشهادة الثابت:"
   }
 }

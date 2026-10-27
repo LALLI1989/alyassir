@@ -45,7 +45,7 @@ test("the manager adds an insurance type for RMA", async ({ page }) => {
   await page.getByLabel(ar.policies.insurer).selectOption({ label: "RMA" });
   await page.getByLabel(ar.insurance.nameAr).first().fill("تأمين السيارات");
   await page.getByLabel(ar.insurance.nameFr).first().fill("Assurance automobile");
-  await page.getByRole("button", { name: ar.insurance.addType }).click();
+  await page.getByRole("button", { name: ar.insurance.addType, exact: true }).click();
   await expect(page.getByRole("cell", { name: "Assurance automobile" })).toBeVisible();
 });
 

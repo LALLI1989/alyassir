@@ -2,8 +2,12 @@
 # CI: the Codespaces demo starts, shows the interface and answers through the interface's address.
 set -u
 cd "$(dirname "$0")/../.."
-node apps/server/demo/demo-server.mjs > /tmp/demo-server.log 2>&1 &
-(cd apps/desktop && VITE_ADAPTER=web VITE_API_URL= ALYASSIR_DEMO_API=http://127.0.0.1:4300 pnpm exec vite --port 5173 --strictPort --host 0.0.0.0 > /tmp/demo-ui.log 2>&1 &)
+node apps/server/demo/demo-server.mjs < /dev/null > /tmp/demo-server.log 2>&1 &
+SERVER=$!
+(cd apps/desktop && exec env VITE_ADAPTER=web VITE_API_URL= ALYASSIR_DEMO_API=http://127.0.0.1:4300 pnpm exec vite --port 5173 --strictPort --host 0.0.0.0) < /dev/null > /tmp/demo-ui.log 2>&1 &
+UI=$!
+# Stop both programs at the end, whatever happens (otherwise the CI step never ends).
+trap 'kill $SERVER $UI 2>/dev/null; pkill -f "vite --port 5173" 2>/dev/null; true' EXIT
 fail() { echo "DEMO FAILED: $1"; tail -n 40 /tmp/demo-server.log; tail -n 20 /tmp/demo-ui.log; exit 1; }
 for i in $(seq 1 60); do grep -q "sample data added" /tmp/demo-server.log && break; sleep 2; done
 grep -q "sample data added" /tmp/demo-server.log || fail "sample data not added"

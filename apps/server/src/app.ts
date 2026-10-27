@@ -60,7 +60,8 @@ export async function createApp(config: ServerConfig): Promise<NestFastifyApplic
   // Security headers and a general request limit (SPEC 4.15).
   await app.register(helmet as never, { contentSecurityPolicy: false });
   await app.register(rateLimit as never, { max: 1200, timeWindow: "1 minute" });
-  if (config.testCorsOrigin) app.enableCors({ origin: config.testCorsOrigin });
+  // Browser tests only (the desktop app does not use CORS). All methods the API uses.
+  if (config.testCorsOrigin) app.enableCors({ origin: config.testCorsOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"] });
   app.setGlobalPrefix("api");
   app.enableShutdownHooks();
 

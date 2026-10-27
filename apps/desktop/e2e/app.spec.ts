@@ -68,7 +68,10 @@ test("the manager creates an employee and gives one permission", async ({ page }
   await page.locator('[data-code="clients.view"]').click();
   await expect(page.getByText(ar.permissions.notSupervisorHint)).toBeVisible();
   await page.getByRole("button", { name: ar.common.save }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByRole("dialog")).toBeHidden({ timeout: 5000 }).catch(async (e: unknown) => {
+    // Show the error message the dialog displays, to explain the failure.
+    throw new Error(`${String(e)}\nDialog says: ${(await page.getByRole("dialog").innerText()).slice(0, 500)}`);
+  });
 });
 
 test("first sign-in of the employee: chooses French, sees only what he may see", async ({ page }) => {

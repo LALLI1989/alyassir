@@ -45,6 +45,8 @@ jobs:
   tests:
     name: Server and app tests (real PostgreSQL 16)
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     services:
       postgres:
         image: postgres:16
@@ -83,6 +85,19 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           ../../tooling/ci-run.sh playwright pnpm exec playwright test
+      # Screenshots of the real interface, published on the "screenshots" branch for the owner.
+      - name: Publish screenshots
+        if: ${{ success() && github.event_name == 'push' }}
+        run: |
+          [ -d apps/desktop/screenshots ] || exit 0
+          cp -r apps/desktop/screenshots "$RUNNER_TEMP/shots"
+          cd "$RUNNER_TEMP/shots"
+          git init -q -b screenshots
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Interface screenshots from ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" screenshots
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

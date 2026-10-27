@@ -461,6 +461,16 @@ var
   Lines: TArrayOfString;
 begin
   Result := ExpandConstant('{tmp}\bootstrap.txt');
+  { Pages never shown (some silent runs): read them now. }
+  if AgencyName = '' then
+  begin
+    Log('DIAG agency page values read at install time');
+    AgencyName := Trim(AgencyPage.Values[0]);
+    ManagerName := Trim(AgencyPage.Values[1]);
+    ManagerPassword := AgencyPage.Values[2];
+  end;
+  if BackupFolder = '' then
+    BackupFolder := BackupPage.Values[0];
   SetArrayLength(Lines, 5);
   Lines[0] := 'agencyName=' + AgencyName;
   Lines[1] := 'managerUsername=' + ManagerName;

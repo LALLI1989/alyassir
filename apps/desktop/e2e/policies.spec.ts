@@ -158,7 +158,7 @@ test("the policy page in French", async ({ page }) => {
   await page.getByRole("button", { name: ar.app.switchLanguage }).click();
   await page.getByRole("button", { name: fr.modules.policies, exact: true }).click();
   await page.getByLabel(fr.common.search).fill("POL-2026");
-  await expect(page.getByText(fr.policies.validities.active).first()).toBeVisible();
+  await expect(page.getByRole("row", { name: /POL-2026-001/ })).toContainText(fr.policies.validities.active);
   await page.getByRole("row", { name: /POL-2026-001/ }).getByRole("button", { name: fr.common.open }).click();
   await expect(page.getByRole("heading", { name: fr.policies.periods })).toBeVisible();
   await expect(page.getByRole("cell", { name: new RegExp(fr.policies.periodOps.renewal) }).first()).toBeVisible();

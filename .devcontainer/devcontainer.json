@@ -1,0 +1,14 @@
+{
+  "name": "Alyassir demo",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/alyassir",
+  "postCreateCommand": "bash tooling/demo/setup.sh",
+  "postStartCommand": "bash tooling/demo/start.sh",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": { "label": "Alyassir", "onAutoForward": "openBrowser" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "ignore" },
+  "hostRequirements": { "cpus": 2 }
+}

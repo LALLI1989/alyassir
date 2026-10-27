@@ -85,6 +85,9 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           ../../tooling/ci-run.sh playwright pnpm exec playwright test
+      - name: Browser demo for GitHub Codespaces starts and answers
+        if: ${{ !cancelled() }}
+        run: tooling/ci-run.sh demo tooling/demo/smoke.sh
       # Screenshots of the real interface, published on the "screenshots" branch for the owner.
       - name: Publish screenshots
         if: ${{ success() && github.event_name == 'push' }}

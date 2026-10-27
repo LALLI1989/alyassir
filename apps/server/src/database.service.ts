@@ -1,17 +1,19 @@
-import { Injectable, OnModuleDestroy } from "@nestjs/common";
-import { Pool } from "pg";
+import { Injectable, type OnModuleDestroy } from "@nestjs/common";
+import { createDb, createPool, type Db } from "@alyassir/db";
+import type { Pool } from "pg";
 
-export const DATABASE_URL = Symbol("DATABASE_URL");
+/** Drizzle database handle. Transactions: `db.transaction(async (tx) => ...)`. */
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+export type DbOrTx = Db | Tx;
 
-/** Thin wrapper around the PostgreSQL pool. Phase 0 only needs a ping. */
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
   readonly pool: Pool;
+  readonly db: Db;
 
   constructor(databaseUrl: string) {
-    this.pool = new Pool({ connectionString: databaseUrl, max: 5, connectionTimeoutMillis: 3000 });
-    // Never crash the process on an idle-client error (e.g. PostgreSQL restarted).
-    this.pool.on("error", () => undefined);
+    this.pool = createPool(databaseUrl);
+    this.db = createDb(this.pool);
   }
 
   async ping(): Promise<boolean> {

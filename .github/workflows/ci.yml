@@ -112,6 +112,19 @@ jobs:
         working-directory: apps/desktop/src-tauri
         run: ../../../tooling/ci-run.sh rust cargo test -p server-link
 
+  # The browser demo, started exactly as GitHub Codespaces starts it (same container files).
+  codespaces-demo:
+    name: Codespaces demo starts like on GitHub Codespaces
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start the demo container and check it answers
+        run: tooling/ci-run.sh codespaces tooling/demo/devcontainer-check.sh
+
   windows-installer:
     name: Build installer and test it on clean Windows
     runs-on: windows-2022

@@ -35,9 +35,14 @@ function Check($ok, $what) {
 function Install([string[]]$extra, [string]$exe = $Setup) {
   $script:Run++
   $log = Join-Path $Logs "setup-$($script:Run).log"
-  $argList = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LANG=ar", "/LOG=`"$log`"") + ($extra | ForEach-Object { if ($_ -match " ") { "`"$_`"" } else { $_ } })
+  $argList = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LANG=ar", "/LOG=$log") + @($extra)
   Write-Host "> setup $(($argList | Where-Object { $_ -notlike '*PASS*' }) -join ' ')"
-  $p = Start-Process -FilePath $exe -ArgumentList $argList -Wait -PassThru
+  # Direct Unicode process start (Start-Process went through a path that turned Arabic into "?").
+  $psi = [System.Diagnostics.ProcessStartInfo]::new($exe)
+  $psi.UseShellExecute = $false
+  foreach ($a in $argList) { $psi.ArgumentList.Add($a) }
+  $p = [System.Diagnostics.Process]::Start($psi)
+  $p.WaitForExit()
   Write-Host "  exit code $($p.ExitCode)"
   return $p.ExitCode
 }

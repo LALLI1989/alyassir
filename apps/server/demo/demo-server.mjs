@@ -102,9 +102,9 @@ async function seed() {
   await call("PUT", `/api/users/${employee.id}/permissions`, { version: employee.version, permissions: ["clients.view", "clients.create", "vehicles.view", "vehicles.create", "policies.view", "policies.create"] });
 
   const people = [
-    { fullName: "Said EL IDRISSI", idNumber: "AB123456", phone: "0661234567", plate: "12-A-34567", brand: "Dacia Logan" },
+    { fullName: "Said EL IDRISSI", idNumber: "AB123456", phone: "0661234567", plate: "00123-A-01", brand: "Dacia Logan" },
     { fullName: "Fatima-Zahra BENNANI", idNumber: "BK778899", phone: "0677889900", plate: "WW445566", brand: "Renault Clio" },
-    { fullName: "Youssef ALAOUI", idNumber: "J12345", phone: "0522334455", plate: "7-B-1234", brand: "Peugeot 208" },
+    { fullName: "Youssef ALAOUI", idNumber: "J12345", phone: "0522334455", plate: "07123-B-06", brand: "Peugeot 208" },
   ];
   let n = 1;
   for (const p of people) {

@@ -544,7 +544,7 @@
       "id_format_passport": "De 3 à 20 lettres latines ou chiffres.",
       "id_format_residence_card": "De 3 à 20 lettres latines ou chiffres.",
       "phone_format": "Numéro marocain à 10 chiffres (05, 06, 07) ou international commençant par +.",
-      "plate_format_ma": "Format : 12-A-34567 (lettre latine).",
+      "plate_format_ma": "Format : 00123-B-01 (5 chiffres, une lettre latine, 2 chiffres).",
       "plate_format_ww": "Format : WW123456.",
       "plate_format_foreign": "Lettres latines et chiffres uniquement.",
       "plate_format_state": "Format : M223355.",
@@ -622,7 +622,7 @@
     },
     "plateHints": {
       "ww": "WW puis des chiffres, par ex. WW123456.",
-      "ma": "1 ou 2 chiffres, une lettre latine, jusqu'à 5 chiffres, par ex. 12-A-34567.",
+      "ma": "5 chiffres, une lettre latine, puis 2 chiffres, par ex. 00123-B-01.",
       "foreign": "Lettres latines et chiffres, comme sur la plaque.",
       "state": "Une lettre latine puis des chiffres, par ex. M223355."
     },

@@ -329,7 +329,7 @@ describe("fees and price changes (SPEC 15, 16)", () => {
   it("plate change and duplicate cost 17 each", async () => {
     const { vehicle, policy } = await insured({ payments: [cash(100_000)] }, 100_000);
     const before = await drawer();
-    await t.call("POST", `/api/policies/${policy.id}/plate-change`, { token: manager, body: { idempotencyKey: randomUUID(), vehicleId: vehicle, plateType: "ma", plate: "9-C-4321", certificateNumber: cert(), reason: "ترقيم دائم" } });
+    await t.call("POST", `/api/policies/${policy.id}/plate-change`, { token: manager, body: { idempotencyKey: randomUUID(), vehicleId: vehicle, plateType: "ma", plate: "04321-C-09", certificateNumber: cert(), reason: "ترقيم دائم" } });
     await t.call("POST", `/api/policies/${policy.id}/duplicate`, { token: manager, body: { idempotencyKey: randomUUID(), vehicleId: vehicle, certificateNumber: cert(), reason: "ضياع" } });
     expect(await drawer()).toBe(before + 3400);
   });

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Printer, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   PAYMENT_METHODS,
@@ -11,7 +12,7 @@ import {
   type PaymentMethodCode,
   type ReceiptDto,
 } from "@alyassir/shared";
-import { Badge, Button, Dialog, DialogContent, DialogFooter, Input, Label, NativeSelect } from "@alyassir/ui";
+import { Badge, Button, Dialog, DialogContent, DialogFooter, Input, Label, NativeSelect, cn } from "@alyassir/ui";
 import { formatDateTime } from "../lib/format";
 import { api } from "../lib/session";
 import { Field } from "./common";
@@ -202,7 +203,84 @@ export function FinanceSetupFields({ value, onChange, totalCents, instalmentsAll
   );
 }
 
-/** Receipt A5, printable (SPEC 14.8). Shows the frozen copy kept by the server. */
+/** The receipt itself: shown in the window, and copied alone at the root of the page for printing. */
+function ReceiptSheet({ r, logo, framed }: { r: ReceiptDto; logo: { type: string; dataBase64: string } | undefined; framed: boolean }) {
+  const { t, i18n } = useTranslation();
+  const s = r.snapshot;
+  return (
+    <div className={cn("receipt-sheet relative grid gap-3 bg-white p-6 text-sm text-black", framed && "rounded-md border")} data-testid={framed ? "receipt" : undefined}>
+      {r.status === "cancelled" && (
+        <span className="absolute end-6 top-6 rotate-12 rounded border-2 border-red-600 px-2 text-lg font-bold text-red-600">{t("receipt.cancelled")}</span>
+      )}
+      <div className="flex items-start justify-between gap-4 border-b pb-3">
+        <div className="grid gap-0.5">
+          <span className="text-base font-bold">{i18n.language === "fr" ? s.agency.nameFr : s.agency.nameAr}</span>
+          {s.agency.address && <span>{s.agency.address}</span>}
+          {s.agency.phone && <bdi dir="ltr">{s.agency.phone}</bdi>}
+          {s.agency.licenseNumber && <span>{t("receipt.license", { number: s.agency.licenseNumber })}</span>}
+        </div>
+        {logo.data && <img src={`data:${logo.data.type};base64,${logo.data.dataBase64}`} alt="" className="max-h-16" />}
+      </div>
+      <div className="flex justify-between">
+        <span className="text-base font-semibold">{t(`receipt.titles.${s.title}`, { defaultValue: t("receipt.titles.payment") })}</span>
+        <span className="grid text-end">
+          <Code>{r.number}</Code>
+          <span>{formatDateTime(r.issuedAt)}</span>
+        </span>
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+        <dt className="text-gray-600">{t("receipt.client")}</dt>
+        <dd dir="ltr" className="text-start">{s.client.name}</dd>
+        <dt className="text-gray-600">{t("receipt.identity")}</dt>
+        <dd><Code>{s.client.idNumber}</Code></dd>
+        {s.policy && (
+          <>
+            <dt className="text-gray-600">{t("receipt.policy")}</dt>
+            <dd><Code>{s.policy.number}</Code></dd>
+            <dt className="text-gray-600">{t("receipt.insurer")}</dt>
+            <dd dir="ltr" className="text-start">{`${s.policy.insurer} — ${s.policy.type}`}</dd>
+          </>
+        )}
+        {s.method && (
+          <>
+            <dt className="text-gray-600">{t("receipt.method")}</dt>
+            <dd>{t(`finance.methods.${s.method}`)}</dd>
+          </>
+        )}
+        {s.lines.map((l, i) => (
+          <ReceiptLineRow key={i} label={l.label} value={l.value} cents={l.cents} />
+        ))}
+        {s.paidCents !== null && (
+          <>
+            <dt className="font-semibold">{t("receipt.paid")}</dt>
+            <dd className="font-semibold"><Money cents={s.paidCents} /></dd>
+          </>
+        )}
+        {s.remainingCents !== null && (
+          <>
+            <dt className="text-gray-600">{t("receipt.remaining")}</dt>
+            <dd><Money cents={s.remainingCents} /></dd>
+          </>
+        )}
+        {s.paidCents === null && (
+          <>
+            <dt className="font-semibold">{t("receipt.amount")}</dt>
+            <dd className="font-semibold"><Money cents={r.amountCents} /></dd>
+          </>
+        )}
+      </dl>
+      <div className="flex justify-between border-t pt-3 text-xs">
+        <span>{t("receipt.user", { name: s.userName })}</span>
+        {r.status === "cancelled" && r.cancelReason && <span>{t("receipt.cancelReason", { reason: r.cancelReason })}</span>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Receipt A5, printable (SPEC 14.8). Shows the frozen copy kept by the server. For printing, a copy
+ * of the receipt is placed alone at the root of the page and everything else is hidden (index.css).
+ */
 export function ReceiptDialog({ receiptId, onClose }: { receiptId: string | null; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const receipt = useQuery({ queryKey: ["receipt", receiptId], queryFn: () => api<ReceiptDto>("GET", `/api/receipts/${receiptId}`), enabled: Boolean(receiptId) });
@@ -212,78 +290,12 @@ export function ReceiptDialog({ receiptId, onClose }: { receiptId: string | null
     enabled: Boolean(receipt.data?.snapshot.agency.hasLogo),
   });
   const r = receipt.data;
-  const s = r?.snapshot;
   return (
     <Dialog open={receiptId !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent closeLabel={t("common.close")} wide>
-        {r && s && (
+        {r && (
           <div className="grid gap-4">
-            <div className="print-area relative grid gap-3 rounded-md border bg-white p-6 text-sm text-black" data-testid="receipt">
-              {r.status === "cancelled" && (
-                <span className="absolute end-6 top-6 rotate-12 rounded border-2 border-red-600 px-2 text-lg font-bold text-red-600">{t("receipt.cancelled")}</span>
-              )}
-              <div className="flex items-start justify-between gap-4 border-b pb-3">
-                <div className="grid gap-0.5">
-                  <span className="text-base font-bold">{i18n.language === "fr" ? s.agency.nameFr : s.agency.nameAr}</span>
-                  {s.agency.address && <span>{s.agency.address}</span>}
-                  {s.agency.phone && <bdi dir="ltr">{s.agency.phone}</bdi>}
-                  {s.agency.licenseNumber && <span>{t("receipt.license", { number: s.agency.licenseNumber })}</span>}
-                </div>
-                {logo.data && <img src={`data:${logo.data.type};base64,${logo.data.dataBase64}`} alt="" className="max-h-16" />}
-              </div>
-              <div className="flex justify-between">
-                <span className="text-base font-semibold">{t(`receipt.titles.${s.title}`, { defaultValue: t("receipt.titles.payment") })}</span>
-                <span className="grid text-end">
-                  <Code>{r.number}</Code>
-                  <span>{formatDateTime(r.issuedAt)}</span>
-                </span>
-              </div>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <dt className="text-gray-600">{t("receipt.client")}</dt>
-                <dd dir="ltr" className="text-start">{s.client.name}</dd>
-                <dt className="text-gray-600">{t("receipt.identity")}</dt>
-                <dd><Code>{s.client.idNumber}</Code></dd>
-                {s.policy && (
-                  <>
-                    <dt className="text-gray-600">{t("receipt.policy")}</dt>
-                    <dd><Code>{s.policy.number}</Code></dd>
-                    <dt className="text-gray-600">{t("receipt.insurer")}</dt>
-                    <dd dir="ltr" className="text-start">{`${s.policy.insurer} — ${s.policy.type}`}</dd>
-                  </>
-                )}
-                {s.method && (
-                  <>
-                    <dt className="text-gray-600">{t("receipt.method")}</dt>
-                    <dd>{t(`finance.methods.${s.method}`)}</dd>
-                  </>
-                )}
-                {s.lines.map((l, i) => (
-                  <ReceiptLineRow key={i} label={l.label} value={l.value} cents={l.cents} />
-                ))}
-                {s.paidCents !== null && (
-                  <>
-                    <dt className="font-semibold">{t("receipt.paid")}</dt>
-                    <dd className="font-semibold"><Money cents={s.paidCents} /></dd>
-                  </>
-                )}
-                {s.remainingCents !== null && (
-                  <>
-                    <dt className="text-gray-600">{t("receipt.remaining")}</dt>
-                    <dd><Money cents={s.remainingCents} /></dd>
-                  </>
-                )}
-                {s.paidCents === null && (
-                  <>
-                    <dt className="font-semibold">{t("receipt.amount")}</dt>
-                    <dd className="font-semibold"><Money cents={r.amountCents} /></dd>
-                  </>
-                )}
-              </dl>
-              <div className="flex justify-between border-t pt-3 text-xs">
-                <span>{t("receipt.user", { name: s.userName })}</span>
-                {r.status === "cancelled" && r.cancelReason && <span>{t("receipt.cancelReason", { reason: r.cancelReason })}</span>}
-              </div>
-            </div>
+            <ReceiptSheet r={r} logo={logo.data} framed />
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>{t("common.close")}</Button>
               <Button onClick={() => window.print()}>
@@ -291,6 +303,12 @@ export function ReceiptDialog({ receiptId, onClose }: { receiptId: string | null
                 {t("receipt.print")}
               </Button>
             </DialogFooter>
+            {createPortal(
+              <div className="print-root" aria-hidden="true">
+                <ReceiptSheet r={r} logo={logo.data} framed={false} />
+              </div>,
+              document.body,
+            )}
           </div>
         )}
       </DialogContent>

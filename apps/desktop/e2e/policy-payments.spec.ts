@@ -97,6 +97,13 @@ test("a cheque of 1 017: in collection, with its printable receipt", async ({ pa
   await expect(receipt).toContainText("2 000,00");
   await expect(receipt).toContainText("CHQ-778");
   await page.screenshot({ path: `${OUT}8-receipt.png` });
+  // On paper: only the receipt, on an A5 page (owner remark 28/10/2026).
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".print-root")).toBeVisible();
+  await expect(page.locator(".print-root")).toContainText("CHQ-778");
+  await expect(page.getByTestId("receipt")).toBeHidden();
+  await page.pdf({ path: `${OUT}receipt-A5.pdf`, preferCSSPageSize: true, printBackground: true });
+  await page.emulateMedia({ media: "screen" });
   await page.getByRole("dialog").getByRole("button", { name: ar.common.close }).first().click();
 
   const totals = page.getByTestId("finance-totals");
@@ -126,6 +133,16 @@ test("the manager confirms the cheque, then it bounces: back to a debt, and a me
 
   await page.getByRole("button", { name: ar.modules.debts, exact: true }).click();
   await expect(page.getByRole("row", { name: new RegExp(ar.finance.debtSources.rejected_payment) })).toContainText("1 017,00");
+  // Owner request 28/10/2026: pay a debt straight from the list (here by card, so the drawer does not move).
+  const debtRow = page.getByRole("row", { name: new RegExp(ar.finance.debtSources.rejected_payment) });
+  await debtRow.getByRole("button", { name: new RegExp(ar.finance.record) }).click();
+  const payDialog = page.getByRole("dialog");
+  await payDialog.getByLabel(ar.finance.method).selectOption("card");
+  await payDialog.getByLabel(ar.finance.amount, { exact: true }).fill("1017");
+  await payDialog.getByRole("button", { name: ar.common.confirm }).click();
+  await expect(page.getByTestId("receipt")).toContainText(ar.finance.methods.card);
+  await page.getByRole("dialog").getByRole("button", { name: ar.common.close }).first().click();
+  await expect(page.getByRole("dialog")).toBeHidden();
 
   await openPolicy(page, "POL-2026-010");
   await expect(page.getByTestId("finance")).toContainText(ar.finance.collection.payment_rejected);

@@ -129,9 +129,9 @@ describe("new policy (SPEC 11)", () => {
 
   it("finds a policy by number, certificate, plate or client", async () => {
     const c = await createClient(t, manager, { fullName: "Zineb EL KASSIMI" });
-    const v = await createVehicle(t, manager, c, { plateType: "ma", plate: "33-H-4455" });
+    const v = await createVehicle(t, manager, c, { plateType: "ma", plate: "04455-H-33" });
     const p = await mustCreatePolicy(t, manager, s, c, [v], { policyNumber: "FIND-ME-77" });
-    for (const q of ["find-me", p.vehicles[0]?.certificateNumber as string, "33H4455", "kassimi"]) {
+    for (const q of ["find-me", p.vehicles[0]?.certificateNumber as string, "04455H33", "kassimi"]) {
       const res = await t.call("GET", `/api/policies?q=${encodeURIComponent(q)}`, { token: manager });
       expect(res.body.items.map((x: { id: string }) => x.id), q).toContain(p.id);
     }
@@ -316,13 +316,13 @@ describe("plate change and duplicate (SPEC 16, 16.1)", () => {
     const { vehicle, policy } = await insuredVehicle();
     const res = await t.call("POST", `/api/policies/${policy.id}/plate-change`, {
       token: manager,
-      body: { idempotencyKey: randomUUID(), vehicleId: vehicle, plateType: "ma", plate: "77-W-12", certificateNumber: cert(), reason: "ترقيم دائم" },
+      body: { idempotencyKey: randomUUID(), vehicleId: vehicle, plateType: "ma", plate: "00012-W-77", certificateNumber: cert(), reason: "ترقيم دائم" },
     });
     expect(res.status).toBe(200);
-    expect(res.body.vehicles[0].plate).toBe("77-W-12");
+    expect(res.body.vehicles[0].plate).toBe("00012-W-77");
     expect(res.body.operations[0]).toMatchObject({ type: "plate_change", feeCents: 1700, netCents: 1700, settlementStatus: "settled" });
     const v = (await t.call("GET", `/api/vehicles/${vehicle}`, { token: manager })).body;
-    expect(v.plateHistory[0]).toMatchObject({ newPlate: "77-W-12" });
+    expect(v.plateHistory[0]).toMatchObject({ newPlate: "00012-W-77" });
     expect(res.body.totalAmountCents).toBe(policy.totalAmountCents);
   });
 

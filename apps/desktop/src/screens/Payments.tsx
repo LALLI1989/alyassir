@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Wallet } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { DebtDto, Page as PageOf, PaymentDto } from "@alyassir/shared";
@@ -30,6 +30,7 @@ import { ReceiptButton } from "../components/finance";
 import { Code, Money, formatDay } from "../components/insurance";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import { api, useSession } from "../lib/session";
+import { RecordPaymentFlow } from "./PolicyFinance";
 import type { Page } from "./Shell";
 
 const PAYMENT_VARIANT = { collected: "success", confirmed: "success", in_collection: "secondary", rejected: "destructive" } as const;
@@ -196,6 +197,9 @@ function CollectionDialog({ payment, action, onClose }: { payment: PaymentDto; a
 /** Open debts, by client (SPEC 14.6). */
 export function Debts({ onOpen, clientId }: { onOpen: (page: Page) => void; clientId?: string }) {
   const { t } = useTranslation();
+  const { can } = useSession();
+  const [paying, setPaying] = useState<string | null>(null);
+  const canPay = can("payments.create") && can("payments.view");
   const [status, setStatus] = useState<"open" | "all">("open");
   const [page, setPage] = useState(1);
   const list = useQuery({
@@ -216,12 +220,13 @@ export function Debts({ onOpen, clientId }: { onOpen: (page: Page) => void; clie
           <Th>{t("finance.amount")}</Th>
           <Th>{t("finance.remaining")}</Th>
           <Th>{t("common.status")}</Th>
+          {canPay && <Th />}
         </Tr>
       </THead>
       <TBody>
         {data?.items.length === 0 && (
           <Tr>
-            <Td colSpan={7} className="py-8 text-center text-muted-foreground">{t("finance.noDebts")}</Td>
+            <Td colSpan={8} className="py-8 text-center text-muted-foreground">{t("finance.noDebts")}</Td>
           </Tr>
         )}
         {data?.items.map((d) => (
@@ -237,16 +242,28 @@ export function Debts({ onOpen, clientId }: { onOpen: (page: Page) => void; clie
             <Td><Money cents={d.amountCents} /></Td>
             <Td><Money cents={d.remainingCents} /></Td>
             <Td><Badge variant={d.status === "open" ? "warning" : d.status === "paid" ? "success" : "outline"}>{t(`finance.debtStatus.${d.status}`)}</Badge></Td>
+            {canPay && (
+              <Td className="text-end">
+                {d.status === "open" && d.policyId && (
+                  <Button size="sm" onClick={() => setPaying(d.policyId)} aria-label={`${t("finance.record")} ${d.clientName}`}>
+                    <Wallet />
+                    {t("finance.record")}
+                  </Button>
+                )}
+              </Td>
+            )}
           </Tr>
         ))}
       </TBody>
     </Table>
   );
+  const payFlow = paying && <RecordPaymentFlow key={paying} policyId={paying} onClose={() => setPaying(null)} />;
   if (clientId) {
     return (
       <div className="grid gap-2">
         <p className="inline-flex flex-wrap gap-1 text-sm font-medium" data-testid="client-debt-total">{t("finance.clientTotal")} <Money cents={data?.totalRemainingCents ?? 0} /></p>
         {table}
+        {payFlow}
       </div>
     );
   }
@@ -266,6 +283,7 @@ export function Debts({ onOpen, clientId }: { onOpen: (page: Page) => void; clie
       <Card>
         <CardContent className="pt-5">{table}</CardContent>
       </Card>
+      {payFlow}
       <div className="mt-3">
         <Pager page={page} pages={pages} total={data?.total ?? 0} onPage={setPage} />
       </div>

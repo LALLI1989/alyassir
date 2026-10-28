@@ -94,6 +94,25 @@ fn server_for(app: &AppHandle) -> Result<Server, Value> {
     Server::new(&saved.url, &saved.fingerprint).map_err(link_error)
 }
 
+/// Opens a WhatsApp link (SPEC 18.4: a wa.me link only, nothing is sent by the program) in the
+/// default browser. Only https://wa.me/<digits>?text=<encoded> is accepted.
+#[tauri::command]
+fn open_whatsapp(url: String) -> Result<(), String> {
+    let rest = url.strip_prefix("https://wa.me/").ok_or("not a wa.me link")?;
+    let (number, query) = rest.split_once('?').unwrap_or((rest, ""));
+    let safe_query = query.chars().all(|c| c.is_ascii_alphanumeric() || "%=&-_.~".contains(c));
+    if number.is_empty() || !number.chars().all(|c| c.is_ascii_digit()) || !safe_query {
+        return Err("not a wa.me link".into());
+    }
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("rundll32").args(["url.dll,FileProtocolHandler", &url]).spawn();
+    #[cfg(target_os = "macos")]
+    let result = std::process::Command::new("open").arg(&url).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let result = std::process::Command::new("xdg-open").arg(&url).spawn();
+    result.map(|_| ()).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 async fn probe_server(address: String) -> Result<Probe, LinkError> {
     server_link::probe(&address).await
@@ -287,7 +306,8 @@ fn main() {
             save_server,
             api_login,
             api_logout,
-            api_request
+            api_request,
+            open_whatsapp
         ])
         .run(tauri::generate_context!())
         .expect("error while running Alyassir");

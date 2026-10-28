@@ -168,6 +168,10 @@ export const agencySettings = pgTable("agency_settings", {
   idleTimeoutMinutes: integer("idle_timeout_minutes").notNull(),
   backupDir: text("backup_dir").notNull(),
   certificateFeeCents: bigint("certificate_fee_cents", { mode: "number" }).notNull(),
+  remindPolicyDays: integer("remind_policy_days").notNull().default(30),
+  remindInstalmentDays: integer("remind_instalment_days").notNull().default(3),
+  remindChequeDays: integer("remind_cheque_days").notNull().default(3),
+  remindClaimDays: integer("remind_claim_days").notNull().default(7),
   updatedAt: ts("updated_at").notNull().defaultNow(),
   updatedBy: uuid("updated_by"),
   version: integer("version").notNull(),
@@ -686,6 +690,58 @@ export const bankWithdrawals = pgTable("bank_withdrawals", {
   isHistorical: boolean("is_historical").notNull().default(false),
 });
 
+// ---------------------------------------------------------------- Phase 5 (SPEC 18)
+
+export type ClaimStatus = "declared" | "expertise" | "processing" | "closed" | "rejected";
+
+export const claims = pgTable("claims", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").notNull(),
+  policyId: uuid("policy_id").notNull(),
+  periodId: uuid("period_id").notNull(),
+  insurerId: uuid("insurer_id").notNull(),
+  claimNumber: text("claim_number"),
+  accidentDate: day("accident_date").notNull(),
+  declaredOn: day("declared_on").notNull(),
+  place: text("place").notNull(),
+  description: text("description").notNull().default(""),
+  requestedCents: bigint("requested_cents", { mode: "number" }),
+  compensatedCents: bigint("compensated_cents", { mode: "number" }),
+  notes: text("notes").notNull().default(""),
+  status: text("status").$type<ClaimStatus>().notNull().default("declared"),
+  lateReason: text("late_reason"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  updatedBy: uuid("updated_by"),
+  version: integer("version").notNull().default(1),
+  archivedAt: ts("archived_at"),
+});
+
+export type ContactKind = "called" | "no_answer" | "promise" | "note" | "whatsapp";
+
+export const contactLogs = pgTable("contact_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").notNull(),
+  policyId: uuid("policy_id"),
+  kind: text("kind").$type<ContactKind>().notNull(),
+  promiseDate: day("promise_date"),
+  note: text("note").notNull().default(""),
+  templateCode: text("template_code"),
+  language: text("language").$type<"ar" | "fr">(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by").notNull(),
+});
+
+export const whatsappTemplates = pgTable("whatsapp_templates", {
+  code: text("code").primaryKey(),
+  bodyAr: text("body_ar").notNull(),
+  bodyFr: text("body_fr").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  updatedBy: uuid("updated_by"),
+  version: integer("version").notNull().default(1),
+});
+
 export const allTables = {
   systemInfo,
   sequences,
@@ -735,4 +791,7 @@ export const allTables = {
   insurerPayments,
   withdrawalReasons,
   bankWithdrawals,
+  claims,
+  contactLogs,
+  whatsappTemplates,
 };

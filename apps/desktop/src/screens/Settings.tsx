@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { LOGO_MAX_BYTES, agencySettingsSchema, type AgencySettingsDto } from "@alyassir/shared";
-import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@alyassir/ui";
+import { LOGO_MAX_BYTES, agencySettingsSchema, type AgencySettingsDto, type ReminderSettings, type TemplateDto } from "@alyassir/shared";
+import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Textarea } from "@alyassir/ui";
 import { asClientError, type ClientError } from "../adapters";
 import { Field, PageHeader } from "../components/common";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
@@ -128,6 +128,102 @@ export function Settings() {
         </CardContent>
       </Card>
       <Logo settings={data} />
+      <ReminderDelays />
+      <WhatsappTemplates />
     </div>
+  );
+}
+
+/** Reminder delays (SPEC 18.2): the manager sets them. */
+function ReminderDelays() {
+  const { t } = useTranslation();
+  const fieldError = useFieldError();
+  const queries = useQueryClient();
+  const current = useQuery({ queryKey: ["reminderSettings"], queryFn: () => api<ReminderSettings>("GET", "/api/reminders/settings") });
+  const [form, setForm] = useState<ReminderSettings | null>(null);
+  useEffect(() => {
+    if (current.data && !form) setForm(current.data);
+  }, [current.data, form]);
+  const save = useMutation({
+    mutationFn: () => api<ReminderSettings>("PUT", "/api/reminders/settings", form),
+    onSuccess: async (v) => {
+      queries.setQueryData(["reminderSettings"], v);
+      await queries.invalidateQueries({ queryKey: ["reminders"] });
+    },
+  });
+  const error = save.error ? asClientError(save.error) : null;
+  const fields = fieldsOf(error);
+  if (!form) return null;
+  const keys = ["policyDays", "instalmentDays", "chequeDays", "claimDays"] as const;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("followup.delaysTitle")}</CardTitle>
+        <CardDescription>{t("followup.delaysIntro")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={(e: FormEvent) => { e.preventDefault(); save.mutate(); }} className="grid gap-4 sm:grid-cols-4">
+          {keys.map((k) => (
+            <Field key={k} id={`delay-${k}`} label={t(`followup.delays.${k}`)} error={fieldError(fields[k])}>
+              <Input id={`delay-${k}`} type="number" dir="ltr" value={form[k]} onChange={(e) => setForm({ ...form, [k]: Number(e.target.value) })} />
+            </Field>
+          ))}
+          <div className="sm:col-span-4 flex items-center gap-3">
+            <Button type="submit" disabled={save.isPending}>{t("common.save")}</Button>
+            {save.isSuccess && <span className="text-sm text-success">{t("common.saved")}</span>}
+          </div>
+          {error && error.code !== "VALIDATION" && <ErrorMessage error={error} />}
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** WhatsApp messages, in Arabic and French (SPEC 18.4). The server fills the values. */
+function WhatsappTemplates() {
+  const { t } = useTranslation();
+  const list = useQuery({ queryKey: ["whatsappTemplates"], queryFn: () => api<TemplateDto[]>("GET", "/api/contacts/templates") });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("followup.templatesTitle")}</CardTitle>
+        <CardDescription>{t("followup.templatesIntro")}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        {(list.data ?? []).map((tpl) => <TemplateForm key={`${tpl.code}-${tpl.version}`} tpl={tpl} />)}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TemplateForm({ tpl }: { tpl: TemplateDto }) {
+  const { t } = useTranslation();
+  const fieldError = useFieldError();
+  const queries = useQueryClient();
+  const [bodyAr, setBodyAr] = useState(tpl.bodyAr);
+  const [bodyFr, setBodyFr] = useState(tpl.bodyFr);
+  const save = useMutation({
+    mutationFn: () => api<TemplateDto[]>("PUT", `/api/contacts/templates/${tpl.code}`, { version: tpl.version, bodyAr, bodyFr }),
+    onSuccess: (l) => queries.setQueryData(["whatsappTemplates"], l),
+  });
+  const error = save.error ? asClientError(save.error) : null;
+  const fields = fieldsOf(error);
+  return (
+    <form onSubmit={(e: FormEvent) => { e.preventDefault(); save.mutate(); }} className="grid gap-3 rounded-md border p-3">
+      <span className="font-medium">{t(`followup.templates.${tpl.code}`, { defaultValue: tpl.code })}</span>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field id={`tpl-ar-${tpl.code}`} label={t("language.ar")} error={fieldError(fields.bodyAr)}>
+          <Textarea id={`tpl-ar-${tpl.code}`} dir="rtl" rows={4} value={bodyAr} onChange={(e) => setBodyAr(e.target.value)} />
+        </Field>
+        <Field id={`tpl-fr-${tpl.code}`} label={t("language.fr")} error={fieldError(fields.bodyFr)}>
+          <Textarea id={`tpl-fr-${tpl.code}`} dir="ltr" rows={4} value={bodyFr} onChange={(e) => setBodyFr(e.target.value)} />
+        </Field>
+      </div>
+      <p className="text-xs text-muted-foreground"><bdi dir="ltr">{"{client} {policy} {plate} {end_date} {remaining}"}</bdi> — {t("followup.templateVariables")}</p>
+      {error && error.code !== "VALIDATION" && <ErrorMessage error={error} />}
+      <div>
+        <Button type="submit" size="sm" disabled={save.isPending}>{t("common.save")}</Button>
+      </div>
+    </form>
   );
 }

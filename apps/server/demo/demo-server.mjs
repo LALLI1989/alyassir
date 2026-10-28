@@ -48,6 +48,8 @@ await owner.connect();
 const hasPlans = Number((await owner.query("SELECT count(*)::int AS n FROM installment_plans")).rows[0].n) > 0;
 // Phase 4 samples likewise.
 const hasSessions = Number((await owner.query("SELECT count(*)::int AS n FROM drawer_sessions")).rows[0].n) > 0;
+// Phase 5 samples likewise.
+const hasClaims = Number((await owner.query("SELECT count(*)::int AS n FROM claims")).rows[0].n) > 0;
 await owner.end();
 if (fresh) {
   await bootstrapData(ownerUrl, { agencyName: "وكالة اليسير للتأمين", managerUsername: "gerant", managerPassword: "gerant123", language: "ar", backupDir: "/tmp" });
@@ -74,6 +76,9 @@ if (!hasPlans) {
 }
 if (!hasSessions) {
   await seedCash().catch((error) => console.log(`cash samples skipped: ${error instanceof Error ? error.message : String(error)}`));
+}
+if (!hasClaims) {
+  await seedFollowup().catch((error) => console.log(`follow-up samples skipped: ${error instanceof Error ? error.message : String(error)}`));
 }
 
 async function call(method, path, body) {
@@ -197,4 +202,26 @@ async function seedCash() {
   if (cleaning) await call("POST", "/api/expenses", { idempotencyKey: crypto.randomUUID(), categoryId: cleaning.id, amountCents: 15000, note: "Produits de nettoyage" });
   token = managerToken;
   console.log("cash samples added");
+}
+
+// Phase 5: a claim in expertise, a promise to pay due today, Salma may see claims.
+async function seedFollowup() {
+  token = (await call("POST", "/api/auth/login", { username: "gerant", password: "gerant123" })).accessToken;
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Casablanca" }).format(new Date());
+  const policies = (await call("GET", "/api/policies?pageSize=50")).items;
+  const p1 = policies.find((p) => p.policyNumber === "POL-2026-001");
+  const p2 = policies.find((p) => p.policyNumber === "POL-2026-002");
+  if (p1) {
+    const claim = await call("POST", "/api/claims", { policyId: p1.id, accidentDate: today, place: "Casablanca, Bd Zerktouni", description: "Choc arrière au feu rouge", requestedCents: 650000 });
+    await call("PATCH", `/api/claims/${claim.id}`, { version: claim.version, claimNumber: "SIN-2026-0001", place: claim.place, description: claim.description, requestedCents: 650000, compensatedCents: null, notes: "", status: "expertise" });
+  }
+  if (p2) await call("POST", "/api/contacts", { clientId: p2.clientId, policyId: p2.id, kind: "promise", promiseDate: today, note: "Passera à l'agence" });
+  const users = await call("GET", "/api/users");
+  const salma = (users.items ?? users).find((u) => u.username === "salma");
+  if (salma) {
+    const perms = await call("GET", `/api/users/${salma.id}`);
+    const current = perms.permissions ?? [];
+    await call("PUT", `/api/users/${salma.id}/permissions`, { version: perms.version, permissions: [...new Set([...current, "claims.view", "claims.create", "claims.edit"])] });
+  }
+  console.log("follow-up samples added");
 }

@@ -9,3 +9,4 @@ export * from "./schemas-insurance";
 export * from "./dto-insurance";
 export * from "./payments";
 export * from "./cash";
+export * from "./followup";

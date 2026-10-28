@@ -42,6 +42,7 @@ import { Code, Money, MoneyInput, ValidityBadge, formatDay, useCatalog, useLocal
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import { formatDateTime } from "../lib/format";
 import { api, useSession } from "../lib/session";
+import { ClaimsList } from "../components/followup";
 import { PolicyFinanceSection, useFinance } from "./PolicyFinance";
 import type { Page } from "./Shell";
 import { VehicleDialog } from "./Vehicles";
@@ -789,7 +790,7 @@ function Info({ label, children }: { label: string; children: ReactNode }) {
 
 export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) => void }) {
   const { t } = useTranslation();
-  const { isManager } = useSession();
+  const { isManager, can } = useSession();
   const name = useLocalName();
   const catalog = useCatalog().data;
   const [open, setOpen] = useState<OperationKind | null>(null);
@@ -977,6 +978,17 @@ export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) =>
           )}
         </CardContent>
       </Card>
+
+      {can("claims.view") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("followup.claimsTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ClaimsList policyId={p.id} />
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={open !== null} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent closeLabel={t("common.close")} wide>

@@ -116,7 +116,8 @@
     "supervisorBadge": "Superviseur",
     "employeeBadge": "Employé",
     "insurance": "Paramètres d'assurance",
-    "accounts": "Comptes"
+    "accounts": "Comptes",
+    "reminders": "Rappels"
   },
   "modules": {
     "clients": "Clients",
@@ -398,7 +399,12 @@
       "account_bank_negative": "Solde négatif de la banque modifié",
       "withdrawal_reason_create": "Motif de retrait ajouté",
       "withdrawal_reason_archive": "Motif de retrait archivé",
-      "withdrawal_reason_restore": "Motif de retrait restauré"
+      "withdrawal_reason_restore": "Motif de retrait restauré",
+      "claim_create": "Sinistre déclaré",
+      "claim_update": "Sinistre modifié",
+      "claim_status": "Statut de sinistre modifié",
+      "whatsapp_template_update": "Modèle WhatsApp modifié",
+      "settings_reminders": "Délais des rappels modifiés"
     }
   },
   "settings": {
@@ -519,7 +525,15 @@
       "EXPENSE_NOT_ALLOWED": "Impossible pour cette dépense.",
       "SAME_ACCOUNT": "Choisissez deux comptes différents.",
       "ALREADY_REVERSED": "Ce mouvement a déjà été annulé.",
-      "NAME_TAKEN": "Ce nom existe déjà."
+      "NAME_TAKEN": "Ce nom existe déjà.",
+      "CLAIM_ACCIDENT_IN_FUTURE": "La date du sinistre est après aujourd'hui.",
+      "CLAIM_BEFORE_START": "Sinistre avant la date d'effet : impossible de l'enregistrer.",
+      "CLAIM_POLICY_ANNULLED": "Police annulée : aucun sinistre ne peut y être déclaré.",
+      "CLAIM_AFTER_COVER": "Sinistre après la fin de la garantie (ou après la résiliation) : impossible de l'enregistrer.",
+      "CLAIM_LATE_DECLARATION": "Le délai de déclaration (5 jours, jour du sinistre compris) est dépassé. Seul le gérant peut l'enregistrer en retard, avec un motif.",
+      "CLAIM_NUMBER_TAKEN": "Ce n° de sinistre existe déjà chez la même compagnie.",
+      "CLAIM_REOPEN_MANAGER": "Seul le gérant peut rouvrir un sinistre clos ou refusé.",
+      "NO_PHONE": "Le numéro de téléphone du client n'est pas utilisable pour WhatsApp."
     },
     "fields": {
       "required": "Ce champ est obligatoire.",
@@ -1140,6 +1154,84 @@
       "transfer": "Une sortie du premier compte et une entrée dans le second, en une seule opération.",
       "insurer": "Une seule sortie, sans lien avec les polices ni calcul de ce que la compagnie doit ou réclame.",
       "withdrawal": "Sortie de la banque uniquement, avec un motif obligatoire et une justification."
+    }
+  },
+  "followup": {
+    "claimsTitle": "Sinistres",
+    "claimsIntro": "Les sinistres des clients, pour le suivi uniquement, sans effet sur la caisse ni la banque.",
+    "claimsSearch": "Rechercher par n° de sinistre, client, police ou lieu",
+    "openClaims": "Ouverts",
+    "newClaim": "Déclarer un sinistre",
+    "pickPolicy": "Choisir la police",
+    "claimTitle": "Sinistre sur la police {{number}}",
+    "claimInfo": "Le sinistre doit être dans la période de garantie et déclaré sous 5 jours, jour du sinistre compris.",
+    "accidentDate": "Date du sinistre",
+    "accidentHint": "Ne change plus après l'enregistrement.",
+    "claimNumber": "N° de sinistre",
+    "place": "Lieu",
+    "description": "Description",
+    "requested": "Montant demandé",
+    "compensated": "Montant indemnisé",
+    "notes": "Notes",
+    "lateDeclared": "Déclaré en retard",
+    "lateReason": "Motif de la déclaration tardive",
+    "lateReasonHint": "Gérant uniquement : indiquez le motif puis enregistrez à nouveau.",
+    "reopenHint": "Rouvrir un sinistre clos ou refusé : gérant uniquement, avec un motif.",
+    "claimStatus": {
+      "declared": "Déclaré",
+      "expertise": "En expertise",
+      "processing": "En cours de traitement",
+      "closed": "Clos",
+      "rejected": "Refusé"
+    },
+    "remindersTitle": "Rappels",
+    "remindersIntro": "Ce qui demande un suivi aujourd'hui, selon vos droits.",
+    "nothingToDo": "Rien à suivre pour l'instant.",
+    "countN": "Nombre : {{count}}",
+    "reminderKinds": {
+      "policy_ending": "Polices expirant dans {{days}} jours",
+      "instalment_due": "Échéances dans {{days}} jours ou dépassées",
+      "debt_open": "Impayés non soldés",
+      "promise_due": "Promesses de paiement arrivées à date",
+      "cheque_due": "Chèques à échéance dans {{days}} jours",
+      "in_collection": "Paiements en cours d'encaissement",
+      "expense_pending": "Dépenses en attente de validation",
+      "unread_messages": "Messages non lus",
+      "edit_requests": "Demandes de modification en attente",
+      "claim_stale": "Sinistres sans mise à jour depuis {{days}} jours"
+    },
+    "contactsTitle": "Journal des contacts",
+    "addContact": "Noter un contact",
+    "contactKind": "Type",
+    "promiseDate": "Date promise",
+    "contactKinds": {
+      "called": "Appelé",
+      "no_answer": "Ne répond pas",
+      "promise": "Promesse de paiement",
+      "note": "Note",
+      "whatsapp": "WhatsApp"
+    },
+    "whatsapp": "WhatsApp",
+    "whatsappTitle": "Message WhatsApp",
+    "whatsappInfo": "Ouvre WhatsApp avec un message prêt. C'est vous qui cliquez sur « Envoyer » ; le programme n'envoie rien.",
+    "template": "Modèle",
+    "language": "Langue du message",
+    "openWhatsapp": "Ouvrir WhatsApp",
+    "whatsappOpened": "WhatsApp a été ouvert et c'est noté dans le journal des contacts. Numéro :",
+    "templates": {
+      "renewal": "Rappel de renouvellement",
+      "payment": "Rappel de paiement"
+    },
+    "templatesTitle": "Modèles WhatsApp",
+    "templatesIntro": "Texte des messages en arabe et en français. Le programme remplit les valeurs entre accolades.",
+    "templateVariables": "nom du client, n° de police, immatriculation, date d'expiration, reste dû",
+    "delaysTitle": "Délais des rappels",
+    "delaysIntro": "En jours. Les rappels apparaissent avant ces délais.",
+    "delays": {
+      "policyDays": "Polices avant expiration",
+      "instalmentDays": "Échéances avant la date",
+      "chequeDays": "Chèques avant échéance",
+      "claimDays": "Sinistres sans mise à jour"
     }
   }
 }

@@ -11,6 +11,7 @@ import { formatDateTime } from "../lib/format";
 import { api, useSession } from "../lib/session";
 import { ClientDialog, clientDisplayName } from "./Clients";
 import type { Page } from "./Shell";
+import { ClaimsList, ContactLog } from "../components/followup";
 import { Debts } from "./Payments";
 import { PlateHistory, VehicleDialog } from "./Vehicles";
 
@@ -162,6 +163,26 @@ export function ClientFile({ id, onOpen }: { id: string; onOpen: (page: Page) =>
                 </TBody>
               </Table>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("followup.contactsTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ContactLog clientId={client.id} />
+        </CardContent>
+      </Card>
+
+      {can("claims.view") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("followup.claimsTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ClaimsList clientId={client.id} onOpenPolicy={(pid) => onOpen({ kind: "policy", id: pid })} />
           </CardContent>
         </Card>
       )}

@@ -12,6 +12,8 @@ trap 'kill $SERVER $UI 2>/dev/null; pkill -f "vite preview" 2>/dev/null; true' E
 fail() { echo "DEMO FAILED: $1"; tail -n 40 /tmp/demo-server.log; tail -n 20 /tmp/demo-ui.log; exit 1; }
 for i in $(seq 1 60); do grep -q "sample data added" /tmp/demo-server.log && break; sleep 2; done
 grep -q "sample data added" /tmp/demo-server.log || fail "sample data not added"
+for i in $(seq 1 30); do grep -q "payment samples added" /tmp/demo-server.log && break; sleep 2; done
+grep -q "payment samples added" /tmp/demo-server.log || fail "payment samples not added"
 for i in $(seq 1 30); do curl -sf http://127.0.0.1:5173/ > /dev/null && break; sleep 2; done
 curl -sf -H "Host: demo-5173.app.github.dev" http://127.0.0.1:5173/ | grep -q '<div id="root">' || fail "interface page"
 H=(-H "content-type: application/json" -H "x-alyassir-client-version: 0.1.0")

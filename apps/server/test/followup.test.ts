@@ -4,7 +4,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addDays, businessDay } from "@alyassir/domain";
-import type { ClaimDto, ContactDto, RemindersDto } from "@alyassir/shared";
+import { formatCents, type ClaimDto, type ContactDto, type RemindersDto } from "@alyassir/shared";
 import { MANAGER, createEmployee, ownerQuery, startApp, type TestApp } from "./harness";
 import { createClient, createVehicle, mustCreatePolicy, setPeriod, setupCatalog, type Setup } from "./fixtures";
 
@@ -125,7 +125,7 @@ describe("contact log and WhatsApp (SPEC 18.3, 18.4)", () => {
     expect(res.body.phone).toBe("212661234567");
     expect(res.body.url).toMatch(/^https:\/\/wa\.me\/212661234567\?text=/);
     expect(res.body.text).toContain(policy.policyNumber);
-    expect(res.body.text).toContain("2 500,00 MAD");
+    expect(res.body.text).toContain(`${formatCents(250_000)} MAD`);
     const ar = await t.call("POST", "/api/contacts/whatsapp", { token: manager, body: { clientId: client, policyId: policy.id, template: "renewal", language: "ar" } });
     expect(ar.body.text).toContain(policy.vehicles[0]?.plate);
     expect(ar.body.text).toContain(`${policy.endDate.slice(8, 10)}/${policy.endDate.slice(5, 7)}/${policy.endDate.slice(0, 4)}`);

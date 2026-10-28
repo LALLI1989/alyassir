@@ -73,6 +73,10 @@ describe("receiving the drawer (SPEC 17.3, owner decisions 28/10/2026)", () => {
     let st = await state(a);
     expect(st.holder).toBe(true);
     expect(st.session?.members.map((m) => m.name)).toEqual(["CASHIER1"]);
+    // A takes 3 000 MAD in cash; each movement keeps the name of who did it.
+    expect((await cashPolicy(a, 300_000)).policyNumber).toBeTruthy();
+    st = await state(a);
+    expect(st.balanceCents).toBe(300_000);
     // B was shown an old balance: shown again.
     const stale = await t.call("POST", "/api/drawer/receive", { token: b, body: { shownCents: st.balanceCents + 1, countedCents: 0, reason: "" } });
     expect(stale.body.code).toBe("SESSION_CHANGED");
@@ -86,9 +90,6 @@ describe("receiving the drawer (SPEC 17.3, owner decisions 28/10/2026)", () => {
     // Receiving twice is harmless.
     expect((await receiveDrawer(t, b)).status).toBe(200);
     expect((await state(b)).session?.members).toHaveLength(2);
-    // Both can take cash now; each movement keeps the name of who did it.
-    const p = await cashPolicy(a, 300_000);
-    expect(p.policyNumber).toBeTruthy();
     expect((await state()).session?.byUser).toEqual([expect.objectContaining({ name: "CASHIER1", inCents: 300_000 })]);
   });
 

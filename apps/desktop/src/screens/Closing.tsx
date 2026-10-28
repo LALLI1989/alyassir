@@ -113,7 +113,7 @@ export function Closing() {
       {can("closing.view") && <Closings />}
       {receiving && <ReceiveDrawerDialog open={receiving} onClose={() => setReceiving(false)} />}
       <Dialog open={closing} onOpenChange={setClosing}>
-        <DialogContent closeLabel={t("common.close")}>{closing && st?.session && <CloseDialog st={st} onClose={() => setClosing(false)} />}</DialogContent>
+        <DialogContent closeLabel={t("common.close")}>{closing && st && <CloseDialog st={st} onClose={() => setClosing(false)} />}</DialogContent>
       </Dialog>
     </div>
   );

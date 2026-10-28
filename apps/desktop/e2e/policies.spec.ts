@@ -121,7 +121,7 @@ test("vehicle change: confirmation shows 300 + 17 = 317 before saving", async ({
   await dialog.getByRole("button", { name: ar.common.confirm }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("cell", { name: "WW778899" })).toBeVisible();
-  await expect(page.getByTestId("operations")).toContainText(ar.policies.settlement.pending);
+  await expect(page.getByTestId("operations")).toContainText("317,00");
 });
 
 test("renewal keeps the same number and adds a second period", async ({ page }) => {

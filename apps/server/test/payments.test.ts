@@ -45,6 +45,11 @@ const drawer = async (): Promise<number> => (await t.call("GET", "/api/accounts/
 const pay = (policyId: string, line: Record<string, unknown>, token = manager, key = randomUUID()) =>
   t.call("POST", `/api/policies/${policyId}/payments`, { token, body: { idempotencyKey: key, ...line } });
 const bank = async (): Promise<number> => Number((await ownerQuery(t.db, "SELECT balance_cents FROM accounts WHERE code = 'bank'")).rows[0]?.balance_cents);
+const change = (policyId: string, oldVehicleId: string, newVehicleId: string, o: number, n: number, extra: Record<string, unknown> = {}, token = manager) =>
+  t.call("POST", `/api/policies/${policyId}/vehicle-change`, {
+    token,
+    body: { idempotencyKey: randomUUID(), oldVehicleId, newVehicleId, certificateNumber: cert(), oldPriceCents: o, newPriceCents: n, reason: "تغيير", ...extra },
+  });
 async function systemMessages(event: string): Promise<{ body: string }[]> {
   const res = await ownerQuery(t.db, "SELECT m.body FROM messages m JOIN message_threads th ON th.id = m.thread_id WHERE th.subject = $1 ORDER BY m.created_at", [`system:${event}`]);
   return res.rows as { body: string }[];
@@ -278,11 +283,6 @@ describe("annulment and cancellation with money (SPEC 13)", () => {
 });
 
 describe("fees and price changes (SPEC 15, 16)", () => {
-  const change = (policyId: string, oldVehicleId: string, newVehicleId: string, o: number, n: number, extra: Record<string, unknown> = {}, token = manager) =>
-    t.call("POST", `/api/policies/${policyId}/vehicle-change`, {
-      token,
-      body: { idempotencyKey: randomUUID(), oldVehicleId, newVehicleId, certificateNumber: cert(), oldPriceCents: o, newPriceCents: n, reason: "تغيير", ...extra },
-    });
 
   it("increase 300 not paid now: + 317 on the nearest unpaid instalment", async () => {
     const { client, vehicle, policy } = await insured({ instalments: { count: 2 }, payments: [cash(201_700)] }, 400_000);

@@ -7,6 +7,8 @@ code=$?
 tail -n 60 /tmp/devcontainer-up.log
 [ $code -eq 0 ] || { echo "DEVCONTAINER UP FAILED"; exit 1; }
 run() { npx -y @devcontainers/cli exec --workspace-folder . bash -lc "$1"; }
+# Codespaces runs this when the browser editor attaches.
+run "bash tooling/demo/start.sh" || echo "start.sh reported a failure"
 for i in $(seq 1 90); do
   if run "curl -sf http://127.0.0.1:5173/api/health" | grep -q '"status":"ok"'; then ok=1; break; fi
   sleep 5

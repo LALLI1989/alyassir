@@ -219,7 +219,7 @@ function ReceiptSheet({ r, logo, framed }: { r: ReceiptDto; logo: { type: string
           {s.agency.phone && <bdi dir="ltr">{s.agency.phone}</bdi>}
           {s.agency.licenseNumber && <span>{t("receipt.license", { number: s.agency.licenseNumber })}</span>}
         </div>
-        {logo.data && <img src={`data:${logo.data.type};base64,${logo.data.dataBase64}`} alt="" className="max-h-16" />}
+        {logo && <img src={`data:${logo.type};base64,${logo.dataBase64}`} alt="" className="max-h-16" />}
       </div>
       <div className="flex justify-between">
         <span className="text-base font-semibold">{t(`receipt.titles.${s.title}`, { defaultValue: t("receipt.titles.payment") })}</span>

@@ -43,6 +43,37 @@ export function useFinance(policyId: string, enabled = true) {
 
 const INSTALMENT_VARIANT = { pending: "secondary", partial: "warning", paid: "success", converted_to_debt: "destructive", written_off: "outline" } as const;
 
+/**
+ * "Record a payment" from anywhere (e.g. the list of debts): loads the policy and what is owed, then
+ * the same window as on the policy page, then the printable receipt.
+ */
+export function RecordPaymentFlow({ policyId, onClose }: { policyId: string; onClose: () => void }) {
+  const { t } = useTranslation();
+  const policy = useQuery({ queryKey: ["policy", policyId], queryFn: () => api<PolicyDto>("GET", `/api/policies/${policyId}`) });
+  const finance = useFinance(policyId);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [paying, setPaying] = useState(true);
+  const error = policy.error ?? finance.error;
+  return (
+    <>
+      <Dialog open={paying} onOpenChange={(o) => { if (!o) { setPaying(false); if (!receiptId) onClose(); } }}>
+        <DialogContent closeLabel={t("common.close")} wide>
+          {error && <ErrorMessage error={asClientError(error)} />}
+          {policy.data && finance.data && (
+            <RecordPaymentDialog
+              policy={policy.data}
+              finance={finance.data}
+              onClose={() => { setPaying(false); onClose(); }}
+              onPaid={(id) => { setPaying(false); if (id) setReceiptId(id); else onClose(); }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      <ReceiptDialog receiptId={receiptId} onClose={() => { setReceiptId(null); onClose(); }} />
+    </>
+  );
+}
+
 /** Money of the current period: totals, instalments, payments, debts, receipts (SPEC 14). */
 export function PolicyFinanceSection({ policy }: { policy: PolicyDto }) {
   const { t } = useTranslation();
@@ -238,7 +269,12 @@ function Total({ label, cents, strong }: { label: string; cents: number; strong?
 }
 
 /** Pay an instalment or a debt (SPEC 14.5): oldest first, never more than what is left. */
-function RecordPaymentDialog({ policy, finance, onClose, onPaid }: { policy: PolicyDto; finance: PolicyFinanceDto; onClose: () => void; onPaid: (receiptId: string | null) => void }) {
+export function RecordPaymentDialog({ policy, finance, onClose, onPaid }: {
+  policy: Pick<PolicyDto, "id" | "policyNumber" | "isFleet">;
+  finance: PolicyFinanceDto;
+  onClose: () => void;
+  onPaid: (receiptId: string | null) => void;
+}) {
   const { t } = useTranslation();
   const fieldError = useFieldError();
   const queries = useQueryClient();

@@ -146,11 +146,13 @@ describe("fleet and change amounts", () => {
 
 describe("input formats (SPEC 9)", () => {
   it("accepts the four plate types and refuses wrong shapes", () => {
-    expect(isValidPlate("ma", "12-A-34567")).toBe(true);
-    expect(isValidPlate("ma", "12 a 34567")).toBe(true);
-    expect(isValidPlate("ma", "123-A-4567")).toBe(false);
-    expect(isValidPlate("ma", "12-AB-345")).toBe(false);
-    expect(isValidPlate("ma", "12-ب-345")).toBe(false);
+    // Owner decision 28/10/2026: 5 digits, a Latin letter, 2 digits, nothing shorter.
+    expect(isValidPlate("ma", "00123-B-01")).toBe(true);
+    expect(isValidPlate("ma", "00123 b 01")).toBe(true);
+    expect(isValidPlate("ma", "123-B-1")).toBe(false);
+    expect(isValidPlate("ma", "12-A-34567")).toBe(false);
+    expect(isValidPlate("ma", "00123-AB-01")).toBe(false);
+    expect(isValidPlate("ma", "00123-ب-01")).toBe(false);
     expect(isValidPlate("ww", "WW123456")).toBe(true);
     expect(isValidPlate("ww", "W123456")).toBe(false);
     expect(isValidPlate("state", "M223355")).toBe(true);
@@ -159,9 +161,9 @@ describe("input formats (SPEC 9)", () => {
     expect(isValidPlate("foreign", "AB_123")).toBe(false);
   });
   it("normalises plates so the same plate is always found", () => {
-    expect(normalizePlate("12-a-34567")).toBe("12A34567");
-    expect(normalizePlate("12 A 34567")).toBe(normalizePlate("12-A-34567"));
-    expect(displayPlate("ma", "12a34567")).toBe("12-A-34567");
+    expect(normalizePlate("00123-b-01")).toBe("00123B01");
+    expect(normalizePlate("00123 B 01")).toBe(normalizePlate("00123-B-01"));
+    expect(displayPlate("ma", "00123b01")).toBe("00123-B-01");
     expect(displayPlate("ww", "ww 123456")).toBe("WW123456");
   });
   it("checks identity numbers", () => {

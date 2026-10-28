@@ -24,6 +24,9 @@ const TOPIC_KEYS: Record<ChangeTopic, string[]> = {
   vehicles: ["vehicles", "vehicle", "client"],
   policies: ["policies", "policy", "client", "finance"],
   payments: ["payments", "debts", "finance", "policies", "policy", "drawer"],
+  drawer: ["drawer", "closings", "days", "accounts", "movements"],
+  expenses: ["expenses", "drawer", "accounts", "movements", "expenseCategories"],
+  accounts: ["accounts", "movements", "drawer", "withdrawalReasons"],
 };
 
 export function api<T>(method: string, path: string, body?: unknown): Promise<T> {

@@ -71,6 +71,16 @@ export const ERROR_CODES = [
   "ANNULMENT_USE_CANCELLATION",
   "CANCELLATION_INSTALMENTS_OPEN",
   "AMOUNT_HAS_PAYMENTS",
+  // Phase 4: drawer, closing, expenses, accounts.
+  "DRAWER_NOT_RECEIVED",
+  "SESSION_NOT_OPEN",
+  "SESSION_CHANGED",
+  "DIFFERENCE_REASON_REQUIRED",
+  "EXPENSE_NOT_PENDING",
+  "EXPENSE_NOT_ALLOWED",
+  "SAME_ACCOUNT",
+  "ALREADY_REVERSED",
+  "NAME_TAKEN",
   "INTERNAL",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

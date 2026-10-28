@@ -111,7 +111,7 @@ describe("clients (SPEC 9.1)", () => {
 describe("vehicles (SPEC 9.2)", () => {
   it("accepts the four plate types and shows them in their usual form", async () => {
     const c = await createClient(t, manager);
-    const plates: [string, string, string][] = [["ma", "12 a 34567", "12-A-34567"], ["ww", "ww 123456", "WW123456"], ["state", "m223355", "M223355"], ["foreign", "ab-123-cd", "AB-123-CD"]];
+    const plates: [string, string, string][] = [["ma", "00123 b 01", "00123-B-01"], ["ww", "ww 123456", "WW123456"], ["state", "m223355", "M223355"], ["foreign", "ab-123-cd", "AB-123-CD"]];
     for (const [plateType, plate, shown] of plates) {
       const res = await t.call("POST", "/api/vehicles", { token: manager, body: { clientId: c, plateType, plate, fiscalPower: 7, fuel: "petrol", brand: "Renault" } });
       expect(res.body.plate, plateType).toBe(shown);
@@ -122,22 +122,22 @@ describe("vehicles (SPEC 9.2)", () => {
 
   it("never allows two vehicles with the same plate, whatever the type or the dashes", async () => {
     const c = await createClient(t, manager);
-    await createVehicle(t, manager, c, { plateType: "ma", plate: "45-B-1234" });
-    const dup = await t.call("POST", "/api/vehicles", { token: manager, body: { clientId: c, plateType: "foreign", plate: "45B1234", fiscalPower: 5, fuel: "diesel", brand: "Fiat" } });
+    await createVehicle(t, manager, c, { plateType: "ma", plate: "01234-B-45" });
+    const dup = await t.call("POST", "/api/vehicles", { token: manager, body: { clientId: c, plateType: "foreign", plate: "01234B45", fiscalPower: 5, fuel: "diesel", brand: "Fiat" } });
     expect(dup).toMatchObject({ status: 409, body: { code: "PLATE_TAKEN" } });
   });
 
   it("keeps the old plate when it is corrected; an insured vehicle needs the plate change operation", async () => {
     const c = await createClient(t, manager);
     const v = await createVehicle(t, manager, c, { plateType: "ww", plate: "WW777001" });
-    const fixed = await t.call("PATCH", `/api/vehicles/${v}`, { token: manager, body: { version: 1, plateType: "ma", plate: "8-A-777", fiscalPower: 6, fuel: "diesel", brand: "Dacia", reason: "رقم دائم" } });
-    expect(fixed.body.plate).toBe("8-A-777");
-    expect(fixed.body.plateHistory[0]).toMatchObject({ plate: "WW777001", newPlate: "8-A-777", reason: "رقم دائم" });
+    const fixed = await t.call("PATCH", `/api/vehicles/${v}`, { token: manager, body: { version: 1, plateType: "ma", plate: "00777-A-08", fiscalPower: 6, fuel: "diesel", brand: "Dacia", reason: "رقم دائم" } });
+    expect(fixed.body.plate).toBe("00777-A-08");
+    expect(fixed.body.plateHistory[0]).toMatchObject({ plate: "WW777001", newPlate: "00777-A-08", reason: "رقم دائم" });
 
     await mustCreatePolicy(t, manager, s, c, [v]);
-    const refused = await t.call("PATCH", `/api/vehicles/${v}`, { token: manager, body: { version: 2, plateType: "ma", plate: "8-A-778", fiscalPower: 6, fuel: "diesel", brand: "Dacia" } });
+    const refused = await t.call("PATCH", `/api/vehicles/${v}`, { token: manager, body: { version: 2, plateType: "ma", plate: "00778-A-08", fiscalPower: 6, fuel: "diesel", brand: "Dacia" } });
     expect(refused.body.code).toBe("PLATE_CHANGE_NEEDS_OPERATION");
-    const otherField = await t.call("PATCH", `/api/vehicles/${v}`, { token: manager, body: { version: 2, plateType: "ma", plate: "8-a-777", fiscalPower: 8, fuel: "diesel", brand: "Dacia" } });
+    const otherField = await t.call("PATCH", `/api/vehicles/${v}`, { token: manager, body: { version: 2, plateType: "ma", plate: "00777-a-08", fiscalPower: 8, fuel: "diesel", brand: "Dacia" } });
     expect(otherField.body.fiscalPower).toBe(8);
   });
 

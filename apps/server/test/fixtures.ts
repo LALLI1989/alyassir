@@ -128,3 +128,9 @@ export async function appQuery(t: TestApp, text: string): Promise<void> {
     await c.end();
   }
 }
+
+/** Receives the drawer with the balance shown (Phase 4: no cash before that, SPEC 17.3). */
+export async function receiveDrawer(t: TestApp, token: string, countedCents?: number, reason = ""): Promise<{ status: number; body: Record<string, unknown> }> {
+  const state = (await t.call("GET", "/api/drawer", { token })).body as { balanceCents: number };
+  return t.call("POST", "/api/drawer/receive", { token, body: { shownCents: state.balanceCents, countedCents: countedCents ?? state.balanceCents, reason } });
+}

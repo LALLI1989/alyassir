@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addDays, businessDay, coverageEnd } from "@alyassir/domain";
 import { MANAGER, createEmployee, ownerQuery, startApp, type TestApp } from "./harness";
-import { appQuery, cert, createClient, createPolicy, createVehicle, getPolicy, mustCreatePolicy, setPeriod, setupCatalog, type Setup } from "./fixtures";
+import { appQuery, cert, createClient, createPolicy, createVehicle, getPolicy, mustCreatePolicy, receiveDrawer, setPeriod, setupCatalog, type Setup } from "./fixtures";
 
 let t: TestApp;
 let manager: string;
@@ -13,6 +13,7 @@ beforeAll(async () => {
   t = await startApp();
   manager = (await t.login(MANAGER.username, MANAGER.password)).accessToken;
   s = await setupCatalog(t, manager);
+  await receiveDrawer(t, manager);
 });
 afterAll(async () => t.close());
 
@@ -21,7 +22,9 @@ async function employee(name: string, permissions: string[], supervisor = false)
   let user = (await t.call("GET", `/api/users/${id}`, { token: manager })).body;
   if (supervisor) user = (await t.call("PATCH", `/api/users/${id}`, { token: manager, body: { version: user.version, isSupervisor: true } })).body;
   await t.call("PUT", `/api/users/${id}/permissions`, { token: manager, body: { version: user.version, permissions } });
-  return (await t.login(name, "secret1")).accessToken;
+  const token = (await t.login(name, "secret1")).accessToken;
+  if (permissions.includes("payments.create")) await receiveDrawer(t, token);
+  return token;
 }
 
 async function insuredVehicle(): Promise<{ client: string; vehicle: string; policy: Awaited<ReturnType<typeof mustCreatePolicy>> }> {
@@ -126,9 +129,9 @@ describe("new policy (SPEC 11)", () => {
 
   it("finds a policy by number, certificate, plate or client", async () => {
     const c = await createClient(t, manager, { fullName: "Zineb EL KASSIMI" });
-    const v = await createVehicle(t, manager, c, { plateType: "ma", plate: "33-H-4455" });
+    const v = await createVehicle(t, manager, c, { plateType: "ma", plate: "04455-H-33" });
     const p = await mustCreatePolicy(t, manager, s, c, [v], { policyNumber: "FIND-ME-77" });
-    for (const q of ["find-me", p.vehicles[0]?.certificateNumber as string, "33H4455", "kassimi"]) {
+    for (const q of ["find-me", p.vehicles[0]?.certificateNumber as string, "04455H33", "kassimi"]) {
       const res = await t.call("GET", `/api/policies?q=${encodeURIComponent(q)}`, { token: manager });
       expect(res.body.items.map((x: { id: string }) => x.id), q).toContain(p.id);
     }
@@ -313,13 +316,13 @@ describe("plate change and duplicate (SPEC 16, 16.1)", () => {
     const { vehicle, policy } = await insuredVehicle();
     const res = await t.call("POST", `/api/policies/${policy.id}/plate-change`, {
       token: manager,
-      body: { idempotencyKey: randomUUID(), vehicleId: vehicle, plateType: "ma", plate: "77-W-12", certificateNumber: cert(), reason: "ترقيم دائم" },
+      body: { idempotencyKey: randomUUID(), vehicleId: vehicle, plateType: "ma", plate: "00012-W-77", certificateNumber: cert(), reason: "ترقيم دائم" },
     });
     expect(res.status).toBe(200);
-    expect(res.body.vehicles[0].plate).toBe("77-W-12");
+    expect(res.body.vehicles[0].plate).toBe("00012-W-77");
     expect(res.body.operations[0]).toMatchObject({ type: "plate_change", feeCents: 1700, netCents: 1700, settlementStatus: "settled" });
     const v = (await t.call("GET", `/api/vehicles/${vehicle}`, { token: manager })).body;
-    expect(v.plateHistory[0]).toMatchObject({ newPlate: "77-W-12" });
+    expect(v.plateHistory[0]).toMatchObject({ newPlate: "00012-W-77" });
     expect(res.body.totalAmountCents).toBe(policy.totalAmountCents);
   });
 

@@ -115,7 +115,8 @@
     "managerBadge": "Gérant",
     "supervisorBadge": "Superviseur",
     "employeeBadge": "Employé",
-    "insurance": "Paramètres d'assurance"
+    "insurance": "Paramètres d'assurance",
+    "accounts": "Comptes"
   },
   "modules": {
     "clients": "Clients",
@@ -224,6 +225,27 @@
         "subject": "Échéances devenues impayés",
         "intro": "Ces échéances n'ont pas été payées 3 jours après leur date et sont devenues des impayés :",
         "line": "Échéance {{seq}} ({{date}}) : {{amount}}"
+      },
+      "common": {
+        "employee": "Employé"
+      },
+      "drawer_receive_difference": {
+        "subject": "Demande d'explication : écart à la prise de caisse",
+        "intro": "Un écart a été constaté entre ce qui a été remis et ce qui a été trouvé à la prise de caisse. Le solde a été ajusté au montant présent. Merci aux personnes concernées de s'expliquer dans ce message.",
+        "handedBy": "Caisse remise par",
+        "closedCounted": "Montant à la clôture ({{time}})"
+      },
+      "drawer_close_difference": {
+        "subject": "Écart à la clôture",
+        "intro": "La caisse a été clôturée avec un écart entre le montant présent et le solde du programme ; le solde a été ajusté au montant présent :"
+      },
+      "drawer_closed_on_behalf": {
+        "subject": "Clôture pour autrui",
+        "intro": "La séance de caisse a été clôturée pour les employés :"
+      },
+      "expense_pending": {
+        "subject": "Dépense en attente de validation",
+        "intro": "Un employé a ajouté une dépense de caisse qui attend votre validation :"
       }
     }
   },
@@ -354,7 +376,29 @@
       "payment_record": "Paiement enregistré",
       "payment_confirm": "Encaissement confirmé",
       "payment_reject": "Moyen de paiement rejeté",
-      "system_instalments_to_debt": "Échéances devenues impayés"
+      "system_instalments_to_debt": "Échéances devenues impayés",
+      "drawer_receive": "Prise de caisse",
+      "drawer_close": "Clôture de caisse",
+      "drawer_day_approve": "Revue d'un jour validée",
+      "drawer_day_reopen": "Jour rouvert",
+      "expense_create": "Dépense ajoutée",
+      "expense_update": "Dépense modifiée",
+      "expense_approve": "Dépense validée",
+      "expense_reject": "Dépense refusée",
+      "expense_cancel": "Dépense annulée",
+      "expense_category_create": "Catégorie de dépense ajoutée",
+      "expense_category_archive": "Catégorie de dépense archivée",
+      "expense_category_restore": "Catégorie de dépense restaurée",
+      "account_transfer": "Transfert entre comptes",
+      "account_insurer_payment": "Paiement à une compagnie",
+      "account_withdrawal": "Retrait bancaire",
+      "account_reverse_transfer": "Transfert annulé",
+      "account_reverse_insurer_payment": "Paiement à une compagnie annulé",
+      "account_reverse_withdrawal": "Retrait annulé",
+      "account_bank_negative": "Solde négatif de la banque modifié",
+      "withdrawal_reason_create": "Motif de retrait ajouté",
+      "withdrawal_reason_archive": "Motif de retrait archivé",
+      "withdrawal_reason_restore": "Motif de retrait restauré"
     }
   },
   "settings": {
@@ -466,7 +510,16 @@
       "PAYMENT_IN_COLLECTION": "Un paiement est en cours d'encaissement. Confirmez-le ou rejetez-le d'abord.",
       "ANNULMENT_USE_CANCELLATION": "Prime fractionnée et soldée : pas d'annulation. Utilisez la résiliation.",
       "CANCELLATION_INSTALMENTS_OPEN": "Une police à prime fractionnée non soldée ne peut pas être résiliée.",
-      "AMOUNT_HAS_PAYMENTS": "Le montant ne peut plus changer : il y a déjà des paiements."
+      "AMOUNT_HAS_PAYMENTS": "Le montant ne peut plus changer : il y a déjà des paiements.",
+      "DRAWER_NOT_RECEIVED": "Vous n'avez pas encore pris la caisse. Prenez-la d'abord, puis recommencez.",
+      "SESSION_NOT_OPEN": "Aucune séance de caisse ouverte.",
+      "SESSION_CHANGED": "Le solde de la caisse ou la séance vient de changer. Vérifiez le montant affiché et recommencez.",
+      "DIFFERENCE_REASON_REQUIRED": "Le montant présent diffère du solde du programme : indiquez le motif.",
+      "EXPENSE_NOT_PENDING": "Cette dépense n'est plus en attente.",
+      "EXPENSE_NOT_ALLOWED": "Impossible pour cette dépense.",
+      "SAME_ACCOUNT": "Choisissez deux comptes différents.",
+      "ALREADY_REVERSED": "Ce mouvement a déjà été annulé.",
+      "NAME_TAKEN": "Ce nom existe déjà."
     },
     "fields": {
       "required": "Ce champ est obligatoire.",
@@ -493,13 +546,14 @@
       "id_format_passport": "De 3 à 20 lettres latines ou chiffres.",
       "id_format_residence_card": "De 3 à 20 lettres latines ou chiffres.",
       "phone_format": "Numéro marocain à 10 chiffres (05, 06, 07) ou international commençant par +.",
-      "plate_format_ma": "Format : 12-A-34567 (lettre latine).",
+      "plate_format_ma": "Format : 00123-B-01 (5 chiffres, une lettre latine, 2 chiffres).",
       "plate_format_ww": "Format : WW123456.",
       "plate_format_foreign": "Lettres latines et chiffres uniquement.",
       "plate_format_state": "Format : M223355.",
       "plate_unchanged": "Le nouveau numéro est identique à l'actuel.",
       "fiscal_power_range": "Entre 1 et 99.",
-      "latin_only": "Écrivez le nom en lettres latines, comme sur la pièce d'identité."
+      "latin_only": "Écrivez le nom en lettres latines, comme sur la pièce d'identité.",
+      "same_account": "Choisissez un autre compte que le premier."
     }
   },
   "money": {
@@ -570,7 +624,7 @@
     },
     "plateHints": {
       "ww": "WW puis des chiffres, par ex. WW123456.",
-      "ma": "1 ou 2 chiffres, une lettre latine, jusqu'à 5 chiffres, par ex. 12-A-34567.",
+      "ma": "5 chiffres, une lettre latine, puis 2 chiffres, par ex. 00123-B-01.",
       "foreign": "Lettres latines et chiffres, comme sur la plaque.",
       "state": "Une lettre latine puis des chiffres, par ex. M223355."
     },
@@ -940,6 +994,152 @@
       "transferDate": "Date du virement",
       "vehicle": "Véhicule",
       "writtenOff": "Impayé annulé"
+    }
+  },
+  "drawer": {
+    "title": "Clôture de caisse",
+    "intro": "La séance de caisse commune, la prise en charge, la clôture (passation) et l'état de chaque jour.",
+    "receive": "Prendre la caisse",
+    "receiveTitle": "Prise en charge de la caisse",
+    "receiveOpen": "Aucune séance ouverte. En prenant la caisse, vous ouvrez la séance.",
+    "receiveJoin": "Séance ouverte par {{name}}. En prenant la caisse, vous rejoignez cette séance.",
+    "expected": "Solde selon le programme",
+    "counted": "Montant réellement présent",
+    "countedHint": "Comptez l'argent de la caisse et saisissez le montant.",
+    "reason": "Motif",
+    "reasonHint": "Obligatoire si le montant présent diffère du solde du programme.",
+    "responsibility": "Le solde de la caisse est ajusté à ce que vous avez trouvé. En cas d'écart, un message de demande d'explication vous est envoyé, ainsi qu'à la personne qui vous a remis la caisse, avec copie au gérant.",
+    "receivedRetry": "Caisse prise en charge. Cliquez à nouveau sur « Confirmer ».",
+    "held": "Caisse prise",
+    "noSession": "Aucune séance de caisse ouverte",
+    "sessionOpen": "Séance ouverte par {{name}} à {{time}}",
+    "close": "Clôturer la caisse (passation)",
+    "closeOnBehalf": "Clôturer pour les employés",
+    "closeInfo": "La clôture termine la séance pour tous. La séance suivante commence par une nouvelle prise en charge.",
+    "closeOnBehalfInfo": "Vous n'êtes pas dans cette séance : clôturer pour eux demande un motif, et le gérant est averti.",
+    "closedTitle": "Clôture enregistrée",
+    "pendingExpenses": "Dépenses en attente de validation",
+    "pendingExpensesHint": "L'argent est sorti de la caisse mais n'est pas déduit du solde avant validation ; elles peuvent expliquer un écart.",
+    "members": "Qui a pris la caisse dans cette séance",
+    "byUser": "Mouvements par employé",
+    "byUserHint": "À titre d'information, sans comptabilisation automatique.",
+    "person": "Personne",
+    "in": "Entrées",
+    "out": "Sorties",
+    "receivedAt": "Heure de prise en charge",
+    "difference": "Écart",
+    "days": "État des jours",
+    "closingsCount": "Clôtures",
+    "lastClosed": "Dernière clôture",
+    "dayStatus": {
+      "open": "Ouvert",
+      "closed": "Clôturé",
+      "needs_review": "À revoir"
+    },
+    "approveDay": "Valider la revue",
+    "reopenDay": "Rouvrir le jour",
+    "approveInfo": "Un mouvement de caisse a eu lieu après la dernière clôture du {{date}}. En validant, le jour redevient clôturé.",
+    "reopenInfo": "Le {{date}} redevient ouvert jusqu'à la prochaine clôture. Le motif est obligatoire.",
+    "closings": "Clôtures précédentes",
+    "closedAt": "Heure de clôture",
+    "closedBy": "Clôturée par",
+    "onBehalf": "Pour autrui",
+    "closingOf": "Clôture du {{time}}",
+    "closeReason": "Motif : {{reason}}",
+    "adjustedNote": "Le solde de la caisse dans le programme a été ajusté au montant réellement présent."
+  },
+  "cash": {
+    "expensesTitle": "Dépenses",
+    "expensesIntro": "L'employé ajoute la dépense depuis la caisse ; elle reste « en attente » sans effet sur le solde jusqu'à sa validation par le gérant.",
+    "addExpense": "Ajouter une dépense",
+    "category": "Catégorie",
+    "note": "Note",
+    "by": "Par",
+    "approve": "Valider",
+    "reject": "Refuser",
+    "cancelExpense": "Annuler",
+    "payFrom": "Payé depuis",
+    "expenseStatus": {
+      "pending": "En attente",
+      "approved": "Validée",
+      "rejected": "Refusée",
+      "cancelled": "Annulée"
+    },
+    "dialog": {
+      "add": "Ajouter une dépense",
+      "edit": "Modifier la dépense",
+      "approve": "Valider la dépense",
+      "reject": "Refuser la dépense",
+      "cancel": "Annuler la dépense"
+    },
+    "dialogInfo": {
+      "add": "L'argent sort de la caisse. Le solde ne baisse qu'après validation par le gérant.",
+      "edit": "La dépense peut être modifiée tant qu'elle est en attente.",
+      "approve": "À la validation, le montant sort du compte choisi.",
+      "reject": "La dépense reste dans le registre sans effet sur le solde. Le motif est obligatoire.",
+      "cancel": "Si elle était validée, le montant revient sur son compte par un mouvement inverse. Le motif est obligatoire."
+    },
+    "categories": {
+      "rent": "Loyer",
+      "water": "Eau",
+      "electricity": "Électricité",
+      "phone": "Téléphone",
+      "cleaning": "Nettoyage",
+      "supplies": "Fournitures",
+      "travel": "Déplacements"
+    },
+    "reasons": {
+      "profits": "Retrait de bénéfices",
+      "personal": "Retrait personnel",
+      "advance": "Avance",
+      "cash_expense": "Couverture d'une dépense en espèces",
+      "other": "Autre"
+    },
+    "categoriesTitle": "Catégories de dépenses",
+    "categoriesNew": "Nouvelle catégorie",
+    "reasonsTitle": "Motifs de retrait bancaire",
+    "reasonsNew": "Nouveau motif",
+    "accountsTitle": "Comptes",
+    "accountsIntro": "Caisse, coffre et banque. Ni modification ni suppression : la correction se fait par un mouvement inverse documenté.",
+    "transfer": "Transférer",
+    "payInsurer": "Paiement à une compagnie",
+    "withdraw": "Retrait bancaire",
+    "bankNegative": "Autoriser un solde négatif pour la banque",
+    "movementsOf": "Mouvements : {{account}}",
+    "kind": "Type",
+    "kinds": {
+      "payment_cash": "Paiement en espèces",
+      "payment_confirmed": "Encaissement confirmé",
+      "payment_reversed": "Moyen de paiement rejeté",
+      "refund": "Remboursement client",
+      "transfer_out": "Transfert (sortie)",
+      "transfer_in": "Transfert (entrée)",
+      "expense": "Dépense",
+      "expense_reversed": "Annulation de dépense",
+      "insurer_payment": "Paiement à une compagnie",
+      "bank_withdrawal": "Retrait bancaire",
+      "reversal": "Mouvement inverse",
+      "count_adjustment": "Ajustement après comptage"
+    },
+    "reverse": "Mouvement inverse",
+    "reversed": "Annulé",
+    "reverseTitle": "Enregistrer un mouvement inverse",
+    "reverseInfo": "Annule l'effet de ce mouvement ; l'original reste visible dans le registre. Le motif est obligatoire.",
+    "from": "De",
+    "to": "Vers",
+    "reference": "Référence ou note",
+    "insurerReference": "N° de virement ou de chèque",
+    "withdrawalReason": "Motif du retrait",
+    "explanation": "Justification",
+    "actions": {
+      "transfer": "Transfert entre comptes",
+      "insurer": "Paiement à une compagnie",
+      "withdrawal": "Retrait bancaire"
+    },
+    "actionsInfo": {
+      "transfer": "Une sortie du premier compte et une entrée dans le second, en une seule opération.",
+      "insurer": "Une seule sortie, sans lien avec les polices ni calcul de ce que la compagnie doit ou réclame.",
+      "withdrawal": "Sortie de la banque uniquement, avec un motif obligatoire et une justification."
     }
   }
 }

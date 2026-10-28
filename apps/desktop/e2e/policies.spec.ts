@@ -69,9 +69,9 @@ test("a client: wrong identity refused at once, then created; two vehicles", asy
   await page.getByLabel(ar.vehicles.brand).fill("Dacia Logan");
   await page.getByRole("button", { name: ar.common.create }).click();
   await expect(page.getByText(ar.errors.fields.plate_format_ma)).toBeVisible();
-  await page.getByLabel(ar.vehicles.plate).fill("12 a 34567");
+  await page.getByLabel(ar.vehicles.plate).fill("00123 b 01");
   await page.getByRole("button", { name: ar.common.create }).click();
-  await expect(page.getByRole("cell", { name: /12-A-34567/ })).toBeVisible();
+  await expect(page.getByRole("cell", { name: /00123-B-01/ })).toBeVisible();
 
   // WW is the default type.
   await page.getByRole("button", { name: ar.vehicles.add }).click();
@@ -88,8 +88,8 @@ test("a new policy from the client file: number, certificate, amount; end comput
   await openClient(page, "Said EL IDRISSI");
   await page.getByRole("button", { name: ar.clients.newPolicy }).click();
   await page.getByLabel(ar.policies.type).selectOption({ label: "RMA — Assurance automobile" });
-  await page.getByRole("checkbox", { name: "12-A-34567" }).click();
-  await page.getByLabel(`${ar.policies.certificate} 12-A-34567`).fill("ATT-2026-0001");
+  await page.getByRole("checkbox", { name: "00123-B-01" }).click();
+  await page.getByLabel(`${ar.policies.certificate} 00123-B-01`).fill("ATT-2026-0001");
   await page.getByLabel(ar.policies.number).fill("POL-2026-001");
   await page.getByLabel(ar.policies.amount).fill("2500");
   await expect(page.getByText(ar.policies.endComputed.split("{{")[0] ?? "")).toBeVisible();
@@ -104,6 +104,12 @@ test("a new policy from the client file: number, certificate, amount; end comput
 
 test("vehicle change: confirmation shows 300 + 17 = 317 before saving", async ({ page }) => {
   await signIn(page);
+  // Phase 4: the 317 MAD are paid in cash, so the manager receives the drawer first (empty: 0).
+  await page.getByTestId("drawer-badge").click();
+  const receive = page.getByTestId("receive-drawer");
+  await receive.getByLabel(ar.drawer.counted).fill("0");
+  await receive.getByRole("button", { name: ar.drawer.receive }).click();
+  await expect(page.getByTestId("drawer-badge")).toContainText(ar.drawer.held);
   await openPolicy(page, "POL-2026-001");
   await page.getByRole("button", { name: ar.policies.vehicleChange }).click();
   const dialog = page.getByRole("dialog");
@@ -148,7 +154,7 @@ test("search by part of the name and by plate; the client file shows everything"
   await page.getByLabel(ar.common.search).fill("ww778");
   await expect(page.getByRole("button", { name: ar.vehicles.insuredBy.replace("{{number}}", "POL-2026-001") })).toBeVisible();
   // The old vehicle left the policy and has none now.
-  await page.getByLabel(ar.common.search).fill("12A34567");
+  await page.getByLabel(ar.common.search).fill("00123B01");
   await expect(page.getByText(ar.vehicles.notInsured)).toBeVisible();
 });
 

@@ -14,6 +14,8 @@ for i in $(seq 1 60); do grep -q "sample data added" /tmp/demo-server.log && bre
 grep -q "sample data added" /tmp/demo-server.log || fail "sample data not added"
 for i in $(seq 1 30); do grep -q "payment samples added" /tmp/demo-server.log && break; sleep 2; done
 grep -q "payment samples added" /tmp/demo-server.log || fail "payment samples not added"
+for i in $(seq 1 30); do grep -q "cash samples added" /tmp/demo-server.log && break; sleep 2; done
+grep -q "cash samples added" /tmp/demo-server.log || fail "cash samples not added"
 for i in $(seq 1 30); do curl -sf http://127.0.0.1:5173/ > /dev/null && break; sleep 2; done
 curl -sf -H "Host: demo-5173.app.github.dev" http://127.0.0.1:5173/ | grep -q '<div id="root">' || fail "interface page"
 H=(-H "content-type: application/json" -H "x-alyassir-client-version: 0.1.0")
@@ -23,5 +25,7 @@ TOTAL=$(curl -sf "${H[@]}" -H "authorization: Bearer $TOKEN" "http://127.0.0.1:5
 [ "$TOTAL" = "3" ] || fail "expected 3 sample policies, got $TOTAL"
 INCOLL=$(curl -sf "${H[@]}" -H "authorization: Bearer $TOKEN" "http://127.0.0.1:5173/api/payments?status=in_collection" | node -pe 'JSON.parse(require("fs").readFileSync(0)).total')
 [ "$INCOLL" = "1" ] || fail "expected 1 sample cheque in collection, got $INCOLL"
+PENDING=$(curl -sf "${H[@]}" -H "authorization: Bearer $TOKEN" "http://127.0.0.1:5173/api/expenses?status=pending" | node -pe 'JSON.parse(require("fs").readFileSync(0)).total')
+[ "$PENDING" = "1" ] || fail "expected 1 sample expense waiting for approval, got $PENDING"
 (cd apps/desktop && node scripts/demo-check.mjs http://127.0.0.1:5173) || fail "real browser"
 echo "Demo OK: interface, API, sample data, sign-in in a real browser"

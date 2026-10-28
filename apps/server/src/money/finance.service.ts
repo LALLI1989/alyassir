@@ -243,7 +243,7 @@ export class FinanceService {
     if (policy.isFleet && line.method !== "cheque" && (o.fleetTotalPaidNow ?? line.amountCents) < total) throw new ApiException("FLEET_PAYMENT_CHEQUES_ONLY");
     const { allocations } = allocateOldestFirst(line.amountCents, dues);
     const cash = line.method === "cash";
-    if (cash) await lockAccounts(tx, ["drawer"]);
+    if (cash) await lockAccounts(tx, ["drawer"], { holder: user.id });
     const remainingAfter = total - line.amountCents;
 
     let receiptId = o.receiptId;
@@ -366,7 +366,7 @@ export class FinanceService {
   async payout(tx: Tx, user: AuthUser, policy: PolicyRef, periodId: string, v: { cents: number; account: RefundAccount; today: string; operationId: string; receiptId: string }): Promise<void> {
     if (v.account !== "drawer" && !this.canChooseRefundAccount(user)) throw new ApiException("REFUND_ACCOUNT_FORBIDDEN");
     if (!this.access.has(user, "payments.create")) throw new ApiException("FORBIDDEN");
-    const accounts = await lockAccounts(tx, [v.account]);
+    const accounts = await lockAccounts(tx, [v.account], { holder: user.id });
     const account = accounts.get(v.account);
     if (!account || (!account.allowNegative && account.balanceCents < v.cents)) {
       // SPEC 13.3: an employee does not see other accounts; the manager is asked automatically.

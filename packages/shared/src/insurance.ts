@@ -108,8 +108,8 @@ export function normalizePlate(value: string): string {
 }
 
 const PLATE_FORMATS: Record<PlateType, RegExp> = {
-  // 1 or 2 digits, one Latin letter, up to 5 digits: 12-A-34567.
-  ma: /^(\d{1,2})([A-Z])(\d{1,5})$/,
+  // Owner decision 28/10/2026: exactly 5 digits, one Latin letter, exactly 2 digits: 00123-B-01.
+  ma: /^(\d{5})([A-Z])(\d{2})$/,
   // WW then digits: WW123456.
   ww: /^WW\d{1,8}$/,
   // Free, Latin letters and digits only.

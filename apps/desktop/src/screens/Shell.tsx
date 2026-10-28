@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Building2,
+  Banknote,
   Car,
+  HandCoins,
   ClipboardList,
   Contact,
   FileText,
@@ -30,6 +32,7 @@ import { Clients } from "./Clients";
 import { InsuranceSettings } from "./InsuranceSettings";
 import { PolicyNew, Policies } from "./Policies";
 import { PolicyPage } from "./PolicyPage";
+import { Debts, Payments } from "./Payments";
 import { Vehicles } from "./Vehicles";
 import { EditRequests } from "./EditRequests";
 import { Home } from "./Home";
@@ -54,13 +57,17 @@ export type Page =
   | { kind: "policy"; id: string }
   | { kind: "policyNew"; clientId?: string }
   | { kind: "insurance" }
+  | { kind: "payments" }
+  | { kind: "debts" }
   | { kind: "module"; module: Module };
 
-/** Modules that have their screens already (Phase 2); the others are announced. */
+/** Modules that have their screens already (Phases 2 and 3); the others are announced. */
 const BUILT: Partial<Record<Module, { page: Page; icon: ReactNode; pages: Page["kind"][] }>> = {
   clients: { page: { kind: "clients" }, icon: <Contact />, pages: ["clients", "client"] },
   vehicles: { page: { kind: "vehicles" }, icon: <Car />, pages: ["vehicles"] },
   policies: { page: { kind: "policies" }, icon: <FileText />, pages: ["policies", "policy", "policyNew"] },
+  payments: { page: { kind: "payments" }, icon: <Banknote />, pages: ["payments"] },
+  debts: { page: { kind: "debts" }, icon: <HandCoins />, pages: ["debts"] },
 };
 
 const THEME_KEY = "alyassir.theme";
@@ -173,6 +180,12 @@ export function Shell() {
       break;
     case "insurance":
       content = isManager ? <InsuranceSettings /> : null;
+      break;
+    case "payments":
+      content = <Payments onOpen={setPage} />;
+      break;
+    case "debts":
+      content = <Debts onOpen={setPage} />;
       break;
     case "module":
       content = <ComingSoon title={t(`modules.${page.module}`)} />;

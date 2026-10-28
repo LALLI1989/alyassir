@@ -1217,7 +1217,7 @@
     "template": "Modèle",
     "language": "Langue du message",
     "openWhatsapp": "Ouvrir WhatsApp",
-    "whatsappOpened": "WhatsApp a été ouvert pour le {{phone}}, et c'est noté dans le journal des contacts.",
+    "whatsappOpened": "WhatsApp a été ouvert et c'est noté dans le journal des contacts. Numéro :",
     "templates": {
       "renewal": "Rappel de renouvellement",
       "payment": "Rappel de paiement"

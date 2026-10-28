@@ -90,7 +90,10 @@ function WhatsappDialog({ clientId, policyId, template: initial, onClose }: { cl
       {done && (
         <Alert variant="success">
           <p dir="auto" className="whitespace-pre-wrap" data-testid="whatsapp-text">{done.text}</p>
-          <p className="mt-1 text-xs">{t("followup.whatsappOpened", { phone: `+${done.phone}` })}</p>
+          <p className="mt-1 inline-flex flex-wrap gap-1 text-xs">
+            {t("followup.whatsappOpened")}
+            <bdi dir="ltr">{`+${done.phone}`}</bdi>
+          </p>
         </Alert>
       )}
       {error && <ErrorMessage error={error} />}

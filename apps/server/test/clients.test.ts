@@ -22,7 +22,7 @@ async function employee(name: string, permissions: string[]): Promise<{ id: stri
 
 describe("clients (SPEC 9.1)", () => {
   it("creates the three kinds of client with their identity document", async () => {
-    const person = await t.call("POST", "/api/clients", { token: manager, body: { kind: "individual", fullName: "فاطمة الزهراء", idType: "cin", idNumber: "j 12345", phone: "06 61 22 33 44" } });
+    const person = await t.call("POST", "/api/clients", { token: manager, body: { kind: "individual", fullName: "Fatima-Zahra Bennani", idType: "cin", idNumber: "j 12345", phone: "06 61 22 33 44" } });
     expect(person.status).toBe(201);
     expect(person.body).toMatchObject({ idNumber: "J 12345", phone: "0661223344", residency: null });
     const company = await t.call("POST", "/api/clients", { token: manager, body: { kind: "company", fullName: "Karim Benali", companyName: "Transports Atlas SARL", idType: "rc_ice", idNumber: "001234567000089", phone: "0522445566" } });
@@ -45,12 +45,19 @@ describe("clients (SPEC 9.1)", () => {
     expect(wrongDoc.body.fields.idType).toBe("id_type_kind");
     const noResidency = await t.call("POST", "/api/clients", { token: manager, body: { kind: "foreign", fullName: "X", idType: "passport", idNumber: "P1234", phone: "0611111111" } });
     expect(noResidency.body.fields.residency).toBe("required");
+    // Names in Latin letters only, as on identity documents (owner decision 28/10/2026).
+    const arabic = await t.call("POST", "/api/clients", { token: manager, body: { kind: "company", fullName: "سعيد", companyName: "شركة الأطلس", idType: "rc_ice", idNumber: "RC1", phone: "0611111111" } });
+    expect(arabic.body.fields).toMatchObject({ fullName: "latin_only", companyName: "latin_only" });
+    const user = await t.call("POST", "/api/users", { token: manager, body: { username: "arabicname", displayName: "كريم", password: "secret1" } });
+    expect(user.body.fields.displayName).toBe("latin_only");
+    const type = await t.call("POST", "/api/insurance/types", { token: manager, body: { insurerId: s.rma, name: "تأمين السيارات", requiresVehicle: true, supportsFleet: false } });
+    expect(type.body.fields.name).toBe("latin_only");
   });
 
   it("finds clients by part of the name, by phone and by identity", async () => {
-    await createClient(t, manager, { fullName: "يوسف بنعبد الله", idNumber: "GH778899", phone: "0677889900" });
-    const byName = await t.call("GET", `/api/clients?q=${encodeURIComponent("بنعبد")}`, { token: manager });
-    expect(byName.body.items.map((c: { fullName: string }) => c.fullName)).toContain("يوسف بنعبد الله");
+    await createClient(t, manager, { fullName: "Youssef BENABDELLAH", idNumber: "GH778899", phone: "0677889900" });
+    const byName = await t.call("GET", `/api/clients?q=${encodeURIComponent("benabd")}`, { token: manager });
+    expect(byName.body.items.map((c: { fullName: string }) => c.fullName)).toContain("Youssef BENABDELLAH");
     const byPhone = await t.call("GET", "/api/clients?q=06%2077%2088%2099%2000", { token: manager });
     expect(byPhone.body.items[0].idNumber).toBe("GH778899");
     const byId = await t.call("GET", "/api/clients?q=gh778899", { token: manager });
@@ -157,7 +164,7 @@ describe("insurance settings (SPEC 10, manager only)", () => {
     expect(added.body.durations.map((d: { months: number }) => d.months)).toEqual([1, 2, 3, 6, 12]);
     expect((await t.call("POST", "/api/insurance/durations", { token: manager, body: { months: 2 } })).body.code).toBe("DURATION_EXISTS");
     expect((await t.call("POST", "/api/insurance/insurers", { token: manager, body: { name: "rma" } })).body.code).toBe("INSURER_NAME_TAKEN");
-    const badType = await t.call("POST", "/api/insurance/types", { token: manager, body: { insurerId: s.rma, nameAr: "x", nameFr: "x", requiresVehicle: false, supportsFleet: true } });
+    const badType = await t.call("POST", "/api/insurance/types", { token: manager, body: { insurerId: s.rma, name: "Xyz", requiresVehicle: false, supportsFleet: true } });
     expect(badType.body.fields.supportsFleet).toBe("fleet_needs_vehicle");
   });
 

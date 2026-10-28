@@ -39,8 +39,7 @@ export class CatalogService {
         id: t.id,
         insurerId: t.insurerId,
         insurerName: insurerName(t.insurerId),
-        nameAr: t.nameAr,
-        nameFr: t.nameFr,
+        name: t.name,
         requiresVehicle: t.requiresVehicle,
         supportsFleet: t.supportsFleet,
         archived: t.archivedAt !== null,
@@ -95,17 +94,17 @@ export class CatalogService {
     return this.catalog();
   }
 
-  async updateType(ctx: RequestContext, id: string, version: number, names: { nameAr: string; nameFr: string }): Promise<InsuranceCatalogDto> {
+  async updateType(ctx: RequestContext, id: string, version: number, name: string): Promise<InsuranceCatalogDto> {
     await this.run(async (tx) => {
       const [before] = await tx.select().from(schema.insuranceTypes).where(eq(schema.insuranceTypes.id, id)).for("update");
       checkVersion(before, version);
-      await tx.update(schema.insuranceTypes).set({ ...names, updatedAt: new Date(), version: version + 1 }).where(eq(schema.insuranceTypes.id, id));
+      await tx.update(schema.insuranceTypes).set({ name, updatedAt: new Date(), version: version + 1 }).where(eq(schema.insuranceTypes.id, id));
       await this.audit.record(tx, ctx, {
         action: "insurance_type.update",
         entityType: "insurance_type",
         entityId: id,
-        before: { nameAr: before?.nameAr, nameFr: before?.nameFr },
-        after: names,
+        before: { name: before?.name },
+        after: { name },
       });
     });
     return this.catalog();
@@ -119,16 +118,17 @@ export class CatalogService {
     return this.catalog();
   }
 
-  async createOperationType(ctx: RequestContext, names: { nameAr: string; nameFr: string }): Promise<InsuranceCatalogDto> {
+  /** One Latin name, shown in both languages (stored in both name columns). */
+  async createOperationType(ctx: RequestContext, name: string): Promise<InsuranceCatalogDto> {
     await this.run(async (tx) => {
       const code = `custom_${randomBytes(5).toString("hex")}`;
-      await tx.insert(schema.operationTypes).values({ code, ...names, isSystem: false, createdBy: ctx.user?.id ?? null });
-      await this.audit.record(tx, ctx, { action: "operation_type.create", entityType: "operation_type", entityId: code, after: names });
+      await tx.insert(schema.operationTypes).values({ code, nameAr: name, nameFr: name, isSystem: false, createdBy: ctx.user?.id ?? null });
+      await this.audit.record(tx, ctx, { action: "operation_type.create", entityType: "operation_type", entityId: code, after: { name } });
     });
     return this.catalog();
   }
 
-  async updateOperationType(ctx: RequestContext, code: string, version: number, names: { nameAr: string; nameFr: string }): Promise<InsuranceCatalogDto> {
+  async updateOperationType(ctx: RequestContext, code: string, version: number, name: string): Promise<InsuranceCatalogDto> {
     await this.run(async (tx) => {
       const t = schema.operationTypes;
       const [before] = await tx.select().from(t).where(eq(t.code, code)).for("update");
@@ -136,8 +136,8 @@ export class CatalogService {
       // Built-in types keep their names: they are the vocabulary of the glossary.
       if (before.isSystem) throw new ApiException("FORBIDDEN");
       if (before.version !== version) throw new ApiException("VERSION_CONFLICT");
-      await tx.update(t).set({ ...names, updatedAt: new Date(), version: version + 1 }).where(eq(t.code, code));
-      await this.audit.record(tx, ctx, { action: "operation_type.update", entityType: "operation_type", entityId: code, before: { nameAr: before.nameAr, nameFr: before.nameFr }, after: names });
+      await tx.update(t).set({ nameAr: name, nameFr: name, updatedAt: new Date(), version: version + 1 }).where(eq(t.code, code));
+      await this.audit.record(tx, ctx, { action: "operation_type.update", entityType: "operation_type", entityId: code, before: { name: before.nameFr }, after: { name } });
     });
     return this.catalog();
   }

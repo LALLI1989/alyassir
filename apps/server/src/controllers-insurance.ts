@@ -88,7 +88,7 @@ export class InsuranceController {
   @Patch("types/:id")
   updateType(@Param("id", uuid) id: string, @Body() body: unknown, @Ctx() ctx: RequestContext) {
     const input = parse(updateInsuranceTypeSchema, body);
-    return this.catalog.updateType(ctx, id, input.version, { nameAr: input.nameAr, nameFr: input.nameFr });
+    return this.catalog.updateType(ctx, id, input.version, input.name);
   }
 
   @ManagerOnly()
@@ -116,14 +116,14 @@ export class InsuranceController {
   @ManagerOnly()
   @Post("operation-types")
   createOperationType(@Body() body: unknown, @Ctx() ctx: RequestContext) {
-    return this.catalog.createOperationType(ctx, parse(operationTypeSchema, body));
+    return this.catalog.createOperationType(ctx, parse(operationTypeSchema, body).name);
   }
 
   @ManagerOnly()
   @Patch("operation-types/:code")
   updateOperationType(@Param("code") code: string, @Body() body: unknown, @Ctx() ctx: RequestContext) {
     const input = parse(updateOperationTypeSchema, body);
-    return this.catalog.updateOperationType(ctx, parse(operationCode, code), input.version, { nameAr: input.nameAr, nameFr: input.nameFr });
+    return this.catalog.updateOperationType(ctx, parse(operationCode, code), input.version, input.name);
   }
 
   @ManagerOnly()

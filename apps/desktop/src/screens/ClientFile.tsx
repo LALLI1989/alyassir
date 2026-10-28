@@ -5,7 +5,7 @@ import type { ClientDto, ClientFileDto, VehicleDto } from "@alyassir/shared";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, Table, TBody, Td, Th, THead, Tr } from "@alyassir/ui";
 import { asClientError } from "../adapters";
 import { PageHeader } from "../components/common";
-import { Code, Money, ValidityBadge, formatDay, useLocalName } from "../components/insurance";
+import { Code, Money, ValidityBadge, formatDay } from "../components/insurance";
 import { ErrorMessage } from "../lib/errors";
 import { formatDateTime } from "../lib/format";
 import { api, useSession } from "../lib/session";
@@ -25,7 +25,6 @@ function Line({ label, children }: { label: string; children: ReactNode }) {
 export function ClientFile({ id, onOpen }: { id: string; onOpen: (page: Page) => void }) {
   const { t } = useTranslation();
   const { can } = useSession();
-  const name = useLocalName();
   const queries = useQueryClient();
   const [dialog, setDialog] = useState<{ kind: "edit" } | { kind: "vehicle"; vehicle?: VehicleDto } | null>(null);
   const file = useQuery({ queryKey: ["client", id], queryFn: () => api<ClientFileDto>("GET", `/api/clients/${id}`) });
@@ -147,7 +146,7 @@ export function ClientFile({ id, onOpen }: { id: string; onOpen: (page: Page) =>
                   {policies.map((p) => (
                     <Tr key={p.id}>
                       <Td><Code>{p.policyNumber}</Code></Td>
-                      <Td>{name({ nameAr: p.typeNameAr, nameFr: p.typeNameFr })}</Td>
+                      <Td dir="ltr">{p.typeName}</Td>
                       <Td>
                         <div className="flex flex-wrap gap-1">{p.plates.map((plate) => <Code key={plate}>{plate}</Code>)}</div>
                       </Td>

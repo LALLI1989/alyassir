@@ -24,7 +24,7 @@ import {
 } from "@alyassir/ui";
 import { asClientError } from "../adapters";
 import { Field, PageHeader, Pager } from "../components/common";
-import { Code, Money, MoneyInput, ValidityBadge, formatDay, useCatalog, useLocalName, useOperationKey } from "../components/insurance";
+import { Code, Money, MoneyInput, ValidityBadge, formatDay, useCatalog, useOperationKey } from "../components/insurance";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import { api, useSession } from "../lib/session";
 import { ClientDialog, clientDisplayName } from "./Clients";
@@ -34,7 +34,6 @@ import { VehicleDialog } from "./Vehicles";
 export function Policies({ onOpen }: { onOpen: (page: Page) => void }) {
   const { t } = useTranslation();
   const { can } = useSession();
-  const name = useLocalName();
   const [q, setQ] = useState("");
   const [validity, setValidity] = useState<"all" | ValidityStatus>("all");
   const [endingSoon, setEndingSoon] = useState(false);
@@ -80,7 +79,7 @@ export function Policies({ onOpen }: { onOpen: (page: Page) => void }) {
           <Label htmlFor="endingSoon">{t("policies.endingSoon")}</Label>
         </div>
       </div>
-      <PolicyTable rows={data?.items ?? []} onOpen={onOpen} typeName={name} />
+      <PolicyTable rows={data?.items ?? []} onOpen={onOpen} />
       <div className="mt-3">
         <Pager page={page} pages={pages} total={data?.total ?? 0} onPage={setPage} />
       </div>
@@ -88,7 +87,7 @@ export function Policies({ onOpen }: { onOpen: (page: Page) => void }) {
   );
 }
 
-function PolicyTable({ rows, onOpen, typeName }: { rows: PolicySummaryDto[]; onOpen: (page: Page) => void; typeName: (x: { nameAr: string; nameFr: string }) => string }) {
+function PolicyTable({ rows, onOpen }: { rows: PolicySummaryDto[]; onOpen: (page: Page) => void }) {
   const { t } = useTranslation();
   return (
     <div className="rounded-lg border bg-card">
@@ -121,7 +120,7 @@ function PolicyTable({ rows, onOpen, typeName }: { rows: PolicySummaryDto[]; onO
                 </div>
               </Td>
               <Td dir="auto">{p.clientName}</Td>
-              <Td>{typeName({ nameAr: p.typeNameAr, nameFr: p.typeNameFr })}{p.isFleet ? ` · ${t("policies.fleet")}` : ""}</Td>
+              <Td><bdi dir="ltr">{p.typeName}</bdi>{p.isFleet ? ` · ${t("policies.fleet")}` : ""}</Td>
               <Td>
                 <div className="flex max-w-56 flex-wrap gap-1">{p.plates.slice(0, 3).map((plate) => <Code key={plate}>{plate}</Code>)}{p.plates.length > 3 ? ` +${p.plates.length - 3}` : ""}</div>
               </Td>
@@ -177,7 +176,6 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
   const { t } = useTranslation();
   const fieldError = useFieldError();
   const { can } = useSession();
-  const name = useLocalName();
   const key = useOperationKey();
   const catalog = useCatalog().data;
   const [clientId, setClientId] = useState(initialClient ?? "");
@@ -266,7 +264,7 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
             <Field id="type" label={t("policies.type")}>
               <NativeSelect id="type" value={typeId} onChange={(e) => { setTypeId(e.target.value); setIsFleet(false); setSelected([]); }}>
                 <option value="">{t("policies.chooseType")}</option>
-                {types.map((x) => <option key={x.id} value={x.id}>{`${x.insurerName} — ${name(x)}`}</option>)}
+                {types.map((x) => <option key={x.id} value={x.id}>{`${x.insurerName} — ${x.name}`}</option>)}
               </NativeSelect>
             </Field>
             {type && !type.requiresVehicle && <p className="text-sm text-muted-foreground">{t("policies.noVehicleNeeded")}</p>}

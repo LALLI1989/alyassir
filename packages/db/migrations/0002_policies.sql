@@ -25,8 +25,8 @@ INSERT INTO insurers (name) VALUES ('RMA');
 CREATE TABLE insurance_types (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   insurer_id       uuid NOT NULL REFERENCES insurers (id),
-  name_ar          text NOT NULL CHECK (length(name_ar) BETWEEN 1 AND 120),
-  name_fr          text NOT NULL CHECK (length(name_fr) BETWEEN 1 AND 120),
+  -- One name in Latin letters, shown as is in both languages (owner decision 28/10/2026).
+  name             text NOT NULL CHECK (length(name) BETWEEN 1 AND 120),
   requires_vehicle boolean NOT NULL,
   supports_fleet   boolean NOT NULL,
   created_at       timestamptz NOT NULL DEFAULT now(),

@@ -125,10 +125,10 @@ describe("new policy (SPEC 11)", () => {
   });
 
   it("finds a policy by number, certificate, plate or client", async () => {
-    const c = await createClient(t, manager, { fullName: "زينب القاسمي" });
+    const c = await createClient(t, manager, { fullName: "Zineb EL KASSIMI" });
     const v = await createVehicle(t, manager, c, { plateType: "ma", plate: "33-H-4455" });
     const p = await mustCreatePolicy(t, manager, s, c, [v], { policyNumber: "FIND-ME-77" });
-    for (const q of ["find-me", p.vehicles[0]?.certificateNumber as string, "33H4455", "القاسمي"]) {
+    for (const q of ["find-me", p.vehicles[0]?.certificateNumber as string, "33H4455", "kassimi"]) {
       const res = await t.call("GET", `/api/policies?q=${encodeURIComponent(q)}`, { token: manager });
       expect(res.body.items.map((x: { id: string }) => x.id), q).toContain(p.id);
     }

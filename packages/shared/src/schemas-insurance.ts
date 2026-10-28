@@ -12,6 +12,7 @@ import {
   PLATE_TYPES,
   RESIDENCIES,
   isIsoDate,
+  isLatinName,
   isValidIdNumber,
   isValidPhone,
   isValidPlate,
@@ -27,18 +28,19 @@ const amountOrZero = z.number({ invalid_type_error: "amount_format" }).int("amou
 /** One key per click: a second click or a network retry does not repeat the operation (SPEC 4.6). */
 const idempotencyKey = uuid;
 const reason = requiredText(1000);
+/** A name in Latin letters (owner decision 28/10/2026). */
+const latinName = (max: number) => requiredText(max).refine(isLatinName, "latin_only");
 const documentNumber = requiredText(40).refine((v) => /^[\p{L}\p{N}\s/._-]+$/u.test(v), "number_format");
 
 // ------------------------------------------------------------------ insurance settings (manager)
 
-export const insurerSchema = z.object({ name: requiredText(100) });
+export const insurerSchema = z.object({ name: latinName(100) });
 export const updateInsurerSchema = insurerSchema.extend({ version });
 
 export const insuranceTypeSchema = z
   .object({
     insurerId: uuid,
-    nameAr: requiredText(120),
-    nameFr: requiredText(120),
+    name: latinName(120),
     requiresVehicle: z.boolean(),
     supportsFleet: z.boolean(),
   })
@@ -46,11 +48,12 @@ export const insuranceTypeSchema = z
   .refine((v) => v.requiresVehicle || !v.supportsFleet, { message: "fleet_needs_vehicle", path: ["supportsFleet"] });
 export type InsuranceTypeInput = z.infer<typeof insuranceTypeSchema>;
 /** Only the names change once a type exists; its rules stay (archive it and add a new one). */
-export const updateInsuranceTypeSchema = z.object({ version, nameAr: requiredText(120), nameFr: requiredText(120) });
+export const updateInsuranceTypeSchema = z.object({ version, name: latinName(120) });
 
 export const coverageDurationSchema = z.object({ months: z.number().int().min(1, "months_range").max(60, "months_range") });
 
-export const operationTypeSchema = z.object({ nameAr: requiredText(120), nameFr: requiredText(120) });
+/** Operations added by the manager: one name in Latin letters, shown in both languages. */
+export const operationTypeSchema = z.object({ name: latinName(120) });
 export const updateOperationTypeSchema = operationTypeSchema.extend({ version });
 
 export const archiveSchema = z.object({ version, archived: z.boolean() });
@@ -59,8 +62,8 @@ export const archiveSchema = z.object({ version, archived: z.boolean() });
 
 const clientFields = z.object({
   kind: z.enum(CLIENT_KINDS),
-  fullName: requiredText(150),
-  companyName: trimmed(150).nullable().default(null),
+  fullName: latinName(150),
+  companyName: trimmed(150).nullable().default(null).refine((v) => !v || isLatinName(v), "latin_only"),
   idType: z.enum(ID_TYPES),
   idNumber: requiredText(30),
   residency: z.enum(RESIDENCIES).nullable().default(null),

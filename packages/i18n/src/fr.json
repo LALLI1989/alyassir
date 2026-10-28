@@ -42,7 +42,8 @@
     "open": "Ouvrir",
     "add": "Ajouter",
     "continue": "Continuer",
-    "change": "Changer"
+    "change": "Changer",
+    "latinHint": "En lettres latines, comme sur la pièce d'identité (ex. : Said EL IDRISSI)."
   },
   "theme": {
     "light": "Mode clair",
@@ -459,7 +460,8 @@
       "plate_format_foreign": "Lettres latines et chiffres uniquement.",
       "plate_format_state": "Format : M223355.",
       "plate_unchanged": "Le nouveau numéro est identique à l'actuel.",
-      "fiscal_power_range": "Entre 1 et 99."
+      "fiscal_power_range": "Entre 1 et 99.",
+      "latin_only": "Écrivez le nom en lettres latines, comme sur la pièce d'identité."
     }
   },
   "money": {
@@ -701,6 +703,8 @@
     "operationTypes": "Types d'opération",
     "addOperationType": "Ajouter un type d'opération",
     "system": "De base",
-    "fee": "Frais fixes d'attestation :"
+    "fee": "Frais fixes d'attestation :",
+    "typeName": "Nom du type d'assurance",
+    "operationName": "Nom de l'opération"
   }
 }

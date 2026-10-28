@@ -237,7 +237,6 @@ function RenewDialog({ policy, onClose }: DialogProps) {
 function ChangeDialog({ policy, onClose }: DialogProps) {
   const { t } = useTranslation();
   const key = useOperationKey();
-  const name = useLocalName();
   const catalog = useCatalog().data;
   const types = (catalog?.types ?? []).filter((x) => !x.archived && x.requiresVehicle === policy.requiresVehicle && (!policy.fleet || x.supportsFleet));
   const [typeId, setTypeId] = useState(policy.insuranceTypeId);
@@ -258,7 +257,7 @@ function ChangeDialog({ policy, onClose }: DialogProps) {
         <>
           <Field id="changeType" label={t("policies.type")}>
             <NativeSelect id="changeType" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-              {types.map((x) => <option key={x.id} value={x.id}>{`${x.insurerName} — ${name(x)}`}</option>)}
+              {types.map((x) => <option key={x.id} value={x.id}>{`${x.insurerName} — ${x.name}`}</option>)}
             </NativeSelect>
           </Field>
           <Field id="changeNumber" label={t("policies.number")} hint={t("policies.numberHint")} error={err("policyNumber")}>
@@ -279,7 +278,6 @@ function ChangeDialog({ policy, onClose }: DialogProps) {
 
 function EditDialog({ policy, onClose }: DialogProps) {
   const { t } = useTranslation();
-  const name = useLocalName();
   const catalog = useCatalog().data;
   const types = (catalog?.types ?? []).filter((x) => x.insurerId === policy.insurerId && x.requiresVehicle === policy.requiresVehicle && (!policy.fleet || x.supportsFleet) && (!x.archived || x.id === policy.insuranceTypeId));
   const last = policy.periods[policy.periods.length - 1];
@@ -302,7 +300,7 @@ function EditDialog({ policy, onClose }: DialogProps) {
           </Field>
           <Field id="editType" label={t("policies.type")}>
             <NativeSelect id="editType" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-              {types.map((x) => <option key={x.id} value={x.id}>{name(x)}</option>)}
+              {types.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
             </NativeSelect>
           </Field>
           <Field id="editEnd" label={t("policies.end")} error={err("endDate")}>
@@ -703,7 +701,7 @@ export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) =>
     <div className="grid gap-5">
       <PageHeader
         title={`${t("policies.number")} ${p.policyNumber}`}
-        intro={`${p.insurerName} — ${name({ nameAr: p.typeNameAr, nameFr: p.typeNameFr })}`}
+        intro={`${p.insurerName} — ${p.typeName}`}
         actions={<Button variant="ghost" onClick={() => onOpen({ kind: "policies" })}>{t("policies.back")}</Button>}
       />
 

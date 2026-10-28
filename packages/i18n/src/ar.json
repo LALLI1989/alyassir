@@ -42,7 +42,8 @@
     "open": "فتح",
     "add": "إضافة",
     "continue": "متابعة",
-    "change": "تغيير"
+    "change": "تغيير",
+    "latinHint": "بالحروف الفرنسية، كما في بطاقة التعريف (مثال: Said EL IDRISSI)."
   },
   "theme": {
     "light": "الوضع الفاتح",
@@ -459,7 +460,8 @@
       "plate_format_foreign": "حروف لاتينية وأرقام فقط.",
       "plate_format_state": "الشكل: M223355.",
       "plate_unchanged": "الرقم الجديد هو نفسه الحالي.",
-      "fiscal_power_range": "بين 1 و99."
+      "fiscal_power_range": "بين 1 و99.",
+      "latin_only": "اكتب الاسم بالحروف الفرنسية (اللاتينية)، كما في بطاقة التعريف."
     }
   },
   "money": {
@@ -701,6 +703,8 @@
     "operationTypes": "أنواع العمليات",
     "addOperationType": "إضافة نوع عملية",
     "system": "أساسي",
-    "fee": "رسم الشهادة الثابت:"
+    "fee": "رسم الشهادة الثابت:",
+    "typeName": "اسم نوع التأمين",
+    "operationName": "اسم العملية"
   }
 }

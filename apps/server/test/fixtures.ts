@@ -28,16 +28,16 @@ export async function setupCatalog(t: TestApp, managerToken: string): Promise<Se
   c = (await t.call("POST", "/api/insurance/insurers", { token: managerToken, body: { name: "Wafa Assurance" } })).body;
   const other = c.insurers.find((i) => i.name === "Wafa Assurance")?.id as string;
   for (const body of [
-    { insurerId: rma, nameAr: "تأمين السيارات", nameFr: "Assurance automobile", requiresVehicle: true, supportsFleet: false },
-    { insurerId: rma, nameAr: "تأمين الأسطول", nameFr: "Assurance flotte", requiresVehicle: true, supportsFleet: true },
-    { insurerId: rma, nameAr: "تأمين المسكن", nameFr: "Assurance habitation", requiresVehicle: false, supportsFleet: false },
-    { insurerId: other, nameAr: "تأمين السيارات", nameFr: "Assurance automobile", requiresVehicle: true, supportsFleet: false },
+    { insurerId: rma, name: "Assurance automobile", requiresVehicle: true, supportsFleet: false },
+    { insurerId: rma, name: "Assurance flotte", requiresVehicle: true, supportsFleet: true },
+    { insurerId: rma, name: "Assurance habitation", requiresVehicle: false, supportsFleet: false },
+    { insurerId: other, name: "Assurance automobile", requiresVehicle: true, supportsFleet: false },
   ]) {
     const res = await t.call("POST", "/api/insurance/types", { token: managerToken, body });
     if (res.status !== 201) throw new Error(`type: ${res.status} ${JSON.stringify(res.body)}`);
     c = res.body;
   }
-  const typeOf = (insurer: string, fr: string) => c.types.find((x) => x.insurerId === insurer && x.nameFr === fr)?.id as string;
+  const typeOf = (insurer: string, fr: string) => c.types.find((x) => x.insurerId === insurer && x.name === fr)?.id as string;
   return {
     rma,
     other,
@@ -53,7 +53,7 @@ export async function createClient(t: TestApp, token: string, over: Record<strin
   const n = next();
   const res = await t.call("POST", "/api/clients", {
     token,
-    body: { kind: "individual", fullName: `محمد العلوي ${n}`, idType: "cin", idNumber: `AB${100000 + n}`, phone: "0612345678", ...over },
+    body: { kind: "individual", fullName: `Mohamed ALAOUI ${n}`, idType: "cin", idNumber: `AB${100000 + n}`, phone: "0612345678", ...over },
   });
   if (res.status !== 201) throw new Error(`client: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body.id as string;

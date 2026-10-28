@@ -43,8 +43,7 @@ test("the manager adds an insurance type for RMA", async ({ page }) => {
   await page.getByRole("button", { name: ar.shell.insurance, exact: true }).click();
   await expect(page.getByRole("cell", { name: "RMA", exact: true })).toBeVisible();
   await page.getByLabel(ar.policies.insurer).selectOption({ label: "RMA" });
-  await page.getByLabel(ar.insurance.nameAr).first().fill("تأمين السيارات");
-  await page.getByLabel(ar.insurance.nameFr).first().fill("Assurance automobile");
+  await page.getByLabel(ar.insurance.typeName).fill("Assurance automobile");
   await page.getByRole("button", { name: ar.insurance.addType, exact: true }).click();
   await expect(page.getByRole("cell", { name: "Assurance automobile" })).toBeVisible();
 });
@@ -53,14 +52,14 @@ test("a client: wrong identity refused at once, then created; two vehicles", asy
   await signIn(page);
   await page.getByRole("button", { name: ar.modules.clients, exact: true }).click();
   await page.getByRole("button", { name: ar.clients.add }).click();
-  await page.getByLabel(ar.clients.fullName).fill("سعيد الإدريسي");
+  await page.getByLabel(ar.clients.fullName).fill("Said EL IDRISSI");
   await page.getByLabel(ar.clients.idNumber).fill("ABC1");
   await page.getByLabel(ar.clients.phone).fill("0661 23 45 67");
   await page.getByRole("button", { name: ar.common.create }).click();
   await expect(page.getByText(ar.errors.fields.id_format_cin)).toBeVisible();
   await page.getByLabel(ar.clients.idNumber).fill("ab 123456");
   await page.getByRole("button", { name: ar.common.create }).click();
-  await expect(page.getByRole("heading", { name: "سعيد الإدريسي" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Said EL IDRISSI" })).toBeVisible();
 
   // Moroccan plate: wrong shape first.
   await page.getByRole("button", { name: ar.vehicles.add }).click();
@@ -86,9 +85,9 @@ test("a client: wrong identity refused at once, then created; two vehicles", asy
 
 test("a new policy from the client file: number, certificate, amount; end computed by the server", async ({ page }) => {
   await signIn(page);
-  await openClient(page, "سعيد الإدريسي");
+  await openClient(page, "Said EL IDRISSI");
   await page.getByRole("button", { name: ar.clients.newPolicy }).click();
-  await page.getByLabel(ar.policies.type).selectOption({ label: "RMA — تأمين السيارات" });
+  await page.getByLabel(ar.policies.type).selectOption({ label: "RMA — Assurance automobile" });
   await page.getByRole("checkbox", { name: "12-A-34567" }).click();
   await page.getByLabel(`${ar.policies.certificate} 12-A-34567`).fill("ATT-2026-0001");
   await page.getByLabel(ar.policies.number).fill("POL-2026-001");
@@ -143,8 +142,8 @@ test("renewal keeps the same number and adds a second period", async ({ page }) 
 test("search by part of the name and by plate; the client file shows everything", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: ar.modules.clients, exact: true }).click();
-  await page.getByLabel(ar.common.search).fill("الإدريس");
-  await expect(page.getByRole("row", { name: /سعيد الإدريسي/ })).toBeVisible();
+  await page.getByLabel(ar.common.search).fill("idris");
+  await expect(page.getByRole("row", { name: /Said EL IDRISSI/ })).toBeVisible();
   await page.getByRole("button", { name: ar.modules.vehicles, exact: true }).click();
   await page.getByLabel(ar.common.search).fill("ww778");
   await expect(page.getByRole("button", { name: ar.vehicles.insuredBy.replace("{{number}}", "POL-2026-001") })).toBeVisible();

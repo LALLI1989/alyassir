@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   displayPlate,
   formatCents,
+  isLatinName,
   isValidIdNumber,
   isValidPhone,
   isValidPlate,
@@ -169,6 +170,14 @@ describe("input formats (SPEC 9)", () => {
     expect(isValidIdNumber("cin", "ABC123")).toBe(false);
     expect(isValidIdNumber("cin", "A1234567")).toBe(false);
     expect(normalizeIdNumber(" ab 123 456 ")).toBe("AB123456");
+  });
+  it("names are in Latin letters, accents allowed, Arabic refused (owner decision 28/10/2026)", () => {
+    expect(isLatinName("Said EL IDRISSI")).toBe(true);
+    expect(isLatinName("Hélène D'Orléans-Benali")).toBe(true);
+    expect(isLatinName("Transports Atlas SARL (Agadir)")).toBe(true);
+    expect(isLatinName("سعيد")).toBe(false);
+    expect(isLatinName("Said سعيد")).toBe(false);
+    expect(isLatinName("12345")).toBe(false);
   });
   it("checks phone numbers", () => {
     expect(isValidPhone("06 12 34 56 78")).toBe(true);

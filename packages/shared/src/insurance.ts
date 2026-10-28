@@ -61,6 +61,16 @@ export const MAX_AMOUNT_CENTS = 1_000_000_000;
 
 // ------------------------------------------------------------------ normalisation and formats
 
+/**
+ * Names of people, companies and insurance products are written in Latin (French) letters, as on
+ * identity documents, whatever the interface language (owner decision 28/10/2026).
+ * Accents, digits, spaces and ' - . , & ( ) / are accepted; Arabic letters are not.
+ */
+export function isLatinName(value: string): boolean {
+  const v = value.trim();
+  return /^[\p{Script=Latin}\p{N}\s'’.,&()/-]+$/u.test(v) && /\p{Script=Latin}/u.test(v);
+}
+
 /** Identity numbers: spaces removed, capital letters (SPEC 9.1). */
 export function normalizeIdNumber(value: string): string {
   return value.replace(/\s+/g, "").toUpperCase();

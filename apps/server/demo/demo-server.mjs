@@ -26,12 +26,21 @@ for (const [role, pw] of [[OWNER, "demo-owner"], [APP_ROLE, "demo-app"]]) {
   const exists = await admin.query("SELECT 1 FROM pg_roles WHERE rolname = $1", [role]);
   await admin.query(`${exists.rowCount ? "ALTER" : "CREATE"} ROLE ${role} LOGIN PASSWORD '${pw}'`);
 }
+const create = () => admin.query(`CREATE DATABASE ${DB} OWNER ${OWNER} TEMPLATE template0 ENCODING 'UTF8'`);
 const dbExists = await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [DB]);
-if (!dbExists.rowCount) await admin.query(`CREATE DATABASE ${DB} OWNER ${OWNER} TEMPLATE template0 ENCODING 'UTF8'`);
-await admin.end();
+if (!dbExists.rowCount) await create();
 
 const ownerUrl = url(OWNER, "demo-owner");
-await migrate(ownerUrl);
+try {
+  await migrate(ownerUrl);
+} catch (error) {
+  // Demo only: the tables changed during development, so start again with fresh sample data.
+  console.log(`demo database reset: ${error instanceof Error ? error.message : String(error)}`);
+  await admin.query(`DROP DATABASE IF EXISTS ${DB} WITH (FORCE)`);
+  await create();
+  await migrate(ownerUrl);
+}
+await admin.end();
 const fresh = !(await hasManager(ownerUrl));
 if (fresh) {
   await bootstrapData(ownerUrl, { agencyName: "وكالة اليسير للتأمين", managerUsername: "gerant", managerPassword: "gerant123", language: "ar", backupDir: "/tmp" });
@@ -67,19 +76,19 @@ async function seed() {
   token = (await call("POST", "/api/auth/login", { username: "gerant", password: "gerant123" })).accessToken;
   let c = await call("GET", "/api/insurance/catalog");
   const rma = c.insurers.find((i) => i.name === "RMA").id;
-  await call("POST", "/api/insurance/types", { insurerId: rma, nameAr: "تأمين السيارات", nameFr: "Assurance automobile", requiresVehicle: true, supportsFleet: false });
-  await call("POST", "/api/insurance/types", { insurerId: rma, nameAr: "تأمين الأسطول", nameFr: "Assurance flotte", requiresVehicle: true, supportsFleet: true });
-  c = await call("POST", "/api/insurance/types", { insurerId: rma, nameAr: "تأمين المسكن", nameFr: "Assurance habitation", requiresVehicle: false, supportsFleet: false });
-  const auto = c.types.find((x) => x.nameFr === "Assurance automobile").id;
+  await call("POST", "/api/insurance/types", { insurerId: rma, name: "Assurance automobile", requiresVehicle: true, supportsFleet: false });
+  await call("POST", "/api/insurance/types", { insurerId: rma, name: "Assurance flotte", requiresVehicle: true, supportsFleet: true });
+  c = await call("POST", "/api/insurance/types", { insurerId: rma, name: "Assurance habitation", requiresVehicle: false, supportsFleet: false });
+  const auto = c.types.find((x) => x.name === "Assurance automobile").id;
   const months12 = c.durations.find((d) => d.months === 12).id;
 
-  const employee = await call("POST", "/api/users", { username: "salma", displayName: "سلمى", password: "salma123" });
+  const employee = await call("POST", "/api/users", { username: "salma", displayName: "Salma", password: "salma123" });
   await call("PUT", `/api/users/${employee.id}/permissions`, { version: employee.version, permissions: ["clients.view", "clients.create", "vehicles.view", "vehicles.create", "policies.view", "policies.create"] });
 
   const people = [
-    { fullName: "سعيد الإدريسي", idNumber: "AB123456", phone: "0661234567", plate: "12-A-34567", brand: "Dacia Logan" },
-    { fullName: "فاطمة الزهراء بناني", idNumber: "BK778899", phone: "0677889900", plate: "WW445566", brand: "Renault Clio" },
-    { fullName: "يوسف العلوي", idNumber: "J12345", phone: "0522334455", plate: "7-B-1234", brand: "Peugeot 208" },
+    { fullName: "Said EL IDRISSI", idNumber: "AB123456", phone: "0661234567", plate: "12-A-34567", brand: "Dacia Logan" },
+    { fullName: "Fatima-Zahra BENNANI", idNumber: "BK778899", phone: "0677889900", plate: "WW445566", brand: "Renault Clio" },
+    { fullName: "Youssef ALAOUI", idNumber: "J12345", phone: "0522334455", plate: "7-B-1234", brand: "Peugeot 208" },
   ];
   let n = 1;
   for (const p of people) {

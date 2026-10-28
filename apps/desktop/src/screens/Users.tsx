@@ -79,8 +79,8 @@ function CreateUserDialog({ onClose }: { onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>{t("users.addTitle")}</DialogTitle>
       </DialogHeader>
-      <Field id="displayName" label={t("users.displayName")} error={err("displayName")}>
-        <Input id="displayName" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
+      <Field id="displayName" label={t("users.displayName")} hint={t("common.latinHint")} error={err("displayName")}>
+        <Input id="displayName" dir="ltr" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
       </Field>
       <Field id="newUsername" label={t("users.username")} hint={t("users.usernameHint")} error={err("username")}>
         <Input id="newUsername" dir="ltr" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
@@ -121,8 +121,8 @@ function EditUserDialog({ user, onClose }: { user: UserDto; onClose: () => void 
       <DialogHeader>
         <DialogTitle>{t("users.editTitle", { name: user.displayName })}</DialogTitle>
       </DialogHeader>
-      <Field id="editName" label={t("users.displayName")} error={fieldError(fieldsOf(error).displayName)}>
-        <Input id="editName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+      <Field id="editName" label={t("users.displayName")} hint={t("common.latinHint")} error={fieldError(fieldsOf(error).displayName)}>
+        <Input id="editName" dir="ltr" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
       </Field>
       <Field id="editLanguage" label={t("users.language")}>
         <NativeSelect id="editLanguage" value={language} onChange={(e) => setLanguage(e.target.value as Language | "")}>

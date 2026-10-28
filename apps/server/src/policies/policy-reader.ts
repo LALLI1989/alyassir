@@ -31,8 +31,7 @@ interface SummaryRow extends Record<string, unknown> {
   id: string;
   policy_number: string;
   insurer_name: string;
-  type_name_ar: string;
-  type_name_fr: string;
+  type_name: string;
   client_id: string;
   client_name: string;
   start_date: string;
@@ -63,7 +62,7 @@ export class PolicyReader {
       WITH lp AS (
         SELECT DISTINCT ON (policy_id) * FROM policy_periods ORDER BY policy_id, seq DESC
       ), rows AS (
-        SELECT p.id, p.policy_number, i.name AS insurer_name, t.name_ar AS type_name_ar, t.name_fr AS type_name_fr,
+        SELECT p.id, p.policy_number, i.name AS insurer_name, t.name AS type_name,
           c.id AS client_id, CASE WHEN c.kind = 'company' AND c.company_name IS NOT NULL THEN c.company_name ELSE c.full_name END AS client_name,
           coalesce((SELECT x.start_date FROM policy_periods x WHERE x.policy_id = p.id AND x.start_date <= ${today} ORDER BY x.seq DESC LIMIT 1), lp.start_date)::text AS start_date,
           lp.end_date::text AS end_date,
@@ -86,8 +85,7 @@ export class PolicyReader {
       id: r.id,
       policyNumber: r.policy_number,
       insurerName: r.insurer_name,
-      typeNameAr: r.type_name_ar,
-      typeNameFr: r.type_name_fr,
+      typeName: r.type_name,
       clientId: r.client_id,
       clientName: r.client_name,
       startDate: r.start_date,

@@ -12,8 +12,8 @@ export interface InsuranceTypeDto {
   id: string;
   insurerId: string;
   insurerName: string;
-  nameAr: string;
-  nameFr: string;
+  /** One name in Latin letters, the same in both languages. */
+  name: string;
   requiresVehicle: boolean;
   supportsFleet: boolean;
   archived: boolean;
@@ -89,8 +89,7 @@ export interface PolicySummaryDto {
   id: string;
   policyNumber: string;
   insurerName: string;
-  typeNameAr: string;
-  typeNameFr: string;
+  typeName: string;
   clientId: string;
   clientName: string;
   startDate: string;

@@ -96,12 +96,12 @@ export function ClientDialog({ client, onDone, onCancel }: { client?: ClientDto;
         </NativeSelect>
       </Field>
       {form.kind === "company" && (
-        <Field id="companyName" label={t("clients.companyName")} error={err("companyName")}>
-          <Input id="companyName" dir="auto" value={form.companyName} onChange={(e) => set({ companyName: e.target.value })} />
+        <Field id="companyName" label={t("clients.companyName")} hint={t("common.latinHint")} error={err("companyName")}>
+          <Input id="companyName" dir="ltr" value={form.companyName} onChange={(e) => set({ companyName: e.target.value })} />
         </Field>
       )}
-      <Field id="fullName" label={form.kind === "company" ? t("clients.contactName") : t("clients.fullName")} error={err("fullName")}>
-        <Input id="fullName" dir="auto" value={form.fullName} onChange={(e) => set({ fullName: e.target.value })} />
+      <Field id="fullName" label={form.kind === "company" ? t("clients.contactName") : t("clients.fullName")} hint={t("common.latinHint")} error={err("fullName")}>
+        <Input id="fullName" dir="ltr" value={form.fullName} onChange={(e) => set({ fullName: e.target.value })} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="idType" label={t("clients.idType")} error={err("idType")}>

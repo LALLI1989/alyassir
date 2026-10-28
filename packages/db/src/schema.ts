@@ -193,8 +193,7 @@ export const insurers = pgTable("insurers", {
 export const insuranceTypes = pgTable("insurance_types", {
   id: uuid("id").primaryKey().defaultRandom(),
   insurerId: uuid("insurer_id").notNull(),
-  nameAr: text("name_ar").notNull(),
-  nameFr: text("name_fr").notNull(),
+  name: text("name").notNull(),
   requiresVehicle: boolean("requires_vehicle").notNull(),
   supportsFleet: boolean("supports_fleet").notNull(),
   ...meta(),

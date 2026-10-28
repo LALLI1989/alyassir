@@ -226,7 +226,7 @@ try {
   Write-Host "  agency name expected: $wantCodes"
   Check ($agency.body.nameAr -eq $expectedName) "agency name in Arabic saved correctly (received: $gotCodes)"
   Check ($agency.body.backupDir -eq $BackupDir) "Google Drive backup folder saved"
-  $emp = Api "POST" "/api/users" @{ username = "salma"; displayName = "سلمى"; password = "salma-pass" } $token
+  $emp = Api "POST" "/api/users" @{ username = "salma"; displayName = "Salma"; password = "salma-pass" } $token
   Check ($emp.status -eq 201) "the manager creates an employee"
   $bad = Login "gerant" "wrong-password"
   Check ($bad.status -eq 401 -and $bad.body.code -eq "INVALID_CREDENTIALS") "wrong password refused"

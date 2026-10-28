@@ -5,7 +5,7 @@ import type { InsuranceCatalogDto } from "@alyassir/shared";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label, NativeSelect, Table, TBody, Td, Th, THead, Tr } from "@alyassir/ui";
 import { asClientError } from "../adapters";
 import { Field, PageHeader } from "../components/common";
-import { Money, useCatalog } from "../components/insurance";
+import { Money, useCatalog, useLocalName } from "../components/insurance";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import { api } from "../lib/session";
 
@@ -44,11 +44,12 @@ export function InsuranceSettings() {
   const { t } = useTranslation();
   const fieldError = useFieldError();
   const catalog = useCatalog().data;
+  const name = useLocalName();
   const call = useCatalogCall();
   const [insurer, setInsurer] = useState("");
-  const [type, setType] = useState({ insurerId: "", nameAr: "", nameFr: "", requiresVehicle: true, supportsFleet: false });
+  const [type, setType] = useState({ insurerId: "", name: "", requiresVehicle: true, supportsFleet: false });
   const [months, setMonths] = useState("");
-  const [op, setOp] = useState({ nameAr: "", nameFr: "" });
+  const [op, setOp] = useState({ name: "" });
   const error = call.error ? asClientError(call.error) : null;
   const fields = fieldsOf(error);
   if (!catalog) return null;
@@ -87,8 +88,7 @@ export function InsuranceSettings() {
         <Table>
           <THead>
             <Tr>
-              <Th>{t("insurance.nameAr")}</Th>
-              <Th>{t("insurance.nameFr")}</Th>
+              <Th>{t("insurance.name")}</Th>
               <Th>{t("policies.insurer")}</Th>
               <Th>{t("insurance.requiresVehicle")}</Th>
               <Th>{t("insurance.supportsFleet")}</Th>
@@ -98,8 +98,7 @@ export function InsuranceSettings() {
           <TBody>
             {catalog.types.map((x) => (
               <Tr key={x.id}>
-                <Td dir="rtl">{x.nameAr}</Td>
-                <Td dir="ltr">{x.nameFr}</Td>
+                <Td dir="ltr">{x.name}</Td>
                 <Td>{x.insurerName}</Td>
                 <Td>{x.requiresVehicle ? t("common.yes") : t("common.no")}</Td>
                 <Td>{x.supportsFleet ? t("common.yes") : t("common.no")}</Td>
@@ -111,18 +110,15 @@ export function InsuranceSettings() {
             ))}
           </TBody>
         </Table>
-        <form className="grid gap-3 sm:grid-cols-3" onSubmit={submit("POST", "/api/insurance/types", type, () => setType({ ...type, nameAr: "", nameFr: "" }))}>
+        <form className="grid gap-3 sm:grid-cols-3" onSubmit={submit("POST", "/api/insurance/types", type, () => setType({ ...type, name: "" }))}>
           <Field id="typeInsurer" label={t("policies.insurer")} error={fieldError(fields.insurerId)}>
             <NativeSelect id="typeInsurer" value={type.insurerId} onChange={(e) => setType({ ...type, insurerId: e.target.value })}>
               <option value="" />
               {catalog.insurers.filter((i) => !i.archived).map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </NativeSelect>
           </Field>
-          <Field id="typeNameAr" label={t("insurance.nameAr")} error={fieldError(fields.nameAr)}>
-            <Input id="typeNameAr" dir="rtl" value={type.nameAr} onChange={(e) => setType({ ...type, nameAr: e.target.value })} />
-          </Field>
-          <Field id="typeNameFr" label={t("insurance.nameFr")} error={fieldError(fields.nameFr)}>
-            <Input id="typeNameFr" dir="ltr" value={type.nameFr} onChange={(e) => setType({ ...type, nameFr: e.target.value })} />
+          <Field id="typeName" label={t("insurance.typeName")} hint={t("common.latinHint")} error={fieldError(fields.name)}>
+            <Input id="typeName" dir="ltr" value={type.name} onChange={(e) => setType({ ...type, name: e.target.value })} />
           </Field>
           <div className="flex items-center gap-2">
             <Checkbox id="requiresVehicle" checked={type.requiresVehicle} onCheckedChange={(v) => setType({ ...type, requiresVehicle: v === true, supportsFleet: v === true && type.supportsFleet })} />
@@ -165,20 +161,16 @@ export function InsuranceSettings() {
           <TBody>
             {catalog.operationTypes.map((o) => (
               <Tr key={o.code}>
-                <Td dir="rtl">{o.nameAr}</Td>
-                <Td dir="ltr">{o.nameFr}</Td>
+                <Td>{o.isSystem ? name(o) : <bdi dir="ltr">{o.nameFr}</bdi>}</Td>
                 <Td>{o.isSystem ? <Badge variant="secondary">{t("insurance.system")}</Badge> : status(o.archived)}</Td>
                 <Td className="text-end">{!o.isSystem && <ArchiveButton path={`/api/insurance/operation-types/${o.code}/archive`} version={o.version} archived={o.archived} />}</Td>
               </Tr>
             ))}
           </TBody>
         </Table>
-        <form className="grid gap-3 sm:grid-cols-3" onSubmit={submit("POST", "/api/insurance/operation-types", op, () => setOp({ nameAr: "", nameFr: "" }))}>
-          <Field id="opNameAr" label={t("insurance.nameAr")}>
-            <Input id="opNameAr" dir="rtl" value={op.nameAr} onChange={(e) => setOp({ ...op, nameAr: e.target.value })} />
-          </Field>
-          <Field id="opNameFr" label={t("insurance.nameFr")}>
-            <Input id="opNameFr" dir="ltr" value={op.nameFr} onChange={(e) => setOp({ ...op, nameFr: e.target.value })} />
+        <form className="grid gap-3 sm:grid-cols-3" onSubmit={submit("POST", "/api/insurance/operation-types", op, () => setOp({ name: "" }))}>
+          <Field id="opName" label={t("insurance.operationName")} hint={t("common.latinHint")}>
+            <Input id="opName" dir="ltr" value={op.name} onChange={(e) => setOp({ name: e.target.value })} />
           </Field>
           <div className="flex items-end">
             <Button type="submit" disabled={call.isPending}>{t("insurance.addOperationType")}</Button>

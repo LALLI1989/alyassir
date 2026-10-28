@@ -142,17 +142,19 @@ try {
   Wipe-Everything
 
   if ($PreviousSetup) {
-    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 3) ==="
+    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 4) ==="
     $code = Install (@("/MODE=server", "/PORT=$Port") + $Bootstrap) $PreviousSetup
-    Check ($code -eq 0) "Phase 3 server installed"
+    Check ($code -eq 0) "Phase 4 server installed"
     $old = Login "gerant" $ManagerPass
-    Check ($old.status -eq 200) "the manager signs in on the Phase 3 server"
+    Check ($old.status -eq 200) "the manager signs in on the Phase 4 server"
     $oldToken = $old.body.accessToken
     $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "Nadia"; password = "nadia-pass" } $oldToken
     Check ($emp.status -eq 201) "an employee is created before the update"
     $msg = Api "POST" "/api/messages/threads" @{ subject = "قبل التحديث"; body = "رسالة محفوظة"; to = @($emp.body.id) } $oldToken
     Check ($msg.status -eq 201) "a message is sent before the update"
-    # A policy saved in Phase 3, with 1 000 MAD paid in cash at issue.
+    # A policy saved in Phase 4: the manager receives the empty drawer, then 1 000 MAD in cash at issue.
+    $recv = Api "POST" "/api/drawer/receive" @{ shownCents = 0; countedCents = 0; reason = "" } $oldToken
+    Check ($recv.status -eq 200) "the manager receives the drawer on the Phase 4 server"
     $cat = Api "GET" "/api/insurance/catalog" $null $oldToken
     $rma = @($cat.body.insurers | Where-Object { $_.name -eq "RMA" })[0].id
     $cat = Api "POST" "/api/insurance/types" @{ insurerId = $rma; name = "Assurance automobile"; requiresVehicle = $true; supportsFleet = $false } $oldToken
@@ -162,10 +164,10 @@ try {
     $vehicle = Api "POST" "/api/vehicles" @{ clientId = $client.body.id; plateType = "ww"; plate = "WW123456"; fiscalPower = 6; fuel = "diesel"; brand = "Dacia Logan" } $oldToken
     $policy = Api "POST" "/api/policies" @{ idempotencyKey = [guid]::NewGuid().ToString(); clientId = $client.body.id; insuranceTypeId = $typeId; policyNumber = "POL-UPD-001"; coverageDurationId = $months12; totalAmountCents = 250000; vehicles = @(@{ vehicleId = $vehicle.body.id; certificateNumber = "ATT-UPD-001" }); finance = @{ payments = @(@{ method = "cash"; amountCents = 100000 }) } } $oldToken
     Check ($policy.status -eq 201 -or $policy.status -eq 200) "a policy of 2 500 MAD (1 000 paid in cash) is saved before the update"
-    Check ((Api "GET" "/api/drawer" $null $oldToken).status -eq 404) "the Phase 3 server has no drawer sessions yet"
+    Check ((Api "GET" "/api/claims" $null $oldToken).status -eq 404) "the Phase 4 server has no claims yet"
 
     $code = Install @()
-    Check ($code -eq 0) "update to Phase 4 succeeded"
+    Check ($code -eq 0) "update to Phase 5 succeeded"
     Check ((Get-ChildItem "$Data\backups\pre-update-*.dump").Count -ge 1) "automatic backup taken before updating the database"
     $new = Login "gerant" $ManagerPass
     Check ($new.status -eq 200 -and $new.body.me.role -eq "manager") "the manager still signs in after the update"
@@ -173,22 +175,23 @@ try {
     Check ((Login "nadia" "nadia-pass").status -eq 200) "the employee created before the update still signs in"
     $threads = Api "GET" "/api/messages/threads" $null $newToken
     Check (@($threads.body | Where-Object { $_.subject -eq "قبل التحديث" }).Count -eq 1) "the message sent before the update is still there"
-    $found = Api "GET" "/api/policies?q=POL-UPD-001" $null $newToken
-    Check ($found.status -eq 200 -and @($found.body.items).Count -eq 1) "the policy saved before the update is still there"
     $finance = Api "GET" "/api/policies/$($policy.body.id)/finance" $null $newToken
     Check ($finance.status -eq 200 -and $finance.body.totals.remainingCents -eq 150000) "the old policy still shows 1 500 MAD left"
     $drawer = Api "GET" "/api/drawer" $null $newToken
-    Check ($drawer.status -eq 200 -and $drawer.body.balanceCents -eq 100000) "the cash taken before the update is in the drawer (1 000 MAD)"
-    $pay = Api "POST" "/api/policies/$($policy.body.id)/payments" @{ idempotencyKey = [guid]::NewGuid().ToString(); method = "cash"; amountCents = 50000 } $newToken
-    Check ($pay.body.code -eq "DRAWER_NOT_RECEIVED") "after the update, no cash before receiving the drawer"
-    $recv = Api "POST" "/api/drawer/receive" @{ shownCents = 100000; countedCents = 100000; reason = "" } $newToken
-    Check ($recv.status -eq 200 -and $recv.body.holder -eq $true) "the manager receives the drawer (1 000 MAD)"
-    $pay = Api "POST" "/api/policies/$($policy.body.id)/payments" @{ idempotencyKey = [guid]::NewGuid().ToString(); method = "cash"; amountCents = 50000 } $newToken
-    Check ($pay.status -eq 200 -and $pay.body.totals.remainingCents -eq 100000) "then 500 paid in cash, 1 000 left"
-    $close = Api "POST" "/api/drawer/close" @{ sessionVersion = 1; countedCents = 150000; reason = "" } $newToken
-    Check ($close.status -eq 200 -and $close.body.differenceCents -eq 0) "the drawer is closed with 1 500 MAD, no gap"
+    Check ($drawer.status -eq 200 -and $drawer.body.balanceCents -eq 100000 -and $drawer.body.holder -eq $true) "the drawer session open before the update is kept (1 000 MAD)"
+    $today = (Get-Date).ToString("yyyy-MM-dd")
+    $claim = Api "POST" "/api/claims" @{ policyId = $policy.body.id; accidentDate = $today; place = "Casablanca"; description = "Choc"; requestedCents = 500000 } $newToken
+    Check ($claim.status -eq 201 -and $claim.body.status -eq "declared") "after the update, a claim is declared on the old policy"
+    $contact = Api "POST" "/api/contacts" @{ clientId = $client.body.id; kind = "promise"; promiseDate = $today; note = "Passera" } $newToken
+    Check ($contact.status -eq 201) "a promise to pay is written in the contact log"
+    $wa = Api "POST" "/api/contacts/whatsapp" @{ clientId = $client.body.id; policyId = $policy.body.id; template = "payment"; language = "fr" } $newToken
+    Check ($wa.status -eq 201 -and $wa.body.url -like "https://wa.me/212661234567*") "the WhatsApp link uses the international number"
+    $rem = Api "GET" "/api/reminders" $null $newToken
+    Check ($rem.status -eq 200 -and @($rem.body.groups | Where-Object { $_.kind -eq "promise_due" }).Count -eq 1) "the reminders show the promise of today"
+    $close = Api "POST" "/api/drawer/close" @{ sessionVersion = $drawer.body.session.version; countedCents = 100000; reason = "" } $newToken
+    Check ($close.status -eq 200 -and $close.body.differenceCents -eq 0) "the drawer is closed with 1 000 MAD, no gap"
     $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
-    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "4") "the four database steps applied (Phases 1 to 4)"
+    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "5") "the five database steps applied (Phases 1 to 5)"
     Wipe-Everything
   }
 

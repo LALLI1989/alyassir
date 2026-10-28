@@ -81,6 +81,15 @@ export const ERROR_CODES = [
   "SAME_ACCOUNT",
   "ALREADY_REVERSED",
   "NAME_TAKEN",
+  // Phase 5: claims, reminders, contact log, WhatsApp.
+  "CLAIM_ACCIDENT_IN_FUTURE",
+  "CLAIM_BEFORE_START",
+  "CLAIM_POLICY_ANNULLED",
+  "CLAIM_AFTER_COVER",
+  "CLAIM_LATE_DECLARATION",
+  "CLAIM_NUMBER_TAKEN",
+  "CLAIM_REOPEN_MANAGER",
+  "NO_PHONE",
   "INTERNAL",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

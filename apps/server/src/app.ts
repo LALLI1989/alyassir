@@ -23,6 +23,9 @@ import { PaymentsService } from "./money/payments.service";
 import { AccountsService } from "./cash/accounts.service";
 import { DrawerService } from "./cash/drawer.service";
 import { ExpensesService } from "./cash/expenses.service";
+import { ClaimsService } from "./followup/claims.service";
+import { ContactsService } from "./followup/contacts.service";
+import { RemindersService } from "./followup/reminders.service";
 import { ErrorFilter } from "./common/error.filter";
 import type { ServerConfig } from "./config";
 import { CONTROLLERS } from "./controllers";
@@ -68,6 +71,9 @@ export class AppModule {
         DrawerService,
         ExpensesService,
         AccountsService,
+        ClaimsService,
+        ContactsService,
+        RemindersService,
       ],
     };
   }

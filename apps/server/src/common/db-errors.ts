@@ -29,6 +29,7 @@ const UNIQUE_ERRORS: Record<string, ErrorCode> = {
   coverage_durations_months_key: "DURATION_EXISTS",
   policies_replaces_policy_id_key: "ALREADY_REPLACED",
   expense_categories_name: "NAME_TAKEN",
+  claims_number_unique: "CLAIM_NUMBER_TAKEN",
   withdrawal_reasons_name: "NAME_TAKEN",
   transfers_reverses_id_key: "ALREADY_REVERSED",
   insurer_payments_reverses_id_key: "ALREADY_REVERSED",

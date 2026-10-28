@@ -116,7 +116,8 @@
     "supervisorBadge": "مشرف",
     "employeeBadge": "موظف",
     "insurance": "إعدادات التأمين",
-    "accounts": "الحسابات"
+    "accounts": "الحسابات",
+    "reminders": "التذكيرات"
   },
   "modules": {
     "clients": "العملاء",
@@ -398,7 +399,12 @@
       "account_bank_negative": "تغيير السماح بالرصيد السالب للبنك",
       "withdrawal_reason_create": "إضافة سبب سحب",
       "withdrawal_reason_archive": "أرشفة سبب سحب",
-      "withdrawal_reason_restore": "استرجاع سبب سحب"
+      "withdrawal_reason_restore": "استرجاع سبب سحب",
+      "claim_create": "تسجيل مطالبة",
+      "claim_update": "تعديل مطالبة",
+      "claim_status": "تغيير حالة مطالبة",
+      "whatsapp_template_update": "تعديل قالب واتساب",
+      "settings_reminders": "تغيير مهل التذكير"
     }
   },
   "settings": {
@@ -519,7 +525,15 @@
       "EXPENSE_NOT_ALLOWED": "لا يمكن القيام بهذا على هذا المصروف.",
       "SAME_ACCOUNT": "اختر حسابين مختلفين.",
       "ALREADY_REVERSED": "هذه الحركة عُكست من قبل.",
-      "NAME_TAKEN": "هذا الاسم موجود من قبل."
+      "NAME_TAKEN": "هذا الاسم موجود من قبل.",
+      "CLAIM_ACCIDENT_IN_FUTURE": "تاريخ الحادث بعد اليوم.",
+      "CLAIM_BEFORE_START": "الحادث قبل بداية البوليصة: لا يمكن تسجيله.",
+      "CLAIM_POLICY_ANNULLED": "البوليصة مفسوخة: لا يمكن تسجيل مطالبة عليها.",
+      "CLAIM_AFTER_COVER": "الحادث بعد انتهاء التغطية (أو بعد الإلغاء): لا يمكن تسجيله.",
+      "CLAIM_LATE_DECLARATION": "انتهى أجل التبليغ (5 أيام بحساب يوم الحادث). المدير وحده يسجلها متأخرة مع سبب.",
+      "CLAIM_NUMBER_TAKEN": "رقم المطالبة هذا موجود من قبل لدى الشركة نفسها.",
+      "CLAIM_REOPEN_MANAGER": "إعادة مطالبة مغلقة أو مرفوضة للمدير فقط.",
+      "NO_PHONE": "رقم هاتف العميل غير صالح لواتساب."
     },
     "fields": {
       "required": "هذا الحقل إلزامي.",
@@ -1140,6 +1154,84 @@
       "transfer": "يُسجَّل خروج من الحساب الأول ودخول إلى الثاني في عملية واحدة.",
       "insurer": "حركة خروج واحدة، بلا ربط بالبوالص ولا حساب لما على الشركة أو لها.",
       "withdrawal": "خروج من البنك فقط، بسبب إلزامي وتعليل."
+    }
+  },
+  "followup": {
+    "claimsTitle": "المطالبات",
+    "claimsIntro": "حوادث العملاء للمتابعة فقط، بلا أي أثر على الدرج أو البنك.",
+    "claimsSearch": "ابحث برقم المطالبة أو العميل أو البوليصة أو المكان",
+    "openClaims": "المفتوحة",
+    "newClaim": "تسجيل مطالبة",
+    "pickPolicy": "اختر البوليصة",
+    "claimTitle": "مطالبة على البوليصة {{number}}",
+    "claimInfo": "الحادث داخل مدة التغطية، ويُصرَّح به خلال 5 أيام بحساب يوم الحادث.",
+    "accidentDate": "تاريخ الحادث",
+    "accidentHint": "لا يُغيَّر بعد التسجيل.",
+    "claimNumber": "رقم المطالبة",
+    "place": "مكان الحادث",
+    "description": "الوصف",
+    "requested": "المبلغ المطلوب",
+    "compensated": "المبلغ المعوَّض",
+    "notes": "ملاحظات",
+    "lateDeclared": "صُرّح بها متأخرة",
+    "lateReason": "سبب التسجيل المتأخر",
+    "lateReasonHint": "للمدير فقط: اكتب السبب ثم احفظ من جديد.",
+    "reopenHint": "إعادة مطالبة مغلقة أو مرفوضة: للمدير فقط، مع سبب.",
+    "claimStatus": {
+      "declared": "تم التصريح",
+      "expertise": "في مرحلة الخبرة",
+      "processing": "قيد المعالجة",
+      "closed": "مغلقة",
+      "rejected": "مرفوضة"
+    },
+    "remindersTitle": "التذكيرات",
+    "remindersIntro": "ما يحتاج متابعة اليوم، بحسب صلاحياتك.",
+    "nothingToDo": "لا شيء يحتاج متابعة الآن.",
+    "countN": "العدد: {{count}}",
+    "reminderKinds": {
+      "policy_ending": "بوالص تنتهي خلال {{days}} يومًا",
+      "instalment_due": "أقساط موعدها خلال {{days}} أيام أو فات",
+      "debt_open": "ديون غير مسددة",
+      "promise_due": "وعود بالدفع حلّ موعدها",
+      "cheque_due": "شيكات تستحق خلال {{days}} أيام",
+      "in_collection": "وسائل أداء قيد التحصيل",
+      "expense_pending": "مصاريف تنتظر الاعتماد",
+      "unread_messages": "رسائل غير مقروءة",
+      "edit_requests": "طلبات تعديل تنتظرك",
+      "claim_stale": "مطالبات بلا تحديث منذ {{days}} أيام"
+    },
+    "contactsTitle": "سجل التواصل",
+    "addContact": "تسجيل تواصل",
+    "contactKind": "النوع",
+    "promiseDate": "تاريخ الوعد",
+    "contactKinds": {
+      "called": "تم الاتصال",
+      "no_answer": "لا يجيب",
+      "promise": "وعد بالدفع",
+      "note": "ملاحظة",
+      "whatsapp": "واتساب"
+    },
+    "whatsapp": "واتساب",
+    "whatsappTitle": "رسالة واتساب",
+    "whatsappInfo": "يفتح واتساب برسالة جاهزة. أنت من يضغط «إرسال»؛ البرنامج لا يرسل شيئًا.",
+    "template": "القالب",
+    "language": "لغة الرسالة",
+    "openWhatsapp": "فتح واتساب",
+    "whatsappOpened": "فُتح واتساب على الرقم {{phone}}، وسُجّل ذلك في سجل التواصل.",
+    "templates": {
+      "renewal": "تذكير بالتجديد",
+      "payment": "تذكير بالأداء"
+    },
+    "templatesTitle": "قوالب واتساب",
+    "templatesIntro": "نص الرسائل بالعربية والفرنسية. البرنامج يملأ القيم بين الأقواس.",
+    "templateVariables": "اسم العميل، رقم البوليصة، رقم المركبة، تاريخ الانتهاء، المبلغ المتبقي",
+    "delaysTitle": "مهل التذكير",
+    "delaysIntro": "بالأيام. تظهر التذكيرات قبل هذه المهل.",
+    "delays": {
+      "policyDays": "البوالص قبل الانتهاء",
+      "instalmentDays": "الأقساط قبل الموعد",
+      "chequeDays": "الشيكات قبل الاستحقاق",
+      "claimDays": "مطالبات بلا تحديث"
     }
   }
 }

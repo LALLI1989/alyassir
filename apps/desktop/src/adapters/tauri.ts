@@ -49,6 +49,9 @@ export const tauriAdapter: Adapter = {
   logout: () => api<void>("api_logout"),
   request: <T>(method: string, path: string, body?: unknown) =>
     api<T>("api_request", { method, path, body: body ?? null, userActive: userIsActive() }),
+  openWhatsapp: async (url: string) => {
+    await invoke("open_whatsapp", { url });
+  },
 
   onChange: (listener) => subscribe<{ topic: ChangeTopic }>("alyassir://changed", (p) => listener(p.topic)),
   onLink: (listener) => subscribe<{ state: LinkState }>("alyassir://link", (p) => listener(p.state)),

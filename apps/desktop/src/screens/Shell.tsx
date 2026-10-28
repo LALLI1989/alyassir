@@ -6,6 +6,8 @@ import {
   HandCoins,
   Landmark,
   Lock,
+  BellRing,
+  Siren,
   Receipt,
   ClipboardList,
   Contact,
@@ -40,6 +42,8 @@ import { Debts, Payments } from "./Payments";
 import { Accounts } from "./Accounts";
 import { Closing } from "./Closing";
 import { Expenses } from "./Expenses";
+import { Claims } from "./Claims";
+import { Reminders, useReminders } from "./Reminders";
 import { Vehicles } from "./Vehicles";
 import { EditRequests } from "./EditRequests";
 import { Home } from "./Home";
@@ -69,6 +73,8 @@ export type Page =
   | { kind: "expenses" }
   | { kind: "closing" }
   | { kind: "accounts" }
+  | { kind: "claims" }
+  | { kind: "reminders" }
   | { kind: "module"; module: Module };
 
 /** Modules that have their screens already (Phases 2 and 3); the others are announced. */
@@ -80,6 +86,7 @@ const BUILT: Partial<Record<Module, { page: Page; icon: ReactNode; pages: Page["
   debts: { page: { kind: "debts" }, icon: <HandCoins />, pages: ["debts"] },
   expenses: { page: { kind: "expenses" }, icon: <Receipt />, pages: ["expenses"] },
   closing: { page: { kind: "closing" }, icon: <Lock />, pages: ["closing"] },
+  claims: { page: { kind: "claims" }, icon: <Siren />, pages: ["claims"] },
 };
 
 const THEME_KEY = "alyassir.theme";
@@ -139,6 +146,7 @@ export function Shell() {
   const [page, setPage] = useState<Page>({ kind: "home" });
   const [dark, toggleTheme] = useTheme();
   const unread = useQuery({ queryKey: ["unread"], queryFn: () => api<{ count: number }>("GET", "/api/messages/unread-count") }).data?.count ?? 0;
+  const reminders = useReminders().data?.total ?? 0;
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => api<AgencySettingsDto>("GET", "/api/settings/agency") }).data;
   if (!me) return null;
 
@@ -205,6 +213,12 @@ export function Shell() {
     case "closing":
       content = <Closing />;
       break;
+    case "claims":
+      content = <Claims onOpen={setPage} />;
+      break;
+    case "reminders":
+      content = <Reminders onOpen={setPage} />;
+      break;
     case "accounts":
       content = me.canSeeSafeAndBank ? <Accounts /> : null;
       break;
@@ -224,6 +238,7 @@ export function Shell() {
         </div>
         <nav className="grid gap-1" aria-label={t("shell.sectionWork")}>
           <NavItem active={is("home")} icon={<HomeIcon />} label={t("shell.home")} onClick={() => setPage({ kind: "home" })} />
+          <NavItem active={is("reminders")} icon={<BellRing />} label={t("shell.reminders")} badge={reminders} onClick={() => setPage({ kind: "reminders" })} />
           <NavItem active={is("messages")} icon={<Mail />} label={t("shell.messages")} badge={unread} onClick={() => setPage({ kind: "messages" })} />
           <NavItem active={is("editRequests")} icon={<ClipboardList />} label={t("shell.editRequests")} onClick={() => setPage({ kind: "editRequests" })} />
           {visibleModules.map((m) => {

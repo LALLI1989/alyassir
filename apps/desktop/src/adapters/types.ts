@@ -50,6 +50,8 @@ export interface Adapter {
   login(username: string, password: string): Promise<LoginResult>;
   logout(): Promise<void>;
   request<T>(method: string, path: string, body?: unknown): Promise<T>;
+  /** Opens a wa.me link in the browser of the computer (SPEC 18.4). */
+  openWhatsapp(url: string): Promise<void>;
 
   onChange(listener: (topic: ChangeTopic) => void): () => void;
   onLink(listener: (state: LinkState) => void): () => void;

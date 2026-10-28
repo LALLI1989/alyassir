@@ -94,6 +94,10 @@ export const webAdapter: Adapter = {
     socket = null;
   },
 
+  async openWhatsapp(url: string): Promise<void> {
+    window.open(url, "_blank", "noopener");
+  },
+
   async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     let r = await raw(method, path, body);
     if (r.status === 401 && (r.data as { code?: string } | null)?.code === "UNAUTHENTICATED" && (await refresh())) {

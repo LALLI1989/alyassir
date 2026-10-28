@@ -6,6 +6,7 @@ import {
   bigint,
   boolean,
   customType,
+  date,
   integer,
   jsonb,
   pgTable,
@@ -166,9 +167,190 @@ export const agencySettings = pgTable("agency_settings", {
   logoType: text("logo_type").$type<"image/png" | "image/jpeg">(),
   idleTimeoutMinutes: integer("idle_timeout_minutes").notNull(),
   backupDir: text("backup_dir").notNull(),
+  certificateFeeCents: bigint("certificate_fee_cents", { mode: "number" }).notNull(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
   updatedBy: uuid("updated_by"),
   version: integer("version").notNull(),
+});
+
+// ---------------------------------------------------------------- Phase 2
+
+const day = (name: string) => date(name, { mode: "string" });
+const meta = () => ({
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  version: integer("version").notNull().default(1),
+  archivedAt: ts("archived_at"),
+});
+
+export const insurers = pgTable("insurers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  ...meta(),
+});
+
+export const insuranceTypes = pgTable("insurance_types", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  insurerId: uuid("insurer_id").notNull(),
+  name: text("name").notNull(),
+  requiresVehicle: boolean("requires_vehicle").notNull(),
+  supportsFleet: boolean("supports_fleet").notNull(),
+  ...meta(),
+});
+
+export const coverageDurations = pgTable("coverage_durations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  months: integer("months").notNull(),
+  ...meta(),
+});
+
+export const operationTypes = pgTable("operation_types", {
+  code: text("code").primaryKey(),
+  nameAr: text("name_ar").notNull(),
+  nameFr: text("name_fr").notNull(),
+  isSystem: boolean("is_system").notNull().default(false),
+  ...meta(),
+});
+
+export const clients = pgTable("clients", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").$type<"individual" | "company" | "foreign">().notNull(),
+  fullName: text("full_name").notNull(),
+  companyName: text("company_name"),
+  idType: text("id_type").$type<"cin" | "rc_ice" | "passport" | "residence_card">().notNull(),
+  idNumber: text("id_number").notNull(),
+  idNormalized: text("id_normalized").notNull(),
+  residency: text("residency").$type<"resident" | "non_resident">(),
+  phone: text("phone").notNull(),
+  ...meta(),
+});
+
+export const vehicles = pgTable("vehicles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").notNull(),
+  plateType: text("plate_type").$type<"ma" | "ww" | "foreign" | "state">().notNull(),
+  plate: text("plate").notNull(),
+  plateNormalized: text("plate_normalized").notNull(),
+  fiscalPower: smallint("fiscal_power").notNull(),
+  fuel: text("fuel").$type<"petrol" | "diesel" | "electric" | "hybrid" | "lpg">().notNull(),
+  brand: text("brand").notNull(),
+  ...meta(),
+});
+
+export const fleets = pgTable("fleets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").notNull(),
+  name: text("name").notNull().default(""),
+  ...meta(),
+});
+
+export const fleetVehicles = pgTable("fleet_vehicles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  fleetId: uuid("fleet_id").notNull(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  addedOn: day("added_on").notNull(),
+  addedBy: uuid("added_by"),
+  removedOn: day("removed_on"),
+  removedBy: uuid("removed_by"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const policies = pgTable("policies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  insurerId: uuid("insurer_id").notNull(),
+  policyNumber: text("policy_number").notNull(),
+  numberNormalized: text("number_normalized").notNull(),
+  clientId: uuid("client_id").notNull(),
+  insuranceTypeId: uuid("insurance_type_id").notNull(),
+  fleetId: uuid("fleet_id"),
+  replacesPolicyId: uuid("replaces_policy_id"),
+  origin: text("origin").$type<"new_issue" | "policy_change">().notNull(),
+  ...meta(),
+});
+
+export type PeriodOperation = "new_issue" | "renewal" | "policy_change";
+
+export const policyPeriods = pgTable("policy_periods", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  policyId: uuid("policy_id").notNull(),
+  seq: integer("seq").notNull(),
+  previousPeriodId: uuid("previous_period_id"),
+  operation: text("operation").$type<PeriodOperation>().notNull(),
+  startDate: day("start_date").notNull(),
+  endDate: day("end_date").notNull(),
+  coverageDurationId: uuid("coverage_duration_id"),
+  months: integer("months"),
+  totalAmountCents: bigint("total_amount_cents", { mode: "number" }).notNull(),
+  validityStatus: text("validity_status").$type<"active" | "annulled" | "cancelled">().notNull().default("active"),
+  collectionStatus: text("collection_status").$type<"paid" | "in_collection" | "outstanding" | "payment_rejected">(),
+  statusChangedAt: ts("status_changed_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  version: integer("version").notNull().default(1),
+});
+
+export type CertificateReason = "new_issue" | "renewal" | "policy_change" | "vehicle_change" | "plate_change" | "duplicate" | "fleet_add_vehicle";
+
+export const certificates = pgTable("certificates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  insurerId: uuid("insurer_id").notNull(),
+  number: text("number").notNull(),
+  numberNormalized: text("number_normalized").notNull(),
+  policyId: uuid("policy_id").notNull(),
+  periodId: uuid("period_id").notNull(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  issuedOn: day("issued_on").notNull(),
+  reason: text("reason").$type<CertificateReason>().notNull(),
+  replacesCertificateId: uuid("replaces_certificate_id"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by"),
+});
+
+export const policyOperations = pgTable("policy_operations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  policyId: uuid("policy_id").notNull(),
+  periodId: uuid("period_id").notNull(),
+  operationType: text("operation_type").notNull(),
+  opDate: day("op_date").notNull(),
+  performedBy: uuid("performed_by"),
+  reason: text("reason"),
+  details: jsonb("details").$type<Record<string, unknown>>().notNull(),
+  priceDifferenceCents: bigint("price_difference_cents", { mode: "number" }),
+  feeCents: bigint("fee_cents", { mode: "number" }),
+  netCents: bigint("net_cents", { mode: "number" }),
+  settlementStatus: text("settlement_status").$type<"none" | "pending" | "settled">().notNull().default("none"),
+  paperReceiptNo: text("paper_receipt_no"),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  requestHash: text("request_hash").notNull(),
+  isHistorical: boolean("is_historical").notNull().default(false),
+  enteredAt: ts("entered_at").notNull().defaultNow(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const periodVehicles = pgTable("period_vehicles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  periodId: uuid("period_id").notNull(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  certificateId: uuid("certificate_id").notNull(),
+  fromDate: day("from_date").notNull(),
+  removedOn: day("removed_on"),
+  removedByOperation: uuid("removed_by_operation"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const vehiclePlateHistory = pgTable("vehicle_plate_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vehicleId: uuid("vehicle_id").notNull(),
+  oldPlateType: text("old_plate_type").$type<"ma" | "ww" | "foreign" | "state">().notNull(),
+  oldPlate: text("old_plate").notNull(),
+  newPlateType: text("new_plate_type").$type<"ma" | "ww" | "foreign" | "state">().notNull(),
+  newPlate: text("new_plate").notNull(),
+  changedAt: ts("changed_at").notNull().defaultNow(),
+  changedBy: uuid("changed_by"),
+  reason: text("reason"),
+  operationId: uuid("operation_id"),
 });
 
 export const allTables = {
@@ -185,4 +367,18 @@ export const allTables = {
   notifications,
   editRequests,
   agencySettings,
+  insurers,
+  insuranceTypes,
+  coverageDurations,
+  operationTypes,
+  clients,
+  vehicles,
+  fleets,
+  fleetVehicles,
+  policies,
+  policyPeriods,
+  certificates,
+  policyOperations,
+  periodVehicles,
+  vehiclePlateHistory,
 };

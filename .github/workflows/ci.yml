@@ -85,6 +85,9 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           ../../tooling/ci-run.sh playwright pnpm exec playwright test
+      - name: Browser demo for GitHub Codespaces starts and answers
+        if: ${{ !cancelled() }}
+        run: tooling/ci-run.sh demo tooling/demo/smoke.sh
       # Screenshots of the real interface, published on the "screenshots" branch for the owner.
       - name: Publish screenshots
         if: ${{ success() && github.event_name == 'push' }}
@@ -108,6 +111,19 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: apps/desktop/src-tauri
         run: ../../../tooling/ci-run.sh rust cargo test -p server-link
+
+  # The browser demo, started exactly as GitHub Codespaces starts it (same container files).
+  codespaces-demo:
+    name: Codespaces demo starts like on GitHub Codespaces
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start the demo container and check it answers
+        run: tooling/ci-run.sh codespaces tooling/demo/devcontainer-check.sh
 
   windows-installer:
     name: Build installer and test it on clean Windows
@@ -148,14 +164,14 @@ jobs:
           name: Alyassir-Setup
           path: installer/output/*.exe
           retention-days: 30
-      # The Phase 0 installer, to test updating a server installed by the previous phase.
-      - name: Download the previous installer (Phase 0)
+      # The Phase 1 installer, to test updating a server installed by the previous phase.
+      - name: Download the previous installer (Phase 1)
         id: previous
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: Alyassir-Setup
-          run-id: 40374788473
+          run-id: 40508972073
           github-token: ${{ github.token }}
           path: installer/previous
       - name: Test installer end to end
@@ -163,7 +179,7 @@ jobs:
         run: |
           $setup = (Get-ChildItem installer/output/*.exe | Select-Object -First 1).FullName
           $previous = (Get-ChildItem installer/previous/*.exe -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-          if (-not $previous) { Write-Host "::warning title=Update test::Phase 0 installer not available; update-from-Phase-0 scenario skipped" }
+          if (-not $previous) { Write-Host "::warning title=Update test::Phase 1 installer not available; update-from-Phase-1 scenario skipped" }
           ./installer/tests/e2e.ps1 -Setup $setup -PreviousSetup "$previous"
       - uses: actions/upload-artifact@v4
         if: always()

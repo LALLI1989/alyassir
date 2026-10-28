@@ -24,6 +24,38 @@ export const ERROR_CODES = [
   "REASON_REQUIRED",
   "CLIENT_TOO_OLD",
   "RATE_LIMITED",
+  // Phase 2: clients, vehicles, policies.
+  "CLIENT_ID_TAKEN",
+  "PLATE_TAKEN",
+  "POLICY_NUMBER_TAKEN",
+  "CERTIFICATE_TAKEN",
+  "CERTIFICATE_REQUIRED",
+  "INSURER_NAME_TAKEN",
+  "DURATION_EXISTS",
+  "ARCHIVED",
+  "HAS_ACTIVE_POLICY",
+  "VEHICLE_ALREADY_INSURED",
+  "VEHICLE_NOT_OF_CLIENT",
+  "VEHICLES_INVALID",
+  "FLEET_NOT_SUPPORTED",
+  "FLEET_MIN_VEHICLES",
+  "NOT_FLEET",
+  "POLICY_NOT_ACTIVE",
+  "POLICY_CLOSED",
+  "RENEWAL_TOO_LATE",
+  "POLICY_CHANGE_TOO_EARLY",
+  "ALREADY_REPLACED",
+  "START_BEFORE_PREVIOUS_END",
+  "START_TOO_LATE",
+  "END_BEFORE_START",
+  "AMOUNT_LOCKED",
+  "TYPE_CHANGE_NOT_ALLOWED",
+  "FUTURE_PERIOD_EXISTS",
+  "ANNULMENT_PERIOD_OVER",
+  "REFUND_TOO_LARGE",
+  "PLATE_CHANGE_NEEDS_OPERATION",
+  "SAME_VEHICLE",
+  "IDEMPOTENCY_MISMATCH",
   "INTERNAL",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -33,4 +65,6 @@ export interface ApiError {
   message?: string;
   /** Field errors for VALIDATION: path -> error key. */
   fields?: Record<string, string>;
+  /** FORBIDDEN on a record: the user may ask the manager with an edit request (SPEC 8). */
+  requestable?: { entityType: string; entityId: string; operation: string };
 }

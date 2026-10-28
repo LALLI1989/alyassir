@@ -49,6 +49,19 @@
 | إدخال تاريخي | Saisie historique | | |
 | نسخة بديلة | Duplicata | | |
 | رقم الرخصة | Numéro d'agrément | | اعتماد الوسيط من طرف ACAPS |
+| إصدار جديد | Nouvelle souscription | «مكتتب العقد»، المادة 1 [م-ع]؛ « souscripteur » [م-ف] | في الوكالات يقال أيضًا « Affaire nouvelle » |
+| تاريخ البداية | Date d'effet | | الاستعمال الجاري في عقود التأمين |
+| تاريخ الانتهاء | Date d'expiration | | نتفادى « échéance » هنا لأنها لموعد القسط |
+| مدة التغطية | Durée de garantie | | |
+| نوع التأمين | Type d'assurance | | |
+| المبلغ الإجمالي | Prime totale | | انظر الملاحظة 2 |
+| سارية / منتهية | En vigueur / Expirée | | حالة السريان |
+| مفسوخة / ملغاة | Annulée / Résiliée | | انظر الملاحظة 1 |
+| وثيقة الهوية | Pièce d'identité | | CIN، RC/ICE، جواز السفر (Passeport)، بطاقة الإقامة (Carte de séjour) |
+| مقيم / غير مقيم | Résident / Non-résident | | |
+| الماركة | Marque | | كما في البطاقة الرمادية |
+| رسم الشهادة (17 درهمًا) | Frais d'attestation | | |
+| أرشفة | Archiver | | لا حذف أبدًا |
 
 ## ملاحظات
 

@@ -142,14 +142,31 @@ try {
   Wipe-Everything
 
   if ($PreviousSetup) {
-    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 0) ==="
-    $code = Install @("/MODE=server", "/PORT=$Port") $PreviousSetup
-    Check ($code -eq 0) "Phase 0 server installed"
-    $code = Install $Bootstrap
-    Check ($code -eq 0) "update succeeded"
+    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 1) ==="
+    $code = Install (@("/MODE=server", "/PORT=$Port") + $Bootstrap) $PreviousSetup
+    Check ($code -eq 0) "Phase 1 server installed"
+    $old = Login "gerant" $ManagerPass
+    Check ($old.status -eq 200) "the manager signs in on the Phase 1 server"
+    $oldToken = $old.body.accessToken
+    $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "نادية"; password = "nadia-pass" } $oldToken
+    Check ($emp.status -eq 201) "an employee is created before the update"
+    $msg = Api "POST" "/api/messages/threads" @{ subject = "قبل التحديث"; body = "رسالة محفوظة"; to = @($emp.body.id) } $oldToken
+    Check ($msg.status -eq 201) "a message is sent before the update"
+    Check ((Api "GET" "/api/insurance/catalog" $null $oldToken).status -eq 404) "the Phase 1 server has no insurance screens yet"
+
+    $code = Install @()
+    Check ($code -eq 0) "update to Phase 2 succeeded"
     Check ((Get-ChildItem "$Data\backups\pre-update-*.dump").Count -ge 1) "automatic backup taken before updating the database"
-    $s = Login "gerant" $ManagerPass
-    Check ($s.status -eq 200 -and $s.body.me.role -eq "manager") "the manager created during the update can sign in"
+    $new = Login "gerant" $ManagerPass
+    Check ($new.status -eq 200 -and $new.body.me.role -eq "manager") "the manager still signs in after the update"
+    $newToken = $new.body.accessToken
+    Check ((Login "nadia" "nadia-pass").status -eq 200) "the employee created before the update still signs in"
+    $threads = Api "GET" "/api/messages/threads" $null $newToken
+    Check (@($threads.body | Where-Object { $_.subject -eq "قبل التحديث" }).Count -eq 1) "the message sent before the update is still there"
+    $catalog = Api "GET" "/api/insurance/catalog" $null $newToken
+    Check ($catalog.status -eq 200 -and @($catalog.body.insurers | Where-Object { $_.name -eq "RMA" }).Count -eq 1) "the new Phase 2 tables are there (RMA ready)"
+    $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
+    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "2") "both database steps applied (Phase 1 and Phase 2)"
     Wipe-Everything
   }
 
@@ -209,7 +226,7 @@ try {
   Write-Host "  agency name expected: $wantCodes"
   Check ($agency.body.nameAr -eq $expectedName) "agency name in Arabic saved correctly (received: $gotCodes)"
   Check ($agency.body.backupDir -eq $BackupDir) "Google Drive backup folder saved"
-  $emp = Api "POST" "/api/users" @{ username = "salma"; displayName = "سلمى"; password = "salma-pass" } $token
+  $emp = Api "POST" "/api/users" @{ username = "salma"; displayName = "Salma"; password = "salma-pass" } $token
   Check ($emp.status -eq 201) "the manager creates an employee"
   $bad = Login "gerant" "wrong-password"
   Check ($bad.status -eq 401 -and $bad.body.code -eq "INVALID_CREDENTIALS") "wrong password refused"

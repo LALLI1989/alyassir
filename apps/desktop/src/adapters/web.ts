@@ -1,8 +1,8 @@
 /**
- * Plain HTTP adapter, used only by the automated interface tests (Playwright) against a test
- * server. No certificate pinning here: never used to reach a real agency server.
+ * Plain HTTP adapter, used only by the automated interface tests (Playwright) and the browser demo
+ * (GitHub Codespaces, test data). No certificate pinning here: never used to reach a real agency server.
  */
-import { io, type Socket } from "socket.io-client";
+import { io, type ManagerOptions, type Socket, type SocketOptions } from "socket.io-client";
 import {
   HEADER_CLIENT_VERSION,
   HEADER_DEVICE,
@@ -54,7 +54,9 @@ function endSession(code: string): void {
 
 function connectSocket(): void {
   socket?.disconnect();
-  socket = io(BASE, { path: "/socket.io", transports: ["websocket"], auth: (cb) => cb({ token: tokens?.access ?? "" }) });
+  const options: Partial<ManagerOptions & SocketOptions> = { path: "/socket.io", transports: ["websocket"], auth: (cb) => cb({ token: tokens?.access ?? "" }) };
+  // Empty address: the same address as the page (demo behind the interface's proxy).
+  socket = BASE ? io(BASE, options) : io(options);
   socket.on("connect", () => linkListeners.forEach((l) => l("connected")));
   socket.on("disconnect", () => linkListeners.forEach((l) => l("disconnected")));
   socket.on("changed", (signal: { topic: ChangeTopic }) => changeListeners.forEach((l) => l(signal.topic)));

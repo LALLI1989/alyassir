@@ -12,3 +12,6 @@ export const Authenticated = () => SetMetadata(ACCESS_KEY, { kind: "authenticate
 export const ManagerOnly = () => SetMetadata(ACCESS_KEY, { kind: "manager" } satisfies RouteAccess);
 export const RequirePermission = (code: PermissionCode) =>
   SetMetadata(ACCESS_KEY, { kind: "permission", code } satisfies RouteAccess);
+/** Permission or one-time edit-request grant on the record (checked by the service: AccessService.require). */
+export const PermissionOrGrant = (code: PermissionCode) =>
+  SetMetadata(ACCESS_KEY, { kind: "grantable", code } satisfies RouteAccess);

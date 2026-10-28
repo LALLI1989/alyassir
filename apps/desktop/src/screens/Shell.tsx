@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Building2,
+  Car,
   ClipboardList,
+  Contact,
+  FileText,
+  ShieldCheck,
   Home as HomeIcon,
   KeyRound,
   LogOut,
@@ -21,6 +25,12 @@ import { Alert, Badge, Button, cn } from "@alyassir/ui";
 import { api, useSession } from "../lib/session";
 import { Account } from "./Account";
 import { Audit } from "./Audit";
+import { ClientFile } from "./ClientFile";
+import { Clients } from "./Clients";
+import { InsuranceSettings } from "./InsuranceSettings";
+import { PolicyNew, Policies } from "./Policies";
+import { PolicyPage } from "./PolicyPage";
+import { Vehicles } from "./Vehicles";
 import { EditRequests } from "./EditRequests";
 import { Home } from "./Home";
 import { Messages } from "./Messages";
@@ -37,7 +47,21 @@ export type Page =
   | { kind: "settings" }
   | { kind: "account" }
   | { kind: "server" }
+  | { kind: "clients" }
+  | { kind: "client"; id: string }
+  | { kind: "vehicles" }
+  | { kind: "policies" }
+  | { kind: "policy"; id: string }
+  | { kind: "policyNew"; clientId?: string }
+  | { kind: "insurance" }
   | { kind: "module"; module: Module };
+
+/** Modules that have their screens already (Phase 2); the others are announced. */
+const BUILT: Partial<Record<Module, { page: Page; icon: ReactNode; pages: Page["kind"][] }>> = {
+  clients: { page: { kind: "clients" }, icon: <Contact />, pages: ["clients", "client"] },
+  vehicles: { page: { kind: "vehicles" }, icon: <Car />, pages: ["vehicles"] },
+  policies: { page: { kind: "policies" }, icon: <FileText />, pages: ["policies", "policy", "policyNew"] },
+};
 
 const THEME_KEY = "alyassir.theme";
 
@@ -129,6 +153,27 @@ export function Shell() {
     case "server":
       content = <ServerStatusPage />;
       break;
+    case "clients":
+      content = <Clients onOpen={setPage} />;
+      break;
+    case "client":
+      content = <ClientFile key={page.id} id={page.id} onOpen={setPage} />;
+      break;
+    case "vehicles":
+      content = <Vehicles onOpen={setPage} />;
+      break;
+    case "policies":
+      content = <Policies onOpen={setPage} />;
+      break;
+    case "policy":
+      content = <PolicyPage key={page.id} id={page.id} onOpen={setPage} />;
+      break;
+    case "policyNew":
+      content = <PolicyNew key={page.clientId ?? "new"} clientId={page.clientId} onOpen={setPage} />;
+      break;
+    case "insurance":
+      content = isManager ? <InsuranceSettings /> : null;
+      break;
     case "module":
       content = <ComingSoon title={t(`modules.${page.module}`)} />;
       break;
@@ -147,14 +192,20 @@ export function Shell() {
           <NavItem active={is("home")} icon={<HomeIcon />} label={t("shell.home")} onClick={() => setPage({ kind: "home" })} />
           <NavItem active={is("messages")} icon={<Mail />} label={t("shell.messages")} badge={unread} onClick={() => setPage({ kind: "messages" })} />
           <NavItem active={is("editRequests")} icon={<ClipboardList />} label={t("shell.editRequests")} onClick={() => setPage({ kind: "editRequests" })} />
-          {visibleModules.map((m) => (
-            <NavItem key={m} active={is("module", m)} icon={<span className="size-4" />} label={t(`modules.${m}`)} disabled onClick={() => setPage({ kind: "module", module: m })} />
-          ))}
+          {visibleModules.map((m) => {
+            const built = BUILT[m];
+            return built ? (
+              <NavItem key={m} active={built.pages.includes(page.kind)} icon={built.icon} label={t(`modules.${m}`)} onClick={() => setPage(built.page)} />
+            ) : (
+              <NavItem key={m} active={is("module", m)} icon={<span className="size-4" />} label={t(`modules.${m}`)} disabled onClick={() => setPage({ kind: "module", module: m })} />
+            );
+          })}
         </nav>
         {isManager && (
           <nav className="grid gap-1" aria-label={t("shell.sectionManage")}>
             <p className="px-3 text-xs font-semibold text-muted-foreground">{t("shell.sectionManage")}</p>
             <NavItem active={is("users")} icon={<UsersIcon />} label={t("shell.users")} onClick={() => setPage({ kind: "users" })} />
+            <NavItem active={is("insurance")} icon={<ShieldCheck />} label={t("shell.insurance")} onClick={() => setPage({ kind: "insurance" })} />
             <NavItem active={is("audit")} icon={<ScrollText />} label={t("shell.audit")} onClick={() => setPage({ kind: "audit" })} />
             <NavItem active={is("settings")} icon={<SettingsIcon />} label={t("shell.settings")} onClick={() => setPage({ kind: "settings" })} />
           </nav>

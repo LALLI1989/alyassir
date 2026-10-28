@@ -70,6 +70,11 @@ export type RouteAccess =
   | { kind: "public" }
   | { kind: "authenticated" }
   | { kind: "manager" }
-  | { kind: "permission"; code: PermissionCode };
+  | { kind: "permission"; code: PermissionCode }
+  /**
+   * On one existing record: the permission, or a one-time approved edit request on that record
+   * (SPEC 8). The guard only signs the user in; the service checks inside its transaction.
+   */
+  | { kind: "grantable"; code: PermissionCode };
 
 export type Role = "manager" | "employee";

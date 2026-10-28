@@ -1,0 +1,22 @@
+# Only for exploring the app in GitHub Codespaces (in the cloud). Not used by the agency.
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/javascript-node:22
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/alyassir:cached
+    network_mode: service:db
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+      # Never stop to ask before downloading pnpm (nobody is there to answer).
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:

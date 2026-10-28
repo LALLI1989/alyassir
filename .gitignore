@@ -15,3 +15,5 @@ installer/vendor/
 *.key
 *.cer
 apps/desktop/screenshots/
+.pnpm-store/
+apps/desktop/dist-demo/

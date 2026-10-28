@@ -11,10 +11,13 @@ import {
   PASSWORD_MIN_LENGTH,
   USERNAME_PATTERN,
 } from "./constants";
+import { isLatinName } from "./insurance";
 import { ALL_PERMISSIONS, type PermissionCode } from "./permissions";
 
 const trimmed = (max: number) => z.string().trim().max(max, "too_long");
 const requiredText = (max: number) => trimmed(max).min(1, "required");
+/** People's names in Latin letters, as on identity documents (owner decision 28/10/2026). */
+const latinName = (max: number) => requiredText(max).refine(isLatinName, "latin_only");
 
 export const usernameSchema = z.string().trim().regex(USERNAME_PATTERN, "username_format");
 export const passwordSchema = z
@@ -42,7 +45,7 @@ export const setLanguageSchema = z.object({ language: languageSchema });
 
 export const createUserSchema = z.object({
   username: usernameSchema,
-  displayName: requiredText(100),
+  displayName: latinName(100),
   password: passwordSchema,
   language: languageSchema.nullable().default(null),
 });
@@ -50,7 +53,7 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 
 export const updateUserSchema = z.object({
   version: versionSchema,
-  displayName: requiredText(100).optional(),
+  displayName: latinName(100).optional(),
   language: languageSchema.nullable().optional(),
   isSupervisor: z.boolean().optional(),
 });

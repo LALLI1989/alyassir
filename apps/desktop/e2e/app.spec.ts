@@ -55,6 +55,12 @@ test("the manager creates an employee and gives one permission", async ({ page }
   // Instant check with the same rule as the server: 6 characters at least.
   await page.getByLabel(ar.users.displayName).fill("كريم");
   await page.getByLabel(ar.users.username).fill("karim");
+  await page.getByLabel(ar.users.password, { exact: true }).fill("karim-pass");
+  await page.getByRole("button", { name: ar.common.create }).click();
+  // Names in Latin letters only (owner decision 28/10/2026).
+  await expect(page.getByText(ar.errors.fields.latin_only)).toBeVisible();
+  await page.getByLabel(ar.users.displayName).fill("Karim");
+  await page.getByLabel(ar.users.username).fill("karim");
   await page.getByLabel(ar.users.password, { exact: true }).fill("12345");
   await page.getByRole("button", { name: ar.common.create }).click();
   await expect(page.getByText(ar.errors.fields.password_too_short)).toBeVisible();
@@ -80,7 +86,7 @@ test("first sign-in of the employee: chooses French, sees only what he may see",
   await page.getByRole("button", { name: fr.language.fr }).click();
 
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
-  await expect(page.getByTestId("current-user")).toHaveText("كريم");
+  await expect(page.getByTestId("current-user")).toHaveText("Karim");
   await expect(page.getByRole("button", { name: fr.modules.clients, exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: fr.modules.policies, exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: fr.shell.users, exact: true })).toHaveCount(0);

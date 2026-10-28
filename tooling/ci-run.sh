@@ -7,7 +7,8 @@ out="$(mktemp)"
 "$@" 2>&1 | tee "$out"
 code=${PIPESTATUS[0]}
 if [ "$code" -ne 0 ]; then
-  tail -n 80 "$out" | sed -e 's/\x1b\[[0-9;]*m//g' | cut -c1-400 > "$out.tail"
+  # Server start-up lines ("LOG [...]") hide the real error: leave them out.
+  sed -e 's/\x1b\[[0-9;]*m//g' "$out" | grep -v -E 'LOG \[(RouterExplorer|RoutesResolver|InstanceLoader|NestFactory|NestApplication)\]' | tail -n 120 | cut -c1-400 > "$out.tail"
   body="$(sed -e 's/%/%25/g' "$out.tail" | sed -e ':a;N;$!ba;s/\r//g;s/\n/%0A/g')"
   echo "::error title=${title}::${body}"
 fi

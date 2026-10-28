@@ -43,6 +43,30 @@ describe("route permissions", () => {
     expect(pub).toEqual(["AuthController.login", "AuthController.refresh", "SystemController.health", "SystemController.info"]);
   });
 
+  it("only operations on one existing record accept a one-time edit-request grant", () => {
+    const grantable = routes().filter((r) => r.access?.kind === "grantable").map((r) => r.name).sort();
+    expect(grantable).toEqual([
+      "ClientsController.archive",
+      "ClientsController.update",
+      "PoliciesController.annul",
+      "PoliciesController.change",
+      "PoliciesController.custom",
+      "PoliciesController.duplicate",
+      "PoliciesController.fleetAdd",
+      "PoliciesController.fleetRemove",
+      "PoliciesController.plateChange",
+      "PoliciesController.renew",
+      "PoliciesController.update",
+      "PoliciesController.vehicleChange",
+      "VehiclesController.archive",
+      "VehiclesController.update",
+    ]);
+    // Insurance settings and résiliation stay with the manager (SPEC 10, 13.2).
+    const manager = routes().filter((r) => r.access?.kind === "manager").map((r) => r.name);
+    expect(manager).toContain("PoliciesController.cancel");
+    expect(manager.filter((n) => n.startsWith("InsuranceController."))).toHaveLength(11);
+  });
+
   it("the app serves exactly the listed controllers", () => {
     const mod = AppModule.register({ host: "x", port: 1, databaseUrl: "x", jwtSecret: "x".repeat(32), tls: null });
     expect(mod.controllers).toEqual(CONTROLLERS);

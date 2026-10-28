@@ -4,6 +4,9 @@ import {
   Banknote,
   Car,
   HandCoins,
+  Landmark,
+  Lock,
+  Receipt,
   ClipboardList,
   Contact,
   FileText,
@@ -24,6 +27,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { MODULES, type AgencySettingsDto, type Module, type PermissionCode } from "@alyassir/shared";
 import { Alert, Badge, Button, cn } from "@alyassir/ui";
+import { DrawerBadge } from "../components/drawer";
 import { api, useSession } from "../lib/session";
 import { Account } from "./Account";
 import { Audit } from "./Audit";
@@ -33,6 +37,9 @@ import { InsuranceSettings } from "./InsuranceSettings";
 import { PolicyNew, Policies } from "./Policies";
 import { PolicyPage } from "./PolicyPage";
 import { Debts, Payments } from "./Payments";
+import { Accounts } from "./Accounts";
+import { Closing } from "./Closing";
+import { Expenses } from "./Expenses";
 import { Vehicles } from "./Vehicles";
 import { EditRequests } from "./EditRequests";
 import { Home } from "./Home";
@@ -59,6 +66,9 @@ export type Page =
   | { kind: "insurance" }
   | { kind: "payments" }
   | { kind: "debts" }
+  | { kind: "expenses" }
+  | { kind: "closing" }
+  | { kind: "accounts" }
   | { kind: "module"; module: Module };
 
 /** Modules that have their screens already (Phases 2 and 3); the others are announced. */
@@ -68,6 +78,8 @@ const BUILT: Partial<Record<Module, { page: Page; icon: ReactNode; pages: Page["
   policies: { page: { kind: "policies" }, icon: <FileText />, pages: ["policies", "policy", "policyNew"] },
   payments: { page: { kind: "payments" }, icon: <Banknote />, pages: ["payments"] },
   debts: { page: { kind: "debts" }, icon: <HandCoins />, pages: ["debts"] },
+  expenses: { page: { kind: "expenses" }, icon: <Receipt />, pages: ["expenses"] },
+  closing: { page: { kind: "closing" }, icon: <Lock />, pages: ["closing"] },
 };
 
 const THEME_KEY = "alyassir.theme";
@@ -187,6 +199,15 @@ export function Shell() {
     case "debts":
       content = <Debts onOpen={setPage} />;
       break;
+    case "expenses":
+      content = <Expenses />;
+      break;
+    case "closing":
+      content = <Closing />;
+      break;
+    case "accounts":
+      content = me.canSeeSafeAndBank ? <Accounts /> : null;
+      break;
     case "module":
       content = <ComingSoon title={t(`modules.${page.module}`)} />;
       break;
@@ -213,6 +234,7 @@ export function Shell() {
               <NavItem key={m} active={is("module", m)} icon={<span className="size-4" />} label={t(`modules.${m}`)} disabled onClick={() => setPage({ kind: "module", module: m })} />
             );
           })}
+          {me.canSeeSafeAndBank && <NavItem active={is("accounts")} icon={<Landmark />} label={t("shell.accounts")} onClick={() => setPage({ kind: "accounts" })} />}
         </nav>
         {isManager && (
           <nav className="grid gap-1" aria-label={t("shell.sectionManage")}>
@@ -237,6 +259,7 @@ export function Shell() {
             <Badge variant="outline">{roleBadge}</Badge>
           </div>
           <div className="flex items-center gap-1">
+            <DrawerBadge />
             <span className={cn("me-2 inline-flex items-center gap-1 text-xs", link === "connected" ? "text-success" : "text-warning")} role="status">
               <span className={cn("size-2 rounded-full", link === "connected" ? "bg-success" : "bg-warning")} />
               {link === "connected" ? t("status.connected") : t("status.reconnecting")}

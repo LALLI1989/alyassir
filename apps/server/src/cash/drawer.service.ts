@@ -45,7 +45,7 @@ export class DrawerService {
 
   private async balance(db: DbOrTx): Promise<number> {
     const [a] = await db.select({ b: schema.accounts.balanceCents }).from(schema.accounts).where(eq(schema.accounts.code, "drawer"));
-    return a?.balanceCents ?? 0;
+    return a?.b ?? 0;
   }
 
   private async members(db: DbOrTx, sessionIds: string[]): Promise<Map<string, DrawerMemberDto[]>> {

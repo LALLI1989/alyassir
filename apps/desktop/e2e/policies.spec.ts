@@ -104,6 +104,12 @@ test("a new policy from the client file: number, certificate, amount; end comput
 
 test("vehicle change: confirmation shows 300 + 17 = 317 before saving", async ({ page }) => {
   await signIn(page);
+  // Phase 4: the 317 MAD are paid in cash, so the manager receives the drawer first (empty: 0).
+  await page.getByTestId("drawer-badge").click();
+  const receive = page.getByTestId("receive-drawer");
+  await receive.getByLabel(ar.drawer.counted).fill("0");
+  await receive.getByRole("button", { name: ar.drawer.receive }).click();
+  await expect(page.getByTestId("drawer-badge")).toContainText(ar.drawer.held);
   await openPolicy(page, "POL-2026-001");
   await page.getByRole("button", { name: ar.policies.vehicleChange }).click();
   const dialog = page.getByRole("dialog");

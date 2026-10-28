@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Label, Textarea } from "@alyassir/ui";
 import { asClientError, type ClientError } from "../adapters";
+import { ReceiveDrawerButton } from "../components/drawer";
 import { formatDateTime } from "./format";
 import { api, useSession } from "./session";
 
@@ -62,6 +63,7 @@ export function ErrorMessage({ error }: { error: ClientError | null | undefined 
       <p>{text}</p>
       <p className="mt-1 text-xs opacity-80">{t("errors.code", { code: `API-${error.code}` })}</p>
       {error.requestable && !isManager && <RequestEdit target={error.requestable} />}
+      {error.code === "DRAWER_NOT_RECEIVED" && <ReceiveDrawerButton />}
     </Alert>
   );
 }

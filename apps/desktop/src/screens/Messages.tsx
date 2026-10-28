@@ -73,6 +73,30 @@ function MessageBody({ body, system }: { body: string; system: boolean }) {
       [t("finance.amount"), money(p.amountCents)],
       [t("messages.events.refund_needs_manager.employee"), text(p.employee)],
     ];
+  } else if (parsed.event === "drawer_receive_difference") {
+    lines = [
+      [t("messages.events.common.employee"), text(p.employee)],
+      [t("drawer.expected"), money(p.shownCents)],
+      [t("drawer.counted"), money(p.countedCents)],
+      [t("drawer.difference"), money(p.differenceCents)],
+      [t("common.reason"), text(p.reason)],
+    ];
+  } else if (parsed.event === "drawer_close_difference" || parsed.event === "drawer_closed_on_behalf") {
+    lines = [
+      [t("messages.events.common.employee"), text(p.employee)],
+      [t("drawer.expected"), money(p.expectedCents)],
+      [t("drawer.counted"), money(p.countedCents)],
+      [t("drawer.difference"), money(p.differenceCents)],
+      [t("common.reason"), text(p.reason)],
+    ];
+  } else if (parsed.event === "expense_pending") {
+    const cat = text(p.category);
+    lines = [
+      [t("messages.events.common.employee"), text(p.employee)],
+      [t("cash.category"), t(`cash.categories.${cat}`, { defaultValue: cat })],
+      [t("finance.amount"), money(p.amountCents)],
+      [t("cash.note"), text(p.note)],
+    ];
   } else if (parsed.event === "instalments_to_debt") {
     const items = Array.isArray(p.items) ? (p.items as Record<string, unknown>[]) : [];
     lines = items.map((x) => [`${text(x.client)} · ${text(x.policyNumber)}`, t("messages.events.instalments_to_debt.line", { seq: text(x.seq), date: day(x.dueDate), amount: money(x.amountCents) })]);

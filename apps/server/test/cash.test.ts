@@ -94,7 +94,8 @@ describe("receiving the drawer (SPEC 17.3, owner decisions 28/10/2026)", () => {
 
   it("someone who never handles cash may not receive the drawer", async () => {
     const viewer = await employee("viewer", ["clients.view"]);
-    expect((await receiveDrawer(t, viewer)).status).toBe(403);
+    expect((await t.call("GET", "/api/drawer", { token: viewer })).status).toBe(403);
+    expect((await t.call("POST", "/api/drawer/receive", { token: viewer, body: { shownCents: 0, countedCents: 0, reason: "" } })).status).toBe(403);
   });
 });
 
@@ -182,7 +183,7 @@ describe("expenses (SPEC 17.2)", () => {
   it("added by an employee who received the drawer; no effect until approved; the manager is told", async () => {
     expect((await addExpense(cashier, 20_000)).body.code).toBe("DRAWER_NOT_RECEIVED");
     await receiveDrawer(t, cashier);
-    const before = (await balances()).drawer;
+    const before = (await balances()).drawer ?? 0;
     const key = randomUUID();
     const res = await addExpense(cashier, 20_000, key);
     expect(res.status).toBe(201);
@@ -200,7 +201,7 @@ describe("expenses (SPEC 17.2)", () => {
   it("approved: the drawer goes down; rejected: no effect; cancelled: the money comes back", async () => {
     const list = (await t.call("GET", "/api/expenses?status=pending", { token: manager })).body.items as ExpenseDto[];
     const e = list[0] as ExpenseDto;
-    const before = (await balances()).drawer;
+    const before = (await balances()).drawer ?? 0;
     // The manager first corrects the amount (pending only).
     const edited = await t.call("PATCH", `/api/expenses/${e.id}`, { token: manager, body: { version: e.version, categoryId: e.category.id, amountCents: 15_000, note: "Produits" } });
     expect(edited.body.amountCents).toBe(15_000);

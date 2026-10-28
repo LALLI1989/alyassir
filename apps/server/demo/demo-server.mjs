@@ -46,6 +46,8 @@ const fresh = !(await hasManager(ownerUrl));
 const owner = new Client({ connectionString: ownerUrl });
 await owner.connect();
 const hasPlans = Number((await owner.query("SELECT count(*)::int AS n FROM installment_plans")).rows[0].n) > 0;
+// Phase 4 samples likewise.
+const hasSessions = Number((await owner.query("SELECT count(*)::int AS n FROM drawer_sessions")).rows[0].n) > 0;
 await owner.end();
 if (fresh) {
   await bootstrapData(ownerUrl, { agencyName: "وكالة اليسير للتأمين", managerUsername: "gerant", managerPassword: "gerant123", language: "ar", backupDir: "/tmp" });
@@ -69,6 +71,9 @@ if (fresh) await seed();
 if (!hasPlans) {
   // Demo only: a sample that cannot be added must not stop the demo.
   await seedPayments().catch((error) => console.log(`payment samples skipped: ${error instanceof Error ? error.message : String(error)}`));
+}
+if (!hasSessions) {
+  await seedCash().catch((error) => console.log(`cash samples skipped: ${error instanceof Error ? error.message : String(error)}`));
 }
 
 async function call(method, path, body) {
@@ -118,9 +123,16 @@ async function seed() {
   console.log("sample data added");
 }
 
+// The manager receives the drawer before any cash (Phase 4).
+async function receiveDrawer() {
+  const st = await call("GET", "/api/drawer");
+  if (!st.holder) await call("POST", "/api/drawer/receive", { shownCents: st.balanceCents, countedCents: st.balanceCents, reason: "" });
+}
+
 // Phase 3: a policy in 3 instalments, a cash payment, a cheque waiting for the manager.
 async function seedPayments() {
   token = (await call("POST", "/api/auth/login", { username: "gerant", password: "gerant123" })).accessToken;
+  await receiveDrawer();
   const c = await call("GET", "/api/insurance/catalog");
   const auto = c.types.find((x) => x.name === "Assurance automobile")?.id;
   const months12 = c.durations.find((d) => d.months === 12)?.id;
@@ -156,4 +168,33 @@ async function seedPayments() {
     });
   }
   console.log("payment samples added");
+}
+
+// Phase 4: Salma receives the drawer and adds an expense waiting for approval; 500 MAD go to the safe.
+async function seedCash() {
+  token = (await call("POST", "/api/auth/login", { username: "gerant", password: "gerant123" })).accessToken;
+  await receiveDrawer();
+  const users = await call("GET", "/api/users");
+  const salma = (users.items ?? users).find((u) => u.username === "salma");
+  if (salma) {
+    await call("PUT", `/api/users/${salma.id}/permissions`, {
+      version: salma.version,
+      permissions: [
+        "clients.view", "clients.create", "vehicles.view", "vehicles.create", "policies.view", "policies.create",
+        "payments.view", "payments.create", "debts.view", "expenses.view", "expenses.create", "closing.view", "closing.create",
+      ],
+    });
+  }
+  const st = await call("GET", "/api/drawer");
+  if (st.balanceCents >= 50000) {
+    await call("POST", "/api/accounts/transfers", { idempotencyKey: crypto.randomUUID(), from: "drawer", to: "safe", amountCents: 50000, reference: "" });
+  }
+  const managerToken = token;
+  token = (await call("POST", "/api/auth/login", { username: "salma", password: "salma123" })).accessToken;
+  await receiveDrawer();
+  const categories = await call("GET", "/api/expenses/categories");
+  const cleaning = categories.find((c) => c.code === "cleaning");
+  if (cleaning) await call("POST", "/api/expenses", { idempotencyKey: crypto.randomUUID(), categoryId: cleaning.id, amountCents: 15000, note: "Produits de nettoyage" });
+  token = managerToken;
+  console.log("cash samples added");
 }

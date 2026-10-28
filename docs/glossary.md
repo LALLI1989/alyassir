@@ -43,6 +43,11 @@
 | صاحب الشيك | Tireur | | |
 | تاريخ الاستحقاق | Date d'échéance | | |
 | إيصال / وصل | Reçu / Bon | | |
+| قيد التحصيل | En cours d'encaissement | | شيك أو تحويل أو بطاقة لم يؤكده المدير بعد (المرحلة 3) |
+| تأكيد التحصيل | Confirmer l'encaissement | | |
+| ارتجاع (شيك) | Impayé (retour) | | شيك أُكد ثم رجع من البنك |
+| دين مباشر | Impayé direct | | ما لم يُدفع عند الإصدار بلا تقسيط |
+| أداء | Paiement | | |
 | الإغلاق اليومي | Clôture de caisse | | |
 | مصروف | Dépense | | |
 | المدير / المشرف / الموظف | Gérant / Superviseur / Employé | | |

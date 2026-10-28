@@ -144,6 +144,8 @@ test("the money of the policy in French", async ({ page }) => {
   await page.getByLabel(fr.common.search).fill("POL-2026-010");
   await page.getByRole("row", { name: /POL-2026-010/ }).getByRole("button", { name: fr.common.open }).click();
   await expect(page.getByTestId("finance")).toContainText(fr.finance.title);
-  await expect(page.getByTestId("instalments")).toContainText(fr.finance.instalmentStatus.partial);
+  // The bounced cheque became a separate debt; the first instalment stays paid (SPEC 14.1).
+  await expect(page.getByTestId("instalments")).toContainText(fr.finance.instalmentStatus.paid);
+  await expect(page.getByTestId("policy-debts")).toContainText(fr.finance.debtSources.rejected_payment);
   await page.getByRole("button", { name: fr.app.switchLanguage }).click();
 });

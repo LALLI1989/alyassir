@@ -18,6 +18,8 @@ H=(-H "content-type: application/json" -H "x-alyassir-client-version: 0.1.0")
 curl -sf http://127.0.0.1:5173/api/health | grep -q '"status":"ok"' || fail "health through the interface address"
 TOKEN=$(curl -sf "${H[@]}" -d '{"username":"gerant","password":"gerant123"}' http://127.0.0.1:5173/api/auth/login | node -pe 'JSON.parse(require("fs").readFileSync(0)).accessToken') || fail "login"
 TOTAL=$(curl -sf "${H[@]}" -H "authorization: Bearer $TOKEN" "http://127.0.0.1:5173/api/policies" | node -pe 'JSON.parse(require("fs").readFileSync(0)).total')
-[ "$TOTAL" = "2" ] || fail "expected 2 sample policies, got $TOTAL"
+[ "$TOTAL" = "3" ] || fail "expected 3 sample policies, got $TOTAL"
+INCOLL=$(curl -sf "${H[@]}" -H "authorization: Bearer $TOKEN" "http://127.0.0.1:5173/api/payments?status=in_collection" | node -pe 'JSON.parse(require("fs").readFileSync(0)).total')
+[ "$INCOLL" = "1" ] || fail "expected 1 sample cheque in collection, got $INCOLL"
 (cd apps/desktop && node scripts/demo-check.mjs http://127.0.0.1:5173) || fail "real browser"
 echo "Demo OK: interface, API, sample data, sign-in in a real browser"

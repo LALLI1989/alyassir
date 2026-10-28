@@ -20,6 +20,9 @@ import { VehiclesService } from "./vehicles/vehicles.service";
 import { FinanceService } from "./money/finance.service";
 import { JobsService } from "./money/jobs.service";
 import { PaymentsService } from "./money/payments.service";
+import { AccountsService } from "./cash/accounts.service";
+import { DrawerService } from "./cash/drawer.service";
+import { ExpensesService } from "./cash/expenses.service";
 import { ErrorFilter } from "./common/error.filter";
 import type { ServerConfig } from "./config";
 import { CONTROLLERS } from "./controllers";
@@ -62,6 +65,9 @@ export class AppModule {
         FinanceService,
         PaymentsService,
         JobsService,
+        DrawerService,
+        ExpensesService,
+        AccountsService,
       ],
     };
   }

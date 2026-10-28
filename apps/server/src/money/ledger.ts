@@ -10,7 +10,26 @@ import type { Tx } from "../database.service";
 
 const ORDER: Record<AccountCode, number> = { drawer: 1, safe: 2, bank: 3 };
 
-export async function lockAccounts(tx: Tx, codes: AccountCode[]): Promise<Map<AccountCode, typeof schema.accounts.$inferSelect>> {
+/**
+ * Cash moves only for someone who received the drawer in the open session (SPEC 17.3, owner
+ * decision 28/10/2026: one shared session, the manager receives it too). The session row is locked
+ * for share before the accounts, so a closing (which locks it for update) waits for running operations.
+ */
+export async function requireDrawerHolder(tx: Tx, userId: string): Promise<string> {
+  const res = await tx.execute<{ id: string; member: boolean }>(sql`
+    SELECT s.id, EXISTS (SELECT 1 FROM drawer_session_members m WHERE m.session_id = s.id AND m.user_id = ${userId}) AS member
+    FROM drawer_sessions s WHERE s.status = 'open' FOR SHARE OF s`);
+  const row = res.rows[0];
+  if (!row || !row.member) throw new ApiException("DRAWER_NOT_RECEIVED");
+  return row.id;
+}
+
+export async function lockAccounts(
+  tx: Tx,
+  codes: AccountCode[],
+  opts: { holder?: string } = {},
+): Promise<Map<AccountCode, typeof schema.accounts.$inferSelect>> {
+  if (opts.holder && codes.includes("drawer")) await requireDrawerHolder(tx, opts.holder);
   const unique = [...new Set(codes)].sort((a, b) => ORDER[a] - ORDER[b]);
   const rows = await tx.select().from(schema.accounts).where(inArray(schema.accounts.code, unique)).orderBy(asc(schema.accounts.lockOrder)).for("update");
   return new Map(rows.map((r) => [r.code, r]));
@@ -29,6 +48,10 @@ export interface Movement {
   operationId?: string | null;
   reverses?: number | null;
   note?: string | null;
+  expenseId?: string | null;
+  transferId?: string | null;
+  insurerPaymentId?: string | null;
+  withdrawalId?: string | null;
 }
 
 /** Balance of a locked account, refusing to go below zero (SPEC 17.1). The account must be locked. */
@@ -39,6 +62,12 @@ export async function post(tx: Tx, m: Movement): Promise<number> {
     WHERE code = ${m.account} AND (allow_negative OR balance_cents + ${m.amountCents} >= 0)
     RETURNING balance_cents`);
   if (!res.rows[0]) throw new ApiException("INSUFFICIENT_BALANCE");
+  // Every drawer movement belongs to the open session, if there is one (per-person detail at closing).
+  let sessionId: string | null = null;
+  if (m.account === "drawer") {
+    const open = await tx.execute<{ id: string }>(sql`SELECT id FROM drawer_sessions WHERE status = 'open'`);
+    sessionId = open.rows[0]?.id ?? null;
+  }
   const [row] = await tx
     .insert(schema.financialTransactions)
     .values({
@@ -50,6 +79,11 @@ export async function post(tx: Tx, m: Movement): Promise<number> {
       refundId: m.refundId ?? null,
       operationId: m.operationId ?? null,
       reversesTransactionId: m.reverses ?? null,
+      sessionId,
+      expenseId: m.expenseId ?? null,
+      transferId: m.transferId ?? null,
+      insurerPaymentId: m.insurerPaymentId ?? null,
+      withdrawalId: m.withdrawalId ?? null,
       businessDate: m.businessDate,
       userId: m.userId,
       note: m.note ?? null,

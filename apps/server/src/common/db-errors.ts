@@ -28,6 +28,11 @@ const UNIQUE_ERRORS: Record<string, ErrorCode> = {
   insurers_name_unique: "INSURER_NAME_TAKEN",
   coverage_durations_months_key: "DURATION_EXISTS",
   policies_replaces_policy_id_key: "ALREADY_REPLACED",
+  expense_categories_name: "NAME_TAKEN",
+  withdrawal_reasons_name: "NAME_TAKEN",
+  transfers_reverses_id_key: "ALREADY_REVERSED",
+  insurer_payments_reverses_id_key: "ALREADY_REVERSED",
+  bank_withdrawals_reverses_id_key: "ALREADY_REVERSED",
   operation_types_pkey: "CONFLICT",
 };
 

@@ -501,7 +501,18 @@ export const refunds = pgTable("refunds", {
   enteredAt: ts("entered_at").notNull().defaultNow(),
 });
 
-export type TransactionKind = "payment_cash" | "payment_confirmed" | "payment_reversed" | "refund";
+export type TransactionKind =
+  | "payment_cash"
+  | "payment_confirmed"
+  | "payment_reversed"
+  | "refund"
+  | "transfer_out"
+  | "transfer_in"
+  | "expense"
+  | "expense_reversed"
+  | "insurer_payment"
+  | "bank_withdrawal"
+  | "reversal";
 
 export const financialTransactions = pgTable("financial_transactions", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
@@ -513,6 +524,11 @@ export const financialTransactions = pgTable("financial_transactions", {
   refundId: uuid("refund_id"),
   operationId: uuid("operation_id"),
   reversesTransactionId: bigint("reverses_transaction_id", { mode: "number" }),
+  sessionId: uuid("session_id"),
+  expenseId: uuid("expense_id"),
+  transferId: uuid("transfer_id"),
+  insurerPaymentId: uuid("insurer_payment_id"),
+  withdrawalId: uuid("withdrawal_id"),
   businessDate: day("business_date").notNull(),
   userId: uuid("user_id"),
   note: text("note"),
@@ -532,6 +548,142 @@ export const jobRuns = pgTable(
   },
   (t) => [primaryKey({ columns: [t.job, t.runDate] })],
 );
+
+// ---------------------------------------------------------------- Phase 4 (SPEC 17)
+
+export const drawerSessions = pgTable("drawer_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  status: text("status").$type<"open" | "closed">().notNull(),
+  openedAt: ts("opened_at").notNull().defaultNow(),
+  openedBy: uuid("opened_by").notNull(),
+  openingCents: bigint("opening_cents", { mode: "number" }).notNull(),
+  closedAt: ts("closed_at"),
+  closedBy: uuid("closed_by"),
+  closedOnBehalf: boolean("closed_on_behalf").notNull().default(false),
+  businessDate: day("business_date"),
+  expectedCents: bigint("expected_cents", { mode: "number" }),
+  countedCents: bigint("counted_cents", { mode: "number" }),
+  differenceCents: bigint("difference_cents", { mode: "number" }),
+  closeReason: text("close_reason"),
+  version: integer("version").notNull().default(1),
+});
+
+export const drawerSessionMembers = pgTable(
+  "drawer_session_members",
+  {
+    sessionId: uuid("session_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    joinedAt: ts("joined_at").notNull().defaultNow(),
+    shownCents: bigint("shown_cents", { mode: "number" }).notNull(),
+    countedCents: bigint("counted_cents", { mode: "number" }).notNull(),
+    differenceCents: bigint("difference_cents", { mode: "number" }).notNull(),
+    reason: text("reason"),
+  },
+  (t) => [primaryKey({ columns: [t.sessionId, t.userId] })],
+);
+
+export const drawerDayReviews = pgTable("drawer_day_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  businessDate: day("business_date").notNull(),
+  action: text("action").$type<"approve" | "reopen">().notNull(),
+  reason: text("reason"),
+  userId: uuid("user_id").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const expenseCategories = pgTable("expense_categories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code"),
+  name: text("name"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by"),
+  version: integer("version").notNull().default(1),
+  archivedAt: ts("archived_at"),
+});
+
+export type ExpenseStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+export const expenses = pgTable("expenses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  requestHash: text("request_hash").notNull(),
+  categoryId: uuid("category_id").notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  expenseDate: day("expense_date").notNull(),
+  note: text("note").notNull().default(""),
+  status: text("status").$type<ExpenseStatus>().notNull().default("pending"),
+  accountCode: text("account_code").$type<AccountCode>(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by").notNull(),
+  sessionId: uuid("session_id"),
+  decidedAt: ts("decided_at"),
+  decidedBy: uuid("decided_by"),
+  rejectReason: text("reject_reason"),
+  cancelledAt: ts("cancelled_at"),
+  cancelledBy: uuid("cancelled_by"),
+  cancelReason: text("cancel_reason"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  version: integer("version").notNull().default(1),
+  isHistorical: boolean("is_historical").notNull().default(false),
+});
+
+export const transfers = pgTable("transfers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  requestHash: text("request_hash").notNull(),
+  fromAccount: text("from_account").$type<AccountCode>().notNull(),
+  toAccount: text("to_account").$type<AccountCode>().notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  businessDate: day("business_date").notNull(),
+  reference: text("reference").notNull().default(""),
+  reversesId: uuid("reverses_id"),
+  reason: text("reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const insurerPayments = pgTable("insurer_payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  requestHash: text("request_hash").notNull(),
+  insurerId: uuid("insurer_id").notNull(),
+  accountCode: text("account_code").$type<AccountCode>().notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  businessDate: day("business_date").notNull(),
+  reference: text("reference").notNull().default(""),
+  note: text("note").notNull().default(""),
+  reversesId: uuid("reverses_id"),
+  reason: text("reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  isHistorical: boolean("is_historical").notNull().default(false),
+});
+
+export const withdrawalReasons = pgTable("withdrawal_reasons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code"),
+  name: text("name"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by"),
+  version: integer("version").notNull().default(1),
+  archivedAt: ts("archived_at"),
+});
+
+export const bankWithdrawals = pgTable("bank_withdrawals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  idempotencyKey: uuid("idempotency_key").notNull(),
+  requestHash: text("request_hash").notNull(),
+  reasonId: uuid("reason_id").notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  businessDate: day("business_date").notNull(),
+  explanation: text("explanation").notNull(),
+  reference: text("reference").notNull().default(""),
+  reversesId: uuid("reverses_id"),
+  reason: text("reason"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  isHistorical: boolean("is_historical").notNull().default(false),
+});
 
 export const allTables = {
   systemInfo,
@@ -573,4 +725,13 @@ export const allTables = {
   refunds,
   financialTransactions,
   jobRuns,
+  drawerSessions,
+  drawerSessionMembers,
+  drawerDayReviews,
+  expenseCategories,
+  expenses,
+  transfers,
+  insurerPayments,
+  withdrawalReasons,
+  bankWithdrawals,
 };

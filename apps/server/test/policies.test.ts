@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addDays, businessDay, coverageEnd } from "@alyassir/domain";
 import { MANAGER, createEmployee, ownerQuery, startApp, type TestApp } from "./harness";
-import { appQuery, cert, createClient, createPolicy, createVehicle, getPolicy, mustCreatePolicy, setPeriod, setupCatalog, type Setup } from "./fixtures";
+import { appQuery, cert, createClient, createPolicy, createVehicle, getPolicy, mustCreatePolicy, receiveDrawer, setPeriod, setupCatalog, type Setup } from "./fixtures";
 
 let t: TestApp;
 let manager: string;
@@ -13,6 +13,7 @@ beforeAll(async () => {
   t = await startApp();
   manager = (await t.login(MANAGER.username, MANAGER.password)).accessToken;
   s = await setupCatalog(t, manager);
+  await receiveDrawer(t, manager);
 });
 afterAll(async () => t.close());
 
@@ -21,7 +22,9 @@ async function employee(name: string, permissions: string[], supervisor = false)
   let user = (await t.call("GET", `/api/users/${id}`, { token: manager })).body;
   if (supervisor) user = (await t.call("PATCH", `/api/users/${id}`, { token: manager, body: { version: user.version, isSupervisor: true } })).body;
   await t.call("PUT", `/api/users/${id}/permissions`, { token: manager, body: { version: user.version, permissions } });
-  return (await t.login(name, "secret1")).accessToken;
+  const token = (await t.login(name, "secret1")).accessToken;
+  if (permissions.includes("payments.create")) await receiveDrawer(t, token);
+  return token;
 }
 
 async function insuredVehicle(): Promise<{ client: string; vehicle: string; policy: Awaited<ReturnType<typeof mustCreatePolicy>> }> {

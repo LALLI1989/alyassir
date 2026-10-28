@@ -4,7 +4,7 @@ import { addDays, businessDay } from "@alyassir/domain";
 import type { PolicyFinanceDto } from "@alyassir/shared";
 import { JobsService } from "../src/money/jobs.service";
 import { MANAGER, createEmployee, ownerQuery, startApp, type TestApp } from "./harness";
-import { appQuery, cert, createClient, createVehicle, mustCreatePolicy, setPeriod, setupCatalog, type Setup } from "./fixtures";
+import { appQuery, cert, createClient, createVehicle, mustCreatePolicy, receiveDrawer, setPeriod, setupCatalog, type Setup } from "./fixtures";
 
 let t: TestApp;
 let manager: string;
@@ -15,6 +15,7 @@ beforeAll(async () => {
   t = await startApp();
   manager = (await t.login(MANAGER.username, MANAGER.password)).accessToken;
   s = await setupCatalog(t, manager);
+  await receiveDrawer(t, manager);
   const c = (await t.call("GET", "/api/insurance/catalog", { token: manager })).body;
   months3 = c.durations.find((d: { months: number }) => d.months === 3).id;
 });
@@ -27,7 +28,9 @@ async function employee(name: string, permissions: string[], supervisor = false)
   let user = (await t.call("GET", `/api/users/${id}`, { token: manager })).body;
   if (supervisor) user = (await t.call("PATCH", `/api/users/${id}`, { token: manager, body: { version: user.version, isSupervisor: true } })).body;
   await t.call("PUT", `/api/users/${id}/permissions`, { token: manager, body: { version: user.version, permissions } });
-  return (await t.login(name, "secret1")).accessToken;
+  const token = (await t.login(name, "secret1")).accessToken;
+  if (permissions.includes("payments.create")) await receiveDrawer(t, token);
+  return token;
 }
 
 const cash = (amountCents: number) => ({ method: "cash", amountCents });

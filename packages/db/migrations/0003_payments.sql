@@ -222,13 +222,3 @@ GRANT SELECT, INSERT, UPDATE (status, cancel_reason, cancelled_at, cancelled_by)
 -- Only the premium of a plan changes (new total before any payment, SPEC 11.5 / 14.4).
 GRANT UPDATE (premium_cents) ON installment_plans TO alyassir_app;
 
--- ---------------------------------------------------------------- periods saved before payments existed
--- Policies saved in Phase 2 had no payment step. Nothing was recorded as paid, so what is still in
--- force is owed in full: a direct debt, like an issue with nothing paid (SPEC 14.4). Phase 2 ran
--- only on test data; the owner checks this rule (Phase 3 report).
-INSERT INTO debts (client_id, policy_id, period_id, source, debt_date, amount_cents, created_by)
-SELECT p.client_id, pp.policy_id, pp.id, 'direct', pp.start_date, pp.total_amount_cents, pp.created_by
-FROM policy_periods pp
-JOIN policies p ON p.id = pp.policy_id
-WHERE pp.validity_status = 'active';
-UPDATE policy_periods SET collection_status = 'outstanding' WHERE validity_status = 'active';

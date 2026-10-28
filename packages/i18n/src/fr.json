@@ -455,7 +455,7 @@
       "IDEMPOTENCY_MISMATCH": "Cette opération a déjà été envoyée avec d'autres données. Rouvrez la fenêtre.",
       "OVERPAYMENT": "Le montant dépasse le reste dû de la police.",
       "NOTHING_TO_PAY": "Rien ne reste à payer sur cette police.",
-      "INSTALMENTS_NOT_ALLOWED": "Paiement échelonné impossible pour cette police (un seul véhicule, 6 ou 12 mois).",
+      "INSTALMENTS_NOT_ALLOWED": "Fractionnement de la prime impossible pour cette police (un seul véhicule, 6 ou 12 mois).",
       "INSTALMENT_DATES_INVALID": "Dates d'échéance incorrectes : elles doivent être dans l'ordre et pendant la durée de garantie.",
       "FLEET_PAYMENT_CHEQUES_ONLY": "Flotte : paiement partiel par chèques seulement, ou paiement de tout le reste dû.",
       "INSUFFICIENT_BALANCE": "Le solde du compte ne suffit pas pour cette opération.",
@@ -464,8 +464,8 @@
       "PAYMENT_NOT_IN_COLLECTION": "Ce paiement n'est pas en cours d'encaissement.",
       "PAYMENT_ALREADY_REJECTED": "Ce paiement a déjà été rejeté.",
       "PAYMENT_IN_COLLECTION": "Un paiement est en cours d'encaissement. Confirmez-le ou rejetez-le d'abord.",
-      "ANNULMENT_USE_CANCELLATION": "Paiement échelonné soldé : pas d'annulation. Utilisez la résiliation.",
-      "CANCELLATION_INSTALMENTS_OPEN": "Une police en paiement échelonné non soldé ne peut pas être résiliée.",
+      "ANNULMENT_USE_CANCELLATION": "Prime fractionnée et soldée : pas d'annulation. Utilisez la résiliation.",
+      "CANCELLATION_INSTALMENTS_OPEN": "Une police à prime fractionnée non soldée ne peut pas être résiliée.",
       "AMOUNT_HAS_PAYMENTS": "Le montant ne peut plus changer : il y a déjà des paiements."
     },
     "fields": {
@@ -758,15 +758,15 @@
     "states": {
       "fully_paid": "Payée en totalité.",
       "direct_debt": "Avec un impayé direct.",
-      "instalments_open": "Paiement échelonné non soldé.",
-      "instalments_paid": "Paiement échelonné soldé."
+      "instalments_open": "Prime fractionnée, non soldée.",
+      "instalments_paid": "Prime fractionnée, soldée."
     },
     "how": "Mode de paiement",
     "modes": {
       "pay": "Payer maintenant (total ou partiel)",
-      "instalments": "Paiement échelonné"
+      "instalments": "Fractionnement de la prime"
     },
-    "instalmentsRule": "Paiement échelonné seulement pour une police d'un seul véhicule, de 6 ou 12 mois. Pas pour une flotte.",
+    "instalmentsRule": "Fractionnement de la prime seulement pour une police d'un seul véhicule, de 6 ou 12 mois. Pas pour une flotte.",
     "fleetRule": "Flotte : impayé, paiements par chèques, ou paiement total.",
     "instalmentCount": "Nombre d'échéances",
     "instalmentN": "Échéance {{n}}",
@@ -874,7 +874,7 @@
     "annulRefund": "Rendu au client",
     "annulWriteOff": "Impayé annulé",
     "annulNotAllowed": "Cette police ne peut pas être annulée.",
-    "annulInstalmentsInfo": "Paiement échelonné non soldé : l'annulation est possible, sans remboursement, et le reste dû est annulé.",
+    "annulInstalmentsInfo": "Prime fractionnée non soldée : l'annulation est possible, sans remboursement, et le reste dû est annulé.",
     "cancelPayOutChoice": "Payer le montant au client au lieu de le déduire de son impayé",
     "cancelPayOutHint": "Par défaut, le remboursement est déduit de l'impayé du client. Indiquez le motif si vous choisissez de payer.",
     "cancelAgainstDebt": "Déduit de l'impayé du client, le reste est payé",

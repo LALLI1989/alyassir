@@ -176,9 +176,12 @@ try {
     $found = Api "GET" "/api/policies?q=POL-UPD-001" $null $newToken
     Check ($found.status -eq 200 -and @($found.body.items).Count -eq 1) "the policy saved before the update is still there"
     $finance = Api "GET" "/api/policies/$($policy.body.id)/finance" $null $newToken
-    Check ($finance.status -eq 200 -and $finance.body.totals.remainingCents -eq 250000) "the old policy shows 2 500 MAD still owed (direct debt)"
-    $pay = Api "POST" "/api/policies/$($policy.body.id)/payments" @{ idempotencyKey = [guid]::NewGuid().ToString(); method = "cash"; amountCents = 100000 } $newToken
-    Check ($pay.status -eq 200 -and $pay.body.totals.remainingCents -eq 150000) "after the update: 1 000 paid in cash, 1 500 left"
+    Check ($finance.status -eq 200) "the money page of the old policy opens"
+    # A new policy after the update: 2 500 MAD, 1 000 paid in cash, 1 500 left as a debt.
+    $vehicle2 = Api "POST" "/api/vehicles" @{ clientId = $client.body.id; plateType = "ww"; plate = "WW654321"; fiscalPower = 6; fuel = "diesel"; brand = "Renault Clio" } $newToken
+    $pol2 = Api "POST" "/api/policies" @{ idempotencyKey = [guid]::NewGuid().ToString(); clientId = $client.body.id; insuranceTypeId = $typeId; policyNumber = "POL-UPD-002"; coverageDurationId = $months12; totalAmountCents = 250000; vehicles = @(@{ vehicleId = $vehicle2.body.id; certificateNumber = "ATT-UPD-002" }); finance = @{ payments = @(@{ method = "cash"; amountCents = 100000 }) } } $newToken
+    $finance2 = Api "GET" "/api/policies/$($pol2.body.id)/finance" $null $newToken
+    Check ($finance2.status -eq 200 -and $finance2.body.totals.remainingCents -eq 150000) "after the update: new policy, 1 000 paid in cash, 1 500 left"
     $drawer = Api "GET" "/api/accounts/drawer" $null $newToken
     Check ($drawer.status -eq 200 -and $drawer.body.balanceCents -eq 100000) "the cash is in the drawer (1 000 MAD)"
     $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json

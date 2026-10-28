@@ -148,7 +148,7 @@ try {
     $old = Login "gerant" $ManagerPass
     Check ($old.status -eq 200) "the manager signs in on the Phase 2 server"
     $oldToken = $old.body.accessToken
-    $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "نادية"; password = "nadia-pass" } $oldToken
+    $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "Nadia"; password = "nadia-pass" } $oldToken
     Check ($emp.status -eq 201) "an employee is created before the update"
     $msg = Api "POST" "/api/messages/threads" @{ subject = "قبل التحديث"; body = "رسالة محفوظة"; to = @($emp.body.id) } $oldToken
     Check ($msg.status -eq 201) "a message is sent before the update"

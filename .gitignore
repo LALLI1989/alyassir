@@ -16,3 +16,4 @@ installer/vendor/
 *.cer
 apps/desktop/screenshots/
 .pnpm-store/
+apps/desktop/dist-demo/

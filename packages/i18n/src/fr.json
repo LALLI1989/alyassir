@@ -230,12 +230,14 @@
         "employee": "Employé"
       },
       "drawer_receive_difference": {
-        "subject": "Écart à la prise de caisse",
-        "intro": "Un employé a trouvé un montant différent du solde du programme en prenant la caisse :"
+        "subject": "Demande d'explication : écart à la prise de caisse",
+        "intro": "Un écart a été constaté entre ce qui a été remis et ce qui a été trouvé à la prise de caisse. Le solde a été ajusté au montant présent. Merci aux personnes concernées de s'expliquer dans ce message.",
+        "handedBy": "Caisse remise par",
+        "closedCounted": "Montant à la clôture ({{time}})"
       },
       "drawer_close_difference": {
         "subject": "Écart à la clôture",
-        "intro": "La caisse a été clôturée avec un écart entre le montant présent et le solde du programme :"
+        "intro": "La caisse a été clôturée avec un écart entre le montant présent et le solde du programme ; le solde a été ajusté au montant présent :"
       },
       "drawer_closed_on_behalf": {
         "subject": "Clôture pour autrui",
@@ -1006,7 +1008,7 @@
     "countedHint": "Comptez l'argent de la caisse et saisissez le montant.",
     "reason": "Motif",
     "reasonHint": "Obligatoire si le montant présent diffère du solde du programme.",
-    "responsibility": "Après votre confirmation, tout écart non déclaré est à votre charge.",
+    "responsibility": "Le solde de la caisse est ajusté à ce que vous avez trouvé. En cas d'écart, un message de demande d'explication vous est envoyé, ainsi qu'à la personne qui vous a remis la caisse, avec copie au gérant.",
     "receivedRetry": "Caisse prise en charge. Cliquez à nouveau sur « Confirmer ».",
     "held": "Caisse prise",
     "noSession": "Aucune séance de caisse ouverte",
@@ -1017,7 +1019,7 @@
     "closeOnBehalfInfo": "Vous n'êtes pas dans cette séance : clôturer pour eux demande un motif, et le gérant est averti.",
     "closedTitle": "Clôture enregistrée",
     "pendingExpenses": "Dépenses en attente de validation",
-    "pendingExpensesHint": "L'argent est sorti de la caisse mais n'entre pas dans le solde avant validation ; elles peuvent expliquer un écart.",
+    "pendingExpensesHint": "L'argent est sorti de la caisse mais n'est pas déduit du solde avant validation ; elles peuvent expliquer un écart.",
     "members": "Qui a pris la caisse dans cette séance",
     "byUser": "Mouvements par employé",
     "byUserHint": "À titre d'information, sans comptabilisation automatique.",
@@ -1043,7 +1045,8 @@
     "closedBy": "Clôturée par",
     "onBehalf": "Pour autrui",
     "closingOf": "Clôture du {{time}}",
-    "closeReason": "Motif : {{reason}}"
+    "closeReason": "Motif : {{reason}}",
+    "adjustedNote": "Le solde de la caisse dans le programme a été ajusté au montant réellement présent."
   },
   "cash": {
     "expensesTitle": "Dépenses",
@@ -1115,7 +1118,8 @@
       "expense_reversed": "Annulation de dépense",
       "insurer_payment": "Paiement à une compagnie",
       "bank_withdrawal": "Retrait bancaire",
-      "reversal": "Mouvement inverse"
+      "reversal": "Mouvement inverse",
+      "count_adjustment": "Ajustement après comptage"
     },
     "reverse": "Mouvement inverse",
     "reversed": "Annulé",

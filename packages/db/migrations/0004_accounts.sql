@@ -1,6 +1,7 @@
 -- Phase 4: drawer sessions and daily closing, expenses, transfers between accounts, payments to
 -- insurers, bank withdrawals (SPEC 17). Owner decisions 28/10/2026 (SPEC 30): one shared drawer
--- session for everyone present; the day is closed by its last closing.
+-- session for everyone present; the day is closed by its last closing; when the cash counted at a
+-- closing or a receipt differs, the drawer balance is set to what was really found (count_adjustment).
 
 -- ---------------------------------------------------------------- drawer sessions (SPEC 17.3)
 CREATE TABLE drawer_sessions (
@@ -179,7 +180,7 @@ CREATE TRIGGER bank_withdrawals_no_update_delete BEFORE UPDATE OR DELETE ON bank
 ALTER TABLE financial_transactions DROP CONSTRAINT financial_transactions_kind_check;
 ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_kind_check CHECK (kind IN (
   'payment_cash', 'payment_confirmed', 'payment_reversed', 'refund',
-  'transfer_out', 'transfer_in', 'expense', 'expense_reversed', 'insurer_payment', 'bank_withdrawal', 'reversal'));
+  'transfer_out', 'transfer_in', 'expense', 'expense_reversed', 'insurer_payment', 'bank_withdrawal', 'reversal', 'count_adjustment'));
 ALTER TABLE financial_transactions
   ADD COLUMN session_id         uuid REFERENCES drawer_sessions (id),
   ADD COLUMN expense_id         uuid REFERENCES expenses (id),

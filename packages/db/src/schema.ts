@@ -512,7 +512,8 @@ export type TransactionKind =
   | "expense_reversed"
   | "insurer_payment"
   | "bank_withdrawal"
-  | "reversal";
+  | "reversal"
+  | "count_adjustment";
 
 export const financialTransactions = pgTable("financial_transactions", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),

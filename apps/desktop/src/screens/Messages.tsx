@@ -76,6 +76,10 @@ function MessageBody({ body, system }: { body: string; system: boolean }) {
   } else if (parsed.event === "drawer_receive_difference") {
     lines = [
       [t("messages.events.common.employee"), text(p.employee)],
+      [t("messages.events.drawer_receive_difference.handedBy"), text(p.handedBy)],
+      ...(p.closedCountedCents !== null && p.closedCountedCents !== undefined
+        ? ([[t("messages.events.drawer_receive_difference.closedCounted", { time: day(p.closedAt) }), money(p.closedCountedCents)]] as [string, string][])
+        : []),
       [t("drawer.expected"), money(p.shownCents)],
       [t("drawer.counted"), money(p.countedCents)],
       [t("drawer.difference"), money(p.differenceCents)],

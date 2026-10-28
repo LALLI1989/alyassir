@@ -47,6 +47,17 @@ const addExpense = (token: string, amountCents: number, key = randomUUID()) =>
   categories().then((c) => t.call("POST", "/api/expenses", { token, body: { idempotencyKey: key, categoryId: c.find((x) => x.code === "cleaning")?.id, amountCents, note: "Produits" } }));
 const transfer = (from: string, to: string, amountCents: number, token = manager, key = randomUUID()) =>
   t.call("POST", "/api/accounts/transfers", { token, body: { idempotencyKey: key, from, to, amountCents, reference: "" } });
+/** Recipients of the latest automatic message of this kind, as "to:username" / "cc:username". */
+async function recipientsOf(event: string): Promise<string[]> {
+  const res = await ownerQuery(
+    t.db,
+    `SELECT r.kind || ':' || u.username AS who FROM message_recipients r JOIN users u ON u.id = r.user_id
+     WHERE r.message_id = (SELECT m.id FROM messages m JOIN message_threads th ON th.id = m.thread_id WHERE th.subject = $1 ORDER BY m.created_at DESC LIMIT 1)
+     ORDER BY 1`,
+    [`system:${event}`],
+  );
+  return res.rows.map((r) => String(r.who));
+}
 async function systemMessages(event: string): Promise<{ body: string }[]> {
   const res = await ownerQuery(t.db, "SELECT m.body FROM messages m JOIN message_threads th ON th.id = m.thread_id WHERE th.subject = $1 ORDER BY m.created_at", [`system:${event}`]);
   return res.rows as { body: string }[];
@@ -86,11 +97,20 @@ describe("receiving the drawer (SPEC 17.3, owner decisions 28/10/2026)", () => {
     st = await state(b);
     expect(st.session?.members.map((m) => m.name)).toEqual(["CASHIER1", "CASHIER2"]);
     expect(st.session?.members[1]).toMatchObject({ differenceCents: -500, reason: "Pièce manquante" });
-    expect(JSON.parse((await systemMessages("drawer_receive_difference")).at(-1)?.body ?? "{}").params).toMatchObject({ employee: "CASHIER2", differenceCents: -500 });
+    // Owner decision 28/10/2026: the drawer now holds what B really found.
+    expect(st.balanceCents).toBe(299_500);
+    expect(JSON.parse((await systemMessages("drawer_receive_difference")).at(-1)?.body ?? "{}").params).toMatchObject({ employee: "CASHIER2", handedBy: "CASHIER1", differenceCents: -500 });
+    // The question goes to the one already holding the drawer and to B, the manager in copy.
+    expect(await recipientsOf("drawer_receive_difference")).toEqual(["cc:manager", "to:cashier1", "to:cashier2"]);
     // Receiving twice is harmless.
     expect((await receiveDrawer(t, b)).status).toBe(200);
     expect((await state(b)).session?.members).toHaveLength(2);
-    expect((await state()).session?.byUser).toEqual([expect.objectContaining({ name: "CASHIER1", inCents: 300_000 })]);
+    expect((await state()).session?.byUser).toEqual([
+      expect.objectContaining({ name: "CASHIER1", inCents: 300_000, outCents: 0 }),
+      expect.objectContaining({ name: "CASHIER2", inCents: 0, outCents: 500 }),
+    ]);
+    const adjust = await ownerQuery(t.db, "SELECT amount_cents, note FROM financial_transactions WHERE kind = 'count_adjustment'");
+    expect(adjust.rows).toEqual([{ amount_cents: "-500", note: "Pièce manquante" }]);
   });
 
   it("someone who never handles cash may not receive the drawer", async () => {
@@ -104,13 +124,13 @@ describe("closing = handover (SPEC 17.3)", () => {
   it("expected 3 500, counted 3 300: refused without a reason, then closed for everyone", async () => {
     const b = (await t.login("cashier2", "secret1")).accessToken;
     const st = await state(b);
-    expect(st.balanceCents).toBe(300_000);
+    expect(st.balanceCents).toBe(299_500);
     // Bring the drawer to 3 500 MAD.
     const client = await createClient(t, manager);
     const vehicle = await createVehicle(t, manager, client);
-    const policy = await mustCreatePolicy(t, manager, s, client, [vehicle], { totalAmountCents: 50_000 });
+    const policy = await mustCreatePolicy(t, manager, s, client, [vehicle], { totalAmountCents: 50_500 });
     await receiveDrawer(t, manager);
-    expect((await pay(policy.id, 50_000)).status).toBe(200);
+    expect((await pay(policy.id, 50_500)).status).toBe(200);
     expect((await state(b)).balanceCents).toBe(350_000);
     expect((await close(b, 330_000)).body.code).toBe("DIFFERENCE_REASON_REQUIRED");
     const closed = await close(b, 330_000, "Dépense de nettoyage en attente");
@@ -118,13 +138,34 @@ describe("closing = handover (SPEC 17.3)", () => {
     expect(closed.body).toMatchObject({ expectedCents: 350_000, countedCents: 330_000, differenceCents: -20_000, closedOnBehalf: false });
     expect(closed.body.members).toHaveLength(3);
     expect(closed.body.members.slice(0, 2).map((m: { name: string }) => m.name)).toEqual(["CASHIER1", "CASHIER2"]);
-    // The closing is a snapshot: the balance stays what the program computed.
-    expect((await state(b)).balanceCents).toBe(350_000);
+    // Owner decision 28/10/2026: after the count, the drawer holds what was really found.
+    expect((await state(b)).balanceCents).toBe(330_000);
     expect((await state(b)).session).toBeNull();
     // Everyone has to receive the drawer again.
     const unpaid = await mustCreatePolicy(t, manager, s, await createClient(t, manager), [], { insuranceTypeId: s.homeType, totalAmountCents: 10_000 });
     expect((await pay(unpaid.id, 1_000)).body.code).toBe("DRAWER_NOT_RECEIVED");
     expect(JSON.parse((await systemMessages("drawer_close_difference")).at(-1)?.body ?? "{}").params).toMatchObject({ differenceCents: -20_000 });
+  });
+
+  it("a gap when receiving after a closing: the drawer is corrected, the closer and the receiver are asked", async () => {
+    const a = (await t.login("cashier1", "secret1")).accessToken;
+    expect((await receiveDrawer(t, a, 329_000)).body.code).toBe("DIFFERENCE_REASON_REQUIRED");
+    expect((await receiveDrawer(t, a, 329_000, "10 MAD manquent")).status).toBe(200);
+    expect((await state(a)).balanceCents).toBe(329_000);
+    expect(JSON.parse((await systemMessages("drawer_receive_difference")).at(-1)?.body ?? "{}").params).toMatchObject({
+      employee: "CASHIER1",
+      handedBy: "CASHIER2",
+      closedCountedCents: 330_000,
+      shownCents: 330_000,
+      countedCents: 329_000,
+      differenceCents: -1_000,
+    });
+    expect(await recipientsOf("drawer_receive_difference")).toEqual(["cc:manager", "to:cashier1", "to:cashier2"]);
+    // Both can answer in the same thread.
+    const b = (await t.login("cashier2", "secret1")).accessToken;
+    const threads = (await t.call("GET", "/api/messages/threads", { token: b })).body as { id: string; subject: string }[];
+    const thread = threads.find((x) => x.subject === "system:drawer_receive_difference");
+    expect((await t.call("POST", `/api/messages/threads/${thread?.id}/reply`, { token: b, body: { body: "J'ai rendu 10 MAD à un client" } })).status).toBeLessThan(300);
   });
 
   it("on behalf: only the manager or a supervisor with that power, always with a reason", async () => {

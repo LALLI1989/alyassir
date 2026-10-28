@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { schema } from "@alyassir/db";
@@ -9,6 +10,7 @@ import type { AuthUser, RequestContext } from "../common/context";
 import { ApiException } from "../common/errors";
 import { DatabaseService, type DbOrTx, type Tx } from "../database.service";
 import { MessagesService } from "../messages/messages.service";
+import { post } from "../money/ledger";
 import { messageManager } from "../money/payments.service";
 import { RealtimeService } from "../realtime/realtime.service";
 
@@ -20,8 +22,10 @@ async function lockDrawerDesk(tx: Tx): Promise<void> {
 /**
  * The shared drawer session and the daily closing (SPEC 17.3, owner decisions 28/10/2026): the first
  * person receives the drawer and opens the session, others join it by confirming the balance, one
- * closing ends it for everyone. A gap always needs a reason and is reported to the manager; it does
- * not change the balance (the closing is an accounting snapshot).
+ * closing ends it for everyone. A gap always needs a reason; the drawer balance is then set to the
+ * cash really found (a "count adjustment" movement in the ledger). A gap at closing is reported to
+ * the manager; a gap when receiving starts a question to the one who handed the drawer over and the
+ * one receiving it, the manager in copy.
  */
 @Injectable()
 export class DrawerService {
@@ -128,7 +132,7 @@ export class DrawerService {
   /** Receive the drawer: open the session, or join the open one, with what was really found. */
   async receive(ctx: RequestContext, user: AuthUser, input: { shownCents: number; countedCents: number; reason: string }): Promise<DrawerStateDto> {
     if (!this.handlesCash(user)) throw new ApiException("FORBIDDEN");
-    let gap = false;
+    let notifyIds: string[] = [];
     await this.database.db.transaction(async (tx) => {
       await lockDrawerDesk(tx);
       const [open] = await tx.select().from(schema.drawerSessions).where(eq(schema.drawerSessions.status, "open")).for("update");
@@ -151,6 +155,10 @@ export class DrawerService {
         if (!created) throw new ApiException("INTERNAL");
         sessionId = created.id;
       }
+      // Owner decision 28/10/2026: the program keeps what is really in the drawer.
+      if (d.differenceCents !== 0) {
+        await post(tx, { groupId: randomUUID(), account: "drawer", amountCents: d.differenceCents, kind: "count_adjustment", businessDate: businessDay(new Date()), userId: user.id, note: input.reason });
+      }
       await tx.insert(schema.drawerSessionMembers).values({
         sessionId,
         userId: user.id,
@@ -166,18 +174,55 @@ export class DrawerService {
         after: { opened: !open, shownCents: shown, countedCents: input.countedCents, differenceCents: d.differenceCents },
         reason: input.reason || null,
       });
-      if (d.differenceCents !== 0 && user.role !== "manager") {
-        await messageManager(this.messages, tx, "drawer_receive_difference", {
-          employee: user.displayName,
-          shownCents: shown,
-          countedCents: input.countedCents,
-          differenceCents: d.differenceCents,
-          reason: input.reason,
-        });
-        gap = true;
+      if (d.differenceCents !== 0) {
+        // A question to whoever handed the drawer over (the last closing, or the people already in the
+        // session) and to the one receiving it, the manager in copy; each of them can answer.
+        const counterpart = open
+          ? (await tx.select({ id: schema.drawerSessionMembers.userId }).from(schema.drawerSessionMembers).where(eq(schema.drawerSessionMembers.sessionId, open.id))).map((m) => m.id)
+          : (
+              await tx
+                .select({ id: schema.drawerSessions.closedBy })
+                .from(schema.drawerSessions)
+                .where(eq(schema.drawerSessions.status, "closed"))
+                .orderBy(desc(schema.drawerSessions.closedAt))
+                .limit(1)
+            ).map((c) => c.id).filter((x): x is string => Boolean(x));
+        const [lastClosing] = open
+          ? []
+          : await tx.select().from(schema.drawerSessions).where(eq(schema.drawerSessions.status, "closed")).orderBy(desc(schema.drawerSessions.closedAt)).limit(1);
+        const [manager] = await tx.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.role, "manager"));
+        const to = [...new Set([user.id, ...counterpart])];
+        const recipients = [
+          ...to.map((userId) => ({ userId, kind: "to" as const })),
+          ...(manager && !to.includes(manager.id) ? [{ userId: manager.id, kind: "cc" as const }] : []),
+        ];
+        const names = counterpart.length
+          ? (await tx.select({ id: schema.users.id, name: schema.users.displayName }).from(schema.users).where(inArray(schema.users.id, counterpart))).map((u) => u.name)
+          : [];
+        await this.messages.createThread(
+          tx,
+          null,
+          "system:drawer_receive_difference",
+          JSON.stringify({
+            event: "drawer_receive_difference",
+            params: {
+              employee: user.displayName,
+              handedBy: names.join(", "),
+              closedAt: lastClosing?.closedAt?.toISOString() ?? null,
+              closedCountedCents: lastClosing?.countedCents ?? null,
+              shownCents: shown,
+              countedCents: input.countedCents,
+              differenceCents: d.differenceCents,
+              reason: input.reason,
+            },
+          }),
+          recipients,
+          { kind: "system" },
+        );
+        notifyIds = recipients.map((r) => r.userId);
       }
     });
-    if (gap) await this.notifyManager();
+    if (notifyIds.length) this.messages.notify(notifyIds);
     this.changed();
     return this.state(user);
   }
@@ -211,6 +256,10 @@ export class DrawerService {
       const expected = acc?.balanceCents ?? 0;
       const d = closingDifference(expected, input.countedCents);
       if (d.reasonRequired && !input.reason) throw new ApiException("DIFFERENCE_REASON_REQUIRED");
+      // Owner decision 28/10/2026: after the count, the drawer holds what was really found.
+      if (d.differenceCents !== 0) {
+        await post(tx, { groupId: randomUUID(), account: "drawer", amountCents: d.differenceCents, kind: "count_adjustment", businessDate: businessDay(new Date()), userId: user.id, note: input.reason });
+      }
       const now = new Date();
       await tx
         .update(schema.drawerSessions)

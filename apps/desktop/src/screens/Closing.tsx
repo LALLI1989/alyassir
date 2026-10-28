@@ -199,6 +199,7 @@ function CloseDialog({ st, onClose }: { st: DrawerStateDto; onClose: () => void 
           <Line label={t("drawer.difference")} cents={result.differenceCents} strong={result.differenceCents !== 0} />
         </dl>
         {result.reason && <p className="text-sm" dir="auto">{result.reason}</p>}
+        {result.differenceCents !== 0 && <p className="text-xs text-muted-foreground">{t("drawer.adjustedNote")}</p>}
         <DialogFooter>
           <Button onClick={onClose}>{t("common.close")}</Button>
         </DialogFooter>

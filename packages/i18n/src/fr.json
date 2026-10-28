@@ -43,7 +43,8 @@
     "add": "Ajouter",
     "continue": "Continuer",
     "change": "Changer",
-    "latinHint": "En lettres latines, comme sur la pièce d'identité (ex. : Said EL IDRISSI)."
+    "latinHint": "En lettres latines, comme sur la pièce d'identité (ex. : Said EL IDRISSI).",
+    "status": "Statut"
   },
   "theme": {
     "light": "Mode clair",
@@ -205,7 +206,26 @@
     "notRead": "Non lu",
     "participants": "Participants",
     "pickRecipients": "Choisissez les destinataires",
-    "sent": "Message envoyé."
+    "sent": "Message envoyé.",
+    "events": {
+      "payment_rejected": {
+        "subject": "Moyen de paiement rejeté",
+        "intro": "Un moyen de paiement a été rejeté. Le montant redevient un impayé du client.",
+        "confirmedAt": "Date de confirmation",
+        "rejectedAt": "Date du rejet",
+        "bankBalance": "Solde bancaire après retrait"
+      },
+      "refund_needs_manager": {
+        "subject": "Remboursement à traiter par le gérant",
+        "intro": "La caisse ne suffit pas pour rembourser un client. Merci d'intervenir.",
+        "employee": "Employé"
+      },
+      "instalments_to_debt": {
+        "subject": "Échéances devenues impayés",
+        "intro": "Ces échéances n'ont pas été payées 3 jours après leur date et sont devenues des impayés :",
+        "line": "Échéance {{seq}} ({{date}}) : {{amount}}"
+      }
+    }
   },
   "editRequests": {
     "title": "Demandes de modification",
@@ -330,7 +350,11 @@
       "policy_fleet_remove_vehicle": "Retrait de la flotte",
       "policy_annul": "Annulation d'une police",
       "policy_cancel": "Résiliation d'une police",
-      "policy_custom_operation": "Autre opération sur une police"
+      "policy_custom_operation": "Autre opération sur une police",
+      "payment_record": "Paiement enregistré",
+      "payment_confirm": "Encaissement confirmé",
+      "payment_reject": "Moyen de paiement rejeté",
+      "system_instalments_to_debt": "Échéances devenues impayés"
     }
   },
   "settings": {
@@ -428,7 +452,21 @@
       "REFUND_TOO_LARGE": "Le remboursement dépasse la prime de la police.",
       "PLATE_CHANGE_NEEDS_OPERATION": "Véhicule assuré : utilisez l'opération « Changement d'immatriculation ».",
       "SAME_VEHICLE": "Choisissez un autre véhicule.",
-      "IDEMPOTENCY_MISMATCH": "Cette opération a déjà été envoyée avec d'autres données. Rouvrez la fenêtre."
+      "IDEMPOTENCY_MISMATCH": "Cette opération a déjà été envoyée avec d'autres données. Rouvrez la fenêtre.",
+      "OVERPAYMENT": "Le montant dépasse le reste dû de la police.",
+      "NOTHING_TO_PAY": "Rien ne reste à payer sur cette police.",
+      "INSTALMENTS_NOT_ALLOWED": "Fractionnement de la prime impossible pour cette police (un seul véhicule, 6 ou 12 mois).",
+      "INSTALMENT_DATES_INVALID": "Dates d'échéance incorrectes : elles doivent être dans l'ordre et pendant la durée de garantie.",
+      "FLEET_PAYMENT_CHEQUES_ONLY": "Flotte : paiement partiel par chèques seulement, ou paiement de tout le reste dû.",
+      "INSUFFICIENT_BALANCE": "Le solde du compte ne suffit pas pour cette opération.",
+      "DRAWER_INSUFFICIENT": "La caisse ne suffit pas pour ce remboursement. Contactez le gérant : une demande lui a été envoyée.",
+      "REFUND_ACCOUNT_FORBIDDEN": "Seul le gérant peut choisir un autre compte que la caisse pour un remboursement.",
+      "PAYMENT_NOT_IN_COLLECTION": "Ce paiement n'est pas en cours d'encaissement.",
+      "PAYMENT_ALREADY_REJECTED": "Ce paiement a déjà été rejeté.",
+      "PAYMENT_IN_COLLECTION": "Un paiement est en cours d'encaissement. Confirmez-le ou rejetez-le d'abord.",
+      "ANNULMENT_USE_CANCELLATION": "Prime fractionnée et soldée : pas d'annulation. Utilisez la résiliation.",
+      "CANCELLATION_INSTALMENTS_OPEN": "Une police à prime fractionnée non soldée ne peut pas être résiliée.",
+      "AMOUNT_HAS_PAYMENTS": "Le montant ne peut plus changer : il y a déjà des paiements."
     },
     "fields": {
       "required": "Ce champ est obligatoire.",
@@ -600,7 +638,8 @@
     "steps": {
       "client": "1. Client",
       "vehicles": "2. Véhicule",
-      "policy": "3. Police"
+      "policy": "3. Police",
+      "payment": "4. Paiement"
     },
     "pickClient": "Choisir le client",
     "pickVehicles": "Choisir le véhicule",
@@ -706,5 +745,201 @@
     "fee": "Frais fixes d'attestation :",
     "typeName": "Nom du type d'assurance",
     "operationName": "Nom de l'opération"
+  },
+  "finance": {
+    "title": "Paiement et échéances",
+    "collectionTitle": "Encaissement",
+    "collection": {
+      "paid": "Payée",
+      "in_collection": "En cours d'encaissement",
+      "outstanding": "Reste dû / Impayé",
+      "payment_rejected": "Moyen de paiement rejeté"
+    },
+    "states": {
+      "fully_paid": "Payée en totalité.",
+      "direct_debt": "Avec un impayé direct.",
+      "instalments_open": "Prime fractionnée, non soldée.",
+      "instalments_paid": "Prime fractionnée, soldée."
+    },
+    "how": "Mode de paiement",
+    "modes": {
+      "pay": "Payer maintenant (total ou partiel)",
+      "instalments": "Fractionnement de la prime"
+    },
+    "instalmentsRule": "Fractionnement de la prime seulement pour une police d'un seul véhicule, de 6 ou 12 mois. Pas pour une flotte.",
+    "fleetRule": "Flotte : impayé, paiements par chèques, ou paiement total.",
+    "instalmentCount": "Nombre d'échéances",
+    "instalmentN": "Échéance {{n}}",
+    "dueDateN": "Date d'échéance {{n}}",
+    "totalWithFees": "Total avec frais de fractionnement",
+    "feeNote": "Le programme calcule les échéances et leurs frais. La date d'une échéance peut être changée à la demande du client maintenant seulement, pas après l'enregistrement.",
+    "paidNow": "Ce que le client paie maintenant",
+    "paidNowInstalments": "Ce que le client paie maintenant (imputé aux échéances les plus anciennes)",
+    "addPayment": "Ajouter un paiement",
+    "removePayment": "Supprimer ce paiement",
+    "restIsDebt": "Ce qui n'est pas payé maintenant devient un impayé direct du client.",
+    "method": "Mode de paiement",
+    "methods": {
+      "cash": "Espèces",
+      "cheque": "Chèque",
+      "transfer": "Virement",
+      "card": "Carte bancaire"
+    },
+    "amount": "Montant",
+    "chequeNumber": "Numéro du chèque",
+    "bank": "Banque",
+    "drawerName": "Tireur",
+    "chequeDue": "Date d'échéance",
+    "chequeDueOn": "Échéance le {{date}}",
+    "reference": "Référence de l'opération",
+    "transferDate": "Date du virement",
+    "record": "Enregistrer un paiement",
+    "recordTitle": "Paiement pour la police {{number}}",
+    "oldestFirst": "Le montant est imputé du plus ancien au plus récent. Un montant supérieur au reste dû est refusé.",
+    "due": "Dû",
+    "paid": "Payé",
+    "inCollection": "En cours d'encaissement",
+    "remaining": "Reste dû",
+    "clientOtherDebts": "Attention : ce client a des impayés ou des restes dus :",
+    "instalments": "Échéances",
+    "dueDate": "Date d'échéance",
+    "fee": "Frais",
+    "debtOn": "Devient un impayé le {{date}}",
+    "instalmentStatus": {
+      "pending": "Non payée",
+      "partial": "Payée en partie",
+      "paid": "Payée",
+      "converted_to_debt": "Devenue impayé",
+      "written_off": "Annulée"
+    },
+    "debts": "Impayés",
+    "source": "Origine",
+    "debtSources": {
+      "direct": "Impayé direct",
+      "installment": "Échéance en retard",
+      "rejected_payment": "Moyen de paiement rejeté",
+      "opening_balance": "Solde d'ouverture",
+      "certificate_fee": "Frais d'attestation",
+      "price_increase": "Hausse de prix"
+    },
+    "debtStatus": {
+      "open": "Non soldé",
+      "paid": "Soldé",
+      "written_off": "Annulé"
+    },
+    "payments": "Paiements",
+    "noPayments": "Aucun paiement pour l'instant.",
+    "receivedBy": "Reçu par",
+    "paymentStatus": {
+      "collected": "Encaissé",
+      "in_collection": "En cours d'encaissement",
+      "confirmed": "Confirmé",
+      "rejected": "Rejeté"
+    },
+    "paymentsTitle": "Paiements",
+    "paymentsIntro": "Tous les paiements. Chèques, virements et cartes restent « en cours d'encaissement » jusqu'à confirmation.",
+    "drawerBalance": "Solde de la caisse",
+    "dueSoon": "Échéance dans 3 jours",
+    "confirm": "Confirmer l'encaissement",
+    "reject": "Rejeter",
+    "bounce": "Impayé (retour)",
+    "confirmTitle": "Confirmer l'encaissement",
+    "confirmInfo": "Le montant entre en banque.",
+    "rejectTitle": "Rejeter le moyen de paiement",
+    "rejectInfo": "Le montant redevient un impayé du client et la police reste en vigueur. S'il était confirmé, il est retiré de la banque. Le gérant reçoit un message automatique.",
+    "debtsTitle": "Impayés",
+    "debtsIntro": "Ce qui reste dû par les clients, par client.",
+    "noDebts": "Aucun impayé.",
+    "clientTotal": "Total dû par le client :",
+    "totalOpen": "Total non soldé :",
+    "settlementTitle": "Règlement du montant",
+    "settlement": {
+      "pay_now": "Payé en espèces maintenant",
+      "defer": "Ajouté à la prochaine échéance ou à l'impayé"
+    },
+    "settlementHint": "Si le client doit payer : en espèces maintenant, ou ajouté à la prochaine échéance non payée, sinon à son impayé.",
+    "refundTitle": "Remboursement",
+    "refundAgainstDues": "Déduit d'abord des impayés ou échéances du client, le reste est payé depuis : {{account}}",
+    "refundAgainstDuesHint": "Déduit d'abord de l'impayé du client s'il existe, le reste lui est payé.",
+    "refundAccount": "Payé depuis",
+    "accounts": {
+      "drawer": "Caisse",
+      "safe": "Coffre",
+      "bank": "Banque"
+    },
+    "fleetAddNote": "Saisissez le montant payé par le client pour ce véhicule (sans les frais d'attestation de 17 MAD).",
+    "fleetAddAmount": "Montant payé par le client",
+    "fleetRemoveNote": "Saisissez le montant rendu au client pour ce véhicule (sans les frais d'attestation de 17 MAD).",
+    "fleetRemoveAmount": "Montant rendu au client",
+    "annulRefund": "Rendu au client",
+    "annulWriteOff": "Impayé annulé",
+    "annulNotAllowed": "Cette police ne peut pas être annulée.",
+    "annulInstalmentsInfo": "Prime fractionnée non soldée : l'annulation est possible, sans remboursement, et le reste dû est annulé.",
+    "cancelPayOutChoice": "Payer le montant au client au lieu de le déduire de son impayé",
+    "cancelPayOutHint": "Par défaut, le remboursement est déduit de l'impayé du client. Indiquez le motif si vous choisissez de payer.",
+    "cancelAgainstDebt": "Déduit de l'impayé du client, le reste est payé",
+    "cancelPayOut": "Payé depuis : {{account}}"
+  },
+  "receipt": {
+    "open": "Reçu",
+    "print": "Imprimer",
+    "list": "Reçus",
+    "number": "N° du reçu",
+    "kind": "Type",
+    "kinds": {
+      "payment": "Paiement",
+      "operation": "Opération",
+      "refund": "Remboursement"
+    },
+    "cancelled": "Annulé",
+    "cancelReason": "Motif d'annulation : {{reason}}",
+    "license": "Numéro d'agrément : {{number}}",
+    "client": "Client",
+    "identity": "Pièce d'identité",
+    "policy": "Police",
+    "insurer": "Compagnie et type",
+    "method": "Mode de paiement",
+    "paid": "Payé",
+    "remaining": "Reste dû",
+    "amount": "Montant",
+    "user": "Utilisateur : {{name}}",
+    "titles": {
+      "payment": "Reçu de paiement",
+      "vehicle_change": "Bon de changement de véhicule",
+      "plate_change": "Bon de changement d'immatriculation",
+      "duplicate": "Bon de duplicata",
+      "fleet_add_vehicle": "Bon d'ajout à la flotte",
+      "fleet_remove_vehicle": "Bon de retrait de la flotte",
+      "annulment": "Bon d'annulation",
+      "cancellation": "Bon de résiliation"
+    },
+    "settlement": {
+      "pay_now": "Payé en espèces",
+      "defer": "Ajouté au dû du client",
+      "refund": "Remboursement au client"
+    },
+    "lines": {
+      "amount": "Montant",
+      "cheque": "Chèque",
+      "chequeDue": "Date d'échéance",
+      "debtReduction": "Déduit de l'impayé",
+      "difference": "Différence de prix",
+      "fee": "Frais d'attestation",
+      "net": "Net",
+      "newCertificate": "Nouvelle attestation",
+      "newPlate": "Nouvelle immatriculation",
+      "newVehicle": "Nouveau véhicule",
+      "oldCertificate": "Ancienne attestation",
+      "oldPlate": "Ancienne immatriculation",
+      "oldVehicle": "Ancien véhicule",
+      "paid": "Payé",
+      "payout": "Payé au client",
+      "refund": "Remboursement",
+      "settlement": "Règlement",
+      "transfer": "Virement",
+      "transferDate": "Date du virement",
+      "vehicle": "Véhicule",
+      "writtenOff": "Impayé annulé"
+    }
   }
 }

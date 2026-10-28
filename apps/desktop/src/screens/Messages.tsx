@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CheckCheck, PenSquare } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { createThreadSchema, type DirectoryUserDto, type ThreadDto, type ThreadSummaryDto } from "@alyassir/shared";
+import { createThreadSchema, formatCents, type DirectoryUserDto, type ThreadDto, type ThreadSummaryDto } from "@alyassir/shared";
 import {
   Badge,
   Button,
@@ -19,6 +19,7 @@ import {
 } from "@alyassir/ui";
 import { asClientError } from "../adapters";
 import { Field, PageHeader } from "../components/common";
+import { formatDay } from "../components/insurance";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import { formatDateTime } from "../lib/format";
 import { api, useSession } from "../lib/session";
@@ -29,8 +30,66 @@ function useSubject(): (subject: string, kind: string) => string {
   return (subject, kind) => {
     const m = /^edit_request:([a-z_]+):/.exec(subject);
     if (m) return t("editRequests.threadSubject", { entity: t(`editRequests.entities.${m[1]}`, { defaultValue: m[1] }) });
+    const sys = /^system:([a-z_]+)$/.exec(subject);
+    if (sys) return t(`messages.events.${sys[1]}.subject`, { defaultValue: t("messages.system") });
     return kind === "system" && !subject ? t("messages.system") : subject;
   };
+}
+
+/** Automatic messages carry {event, params}; they are written out in the reader's language. */
+function MessageBody({ body, system }: { body: string; system: boolean }) {
+  const { t } = useTranslation();
+  let parsed: { event: string; params: Record<string, unknown> } | null = null;
+  if (system) {
+    try {
+      const v = JSON.parse(body) as unknown;
+      if (v && typeof v === "object" && "event" in v && "params" in v) parsed = v as { event: string; params: Record<string, unknown> };
+    } catch {
+      parsed = null;
+    }
+  }
+  if (!parsed) return <p dir="auto" className="whitespace-pre-wrap text-start text-sm">{body}</p>;
+  const p = parsed.params;
+  const money = (v: unknown) => (typeof v === "number" ? `${formatCents(v)} ${t("money.mad")}` : "—");
+  const day = (v: unknown) => (typeof v === "string" ? (v.length > 10 ? formatDateTime(v) : formatDay(v)) : "—");
+  const text = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
+  let lines: [string, string][] = [];
+  if (parsed.event === "payment_rejected") {
+    lines = [
+      [t("policies.client"), text(p.client)],
+      [t("policies.number"), text(p.policyNumber)],
+      [t("finance.method"), t(`finance.methods.${text(p.method)}`, { defaultValue: text(p.method) })],
+      [t("finance.chequeNumber"), text(p.chequeNumber)],
+      [t("finance.bank"), text(p.bank)],
+      [t("finance.amount"), money(p.amountCents)],
+      [t("messages.events.payment_rejected.confirmedAt"), day(p.confirmedAt)],
+      [t("messages.events.payment_rejected.rejectedAt"), day(p.rejectedAt)],
+      [t("messages.events.payment_rejected.bankBalance"), money(p.bankBalanceCents)],
+      [t("common.reason"), text(p.reason)],
+    ];
+  } else if (parsed.event === "refund_needs_manager") {
+    lines = [
+      [t("policies.number"), text(p.policyNumber)],
+      [t("finance.amount"), money(p.amountCents)],
+      [t("messages.events.refund_needs_manager.employee"), text(p.employee)],
+    ];
+  } else if (parsed.event === "instalments_to_debt") {
+    const items = Array.isArray(p.items) ? (p.items as Record<string, unknown>[]) : [];
+    lines = items.map((x) => [`${text(x.client)} · ${text(x.policyNumber)}`, t("messages.events.instalments_to_debt.line", { seq: text(x.seq), date: day(x.dueDate), amount: money(x.amountCents) })]);
+  }
+  return (
+    <div className="grid gap-2 text-sm">
+      <p>{t(`messages.events.${parsed.event}.intro`, { defaultValue: t("messages.system") })}</p>
+      <dl className="grid gap-1 rounded-md border p-3">
+        {lines.map(([label, value], i) => (
+          <div key={i} className="flex flex-wrap justify-between gap-3">
+            <dt className="text-muted-foreground"><bdi dir="auto">{label}</bdi></dt>
+            <dd><bdi dir="auto">{value}</bdi></dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
 }
 
 function RecipientPicker({ users, selected, onChange, exclude, label }: { users: DirectoryUserDto[]; selected: string[]; onChange: (ids: string[]) => void; exclude: string[]; label: string }) {
@@ -140,7 +199,7 @@ function ThreadView({ id }: { id: string }) {
             <span className="font-semibold">{m.senderName ?? t("messages.system")}</span>
             <span className="text-muted-foreground">{formatDateTime(m.createdAt)}</span>
           </div>
-          <p dir="auto" className="whitespace-pre-wrap text-start text-sm">{m.body}</p>
+          <MessageBody body={m.body} system={thread.data.kind === "system"} />
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
             {m.recipients.map((r) => (
               <span key={r.userId} className="inline-flex items-center gap-1" title={r.readAt ? formatDateTime(r.readAt) : t("messages.notRead")}>

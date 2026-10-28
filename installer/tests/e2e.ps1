@@ -142,20 +142,30 @@ try {
   Wipe-Everything
 
   if ($PreviousSetup) {
-    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 1) ==="
+    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 2) ==="
     $code = Install (@("/MODE=server", "/PORT=$Port") + $Bootstrap) $PreviousSetup
-    Check ($code -eq 0) "Phase 1 server installed"
+    Check ($code -eq 0) "Phase 2 server installed"
     $old = Login "gerant" $ManagerPass
-    Check ($old.status -eq 200) "the manager signs in on the Phase 1 server"
+    Check ($old.status -eq 200) "the manager signs in on the Phase 2 server"
     $oldToken = $old.body.accessToken
-    $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "نادية"; password = "nadia-pass" } $oldToken
+    $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "Nadia"; password = "nadia-pass" } $oldToken
     Check ($emp.status -eq 201) "an employee is created before the update"
     $msg = Api "POST" "/api/messages/threads" @{ subject = "قبل التحديث"; body = "رسالة محفوظة"; to = @($emp.body.id) } $oldToken
     Check ($msg.status -eq 201) "a message is sent before the update"
-    Check ((Api "GET" "/api/insurance/catalog" $null $oldToken).status -eq 404) "the Phase 1 server has no insurance screens yet"
+    # A policy saved in Phase 2 (no payment step yet).
+    $cat = Api "GET" "/api/insurance/catalog" $null $oldToken
+    $rma = @($cat.body.insurers | Where-Object { $_.name -eq "RMA" })[0].id
+    $cat = Api "POST" "/api/insurance/types" @{ insurerId = $rma; name = "Assurance automobile"; requiresVehicle = $true; supportsFleet = $false } $oldToken
+    $typeId = @($cat.body.types | Where-Object { $_.name -eq "Assurance automobile" })[0].id
+    $months12 = @($cat.body.durations | Where-Object { $_.months -eq 12 })[0].id
+    $client = Api "POST" "/api/clients" @{ kind = "individual"; fullName = "Said EL IDRISSI"; idType = "cin"; idNumber = "AB123456"; phone = "0661234567" } $oldToken
+    $vehicle = Api "POST" "/api/vehicles" @{ clientId = $client.body.id; plateType = "ww"; plate = "WW123456"; fiscalPower = 6; fuel = "diesel"; brand = "Dacia Logan" } $oldToken
+    $policy = Api "POST" "/api/policies" @{ idempotencyKey = [guid]::NewGuid().ToString(); clientId = $client.body.id; insuranceTypeId = $typeId; policyNumber = "POL-UPD-001"; coverageDurationId = $months12; totalAmountCents = 250000; vehicles = @(@{ vehicleId = $vehicle.body.id; certificateNumber = "ATT-UPD-001" }) } $oldToken
+    Check ($policy.status -eq 201 -or $policy.status -eq 200) "a policy of 2 500 MAD is saved before the update"
+    Check ((Api "GET" "/api/debts" $null $oldToken).status -eq 404) "the Phase 2 server has no payments yet"
 
     $code = Install @()
-    Check ($code -eq 0) "update to Phase 2 succeeded"
+    Check ($code -eq 0) "update to Phase 3 succeeded"
     Check ((Get-ChildItem "$Data\backups\pre-update-*.dump").Count -ge 1) "automatic backup taken before updating the database"
     $new = Login "gerant" $ManagerPass
     Check ($new.status -eq 200 -and $new.body.me.role -eq "manager") "the manager still signs in after the update"
@@ -163,10 +173,19 @@ try {
     Check ((Login "nadia" "nadia-pass").status -eq 200) "the employee created before the update still signs in"
     $threads = Api "GET" "/api/messages/threads" $null $newToken
     Check (@($threads.body | Where-Object { $_.subject -eq "قبل التحديث" }).Count -eq 1) "the message sent before the update is still there"
-    $catalog = Api "GET" "/api/insurance/catalog" $null $newToken
-    Check ($catalog.status -eq 200 -and @($catalog.body.insurers | Where-Object { $_.name -eq "RMA" }).Count -eq 1) "the new Phase 2 tables are there (RMA ready)"
+    $found = Api "GET" "/api/policies?q=POL-UPD-001" $null $newToken
+    Check ($found.status -eq 200 -and @($found.body.items).Count -eq 1) "the policy saved before the update is still there"
+    $finance = Api "GET" "/api/policies/$($policy.body.id)/finance" $null $newToken
+    Check ($finance.status -eq 200) "the money page of the old policy opens"
+    # A new policy after the update: 2 500 MAD, 1 000 paid in cash, 1 500 left as a debt.
+    $vehicle2 = Api "POST" "/api/vehicles" @{ clientId = $client.body.id; plateType = "ww"; plate = "WW654321"; fiscalPower = 6; fuel = "diesel"; brand = "Renault Clio" } $newToken
+    $pol2 = Api "POST" "/api/policies" @{ idempotencyKey = [guid]::NewGuid().ToString(); clientId = $client.body.id; insuranceTypeId = $typeId; policyNumber = "POL-UPD-002"; coverageDurationId = $months12; totalAmountCents = 250000; vehicles = @(@{ vehicleId = $vehicle2.body.id; certificateNumber = "ATT-UPD-002" }); finance = @{ payments = @(@{ method = "cash"; amountCents = 100000 }) } } $newToken
+    $finance2 = Api "GET" "/api/policies/$($pol2.body.id)/finance" $null $newToken
+    Check ($finance2.status -eq 200 -and $finance2.body.totals.remainingCents -eq 150000) "after the update: new policy, 1 000 paid in cash, 1 500 left"
+    $drawer = Api "GET" "/api/accounts/drawer" $null $newToken
+    Check ($drawer.status -eq 200 -and $drawer.body.balanceCents -eq 100000) "the cash is in the drawer (1 000 MAD)"
     $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
-    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "2") "both database steps applied (Phase 1 and Phase 2)"
+    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "3") "the three database steps applied (Phases 1, 2 and 3)"
     Wipe-Everything
   }
 

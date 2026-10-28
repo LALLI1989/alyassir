@@ -7,3 +7,4 @@ export * from "./version";
 export * from "./insurance";
 export * from "./schemas-insurance";
 export * from "./dto-insurance";
+export * from "./payments";

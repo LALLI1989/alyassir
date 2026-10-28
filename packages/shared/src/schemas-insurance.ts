@@ -17,6 +17,7 @@ import {
   isValidPhone,
   isValidPlate,
 } from "./insurance";
+import { REFUND_ACCOUNTS, financeSetupSchema } from "./payments";
 
 const trimmed = (max: number) => z.string().trim().max(max, "too_long");
 const requiredText = (max: number) => trimmed(max).min(1, "required");
@@ -127,6 +128,8 @@ export const createPolicySchema = z.object({
   isFleet: z.boolean().default(false),
   fleetName: trimmed(100).default(""),
   vehicles: z.array(certificateEntry).max(500).default([]),
+  /** Payment at issue: now, instalments, the rest as a direct debt (Phase 3). */
+  finance: financeSetupSchema.default({}),
 });
 export type CreatePolicyInput = z.infer<typeof createPolicySchema>;
 
@@ -141,6 +144,7 @@ export const renewSchema = z.object({
   endDate: isoDate.nullable().default(null),
   totalAmountCents: amount,
   certificates: z.array(certificateEntry).min(1).max(500).optional(),
+  finance: financeSetupSchema.default({}),
 });
 export type RenewInput = z.infer<typeof renewSchema>;
 
@@ -152,6 +156,7 @@ export const policyChangeSchema = z.object({
   endDate: isoDate.nullable().default(null),
   totalAmountCents: amount,
   certificates: z.array(certificateEntry).max(500).default([]),
+  finance: financeSetupSchema.default({}),
 });
 export type PolicyChangeInput = z.infer<typeof policyChangeSchema>;
 
@@ -175,27 +180,30 @@ export const vehicleChangeSchema = z.object({
   newPriceCents: amountOrZero,
   reason,
   paperReceiptNo: trimmed(40).default(""),
+  settlement: z.enum(["pay_now", "defer"]).default("pay_now"),
+  refundAccount: z.enum(REFUND_ACCOUNTS).default("drawer"),
 });
 export type VehicleChangeInput = z.infer<typeof vehicleChangeSchema>;
 export const vehicleChangePreviewSchema = vehicleChangeSchema.pick({ oldPriceCents: true, newPriceCents: true });
 
 export const plateChangeSchema = z
-  .object({ idempotencyKey, vehicleId: uuid, ...plateFields, certificateNumber: documentNumber, reason, paperReceiptNo: trimmed(40).default("") })
+  .object({ idempotencyKey, vehicleId: uuid, ...plateFields, certificateNumber: documentNumber, reason, paperReceiptNo: trimmed(40).default(""), settlement: z.enum(["pay_now", "defer"]).default("pay_now") })
   .superRefine(plateRule);
 export type PlateChangeInput = z.infer<typeof plateChangeSchema>;
 
-export const duplicateSchema = z.object({ idempotencyKey, vehicleId: uuid, certificateNumber: documentNumber, reason, paperReceiptNo: trimmed(40).default("") });
+export const duplicateSchema = z.object({ idempotencyKey, vehicleId: uuid, certificateNumber: documentNumber, reason, paperReceiptNo: trimmed(40).default(""), settlement: z.enum(["pay_now", "defer"]).default("pay_now") });
 export type DuplicateInput = z.infer<typeof duplicateSchema>;
 
-export const fleetAddSchema = z.object({ idempotencyKey, vehicleId: uuid, certificateNumber: documentNumber, reason });
+/** Owner decision 28/10/2026: an amount typed by the employee, no 17 MAD fee. */
+export const fleetAddSchema = z.object({ idempotencyKey, vehicleId: uuid, certificateNumber: documentNumber, reason, amountCents: amountOrZero.default(0), settlement: z.enum(["pay_now", "defer"]).default("pay_now") });
 export type FleetAddInput = z.infer<typeof fleetAddSchema>;
-export const fleetRemoveSchema = z.object({ idempotencyKey, vehicleId: uuid, reason });
+export const fleetRemoveSchema = z.object({ idempotencyKey, vehicleId: uuid, reason, refundCents: amountOrZero.default(0), refundAccount: z.enum(REFUND_ACCOUNTS).default("drawer") });
 export type FleetRemoveInput = z.infer<typeof fleetRemoveSchema>;
 
-export const annulSchema = z.object({ idempotencyKey, reason });
+export const annulSchema = z.object({ idempotencyKey, reason, refundAccount: z.enum(REFUND_ACCOUNTS).default("drawer") });
 export type AnnulInput = z.infer<typeof annulSchema>;
 /** Résiliation: the refund is decided by the manager from the insurer's decision (SPEC 13.2). */
-export const cancelSchema = z.object({ idempotencyKey, reason, refundCents: amountOrZero });
+export const cancelSchema = z.object({ idempotencyKey, reason, refundCents: amountOrZero, payOut: z.boolean().default(false), refundAccount: z.enum(REFUND_ACCOUNTS).default("drawer") });
 export type CancelInput = z.infer<typeof cancelSchema>;
 
 export const customOperationSchema = z.object({ idempotencyKey, operationType: z.string().regex(/^custom_[a-z0-9]{6,20}$/, "invalid"), reason });

@@ -24,6 +24,7 @@ import {
 } from "@alyassir/ui";
 import { asClientError } from "../adapters";
 import { Field, PageHeader, Pager } from "../components/common";
+import { CollectionBadge, FinanceSetupFields, emptyFinance, toFinance, type FinanceDraft } from "../components/finance";
 import { Code, Money, MoneyInput, ValidityBadge, formatDay, useCatalog, useOperationKey } from "../components/insurance";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import { api, useSession } from "../lib/session";
@@ -102,13 +103,14 @@ function PolicyTable({ rows, onOpen }: { rows: PolicySummaryDto[]; onOpen: (page
             <Th>{t("policies.end")}</Th>
             <Th>{t("policies.amount")}</Th>
             <Th>{t("policies.validity")}</Th>
+            <Th>{t("finance.collectionTitle")}</Th>
             <Th />
           </Tr>
         </THead>
         <TBody>
           {rows.length === 0 && (
             <Tr>
-              <Td colSpan={9} className="py-8 text-center text-muted-foreground">{t("common.empty")}</Td>
+              <Td colSpan={10} className="py-8 text-center text-muted-foreground">{t("common.empty")}</Td>
             </Tr>
           )}
           {rows.map((p) => (
@@ -128,6 +130,7 @@ function PolicyTable({ rows, onOpen }: { rows: PolicySummaryDto[]; onOpen: (page
               <Td>{formatDay(p.endDate)}</Td>
               <Td><Money cents={p.totalAmountCents} /></Td>
               <Td><ValidityBadge validity={p.validity} /></Td>
+              <Td><CollectionBadge status={p.collectionStatus} /></Td>
               <Td className="text-end">
                 <Button size="sm" variant="outline" onClick={() => onOpen({ kind: "policy", id: p.id })}>{t("common.open")}</Button>
               </Td>
@@ -189,6 +192,7 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
   const [typedEnd, setTypedEnd] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
   const [addingVehicle, setAddingVehicle] = useState(false);
+  const [finance, setFinance] = useState<FinanceDraft>(emptyFinance);
 
   const file = useQuery({ queryKey: ["client", clientId], queryFn: () => api<ClientFileDto>("GET", `/api/clients/${clientId}`), enabled: Boolean(clientId) });
   const types = useMemo(() => (catalog?.types ?? []).filter((x) => !x.archived && !catalog?.insurers.find((i) => i.id === x.insurerId)?.archived), [catalog]);
@@ -204,6 +208,12 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
   });
   const freeVehicles = (file.data?.vehicles ?? []).filter((v) => !v.archived && !v.activePolicyId);
   const fleet = Boolean(type?.supportsFleet && isFleet);
+  const months = durations.find((d) => d.id === durationId)?.months ?? null;
+  // Display hint only; the server applies the rule (SPEC 14.4).
+  const instalmentsAllowed = Boolean(type?.requiresVehicle) && !fleet && (months === 6 || months === 12);
+  useEffect(() => {
+    if (!instalmentsAllowed && finance.mode === "instalments") setFinance((f) => ({ ...f, mode: "pay" }));
+  }, [instalmentsAllowed, finance.mode]);
 
   const create = useMutation({
     mutationFn: () =>
@@ -218,6 +228,7 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
         isFleet: fleet,
         fleetName,
         vehicles: type?.requiresVehicle ? selected.map((vehicleId) => ({ vehicleId, certificateNumber: certificates[vehicleId] ?? "" })) : [],
+        finance: toFinance(finance),
       }),
     onSuccess: (p) => onOpen({ kind: "policy", id: p.id }),
   });
@@ -354,6 +365,25 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
                 </Field>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {clientId && type && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("policies.steps.payment")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {fleet && <p className="mb-3 text-xs text-muted-foreground">{t("finance.fleetRule")}</p>}
+            <FinanceSetupFields
+              value={finance}
+              onChange={setFinance}
+              totalCents={amount}
+              instalmentsAllowed={instalmentsAllowed}
+              startDate={preview.data?.startDate ?? null}
+              error={(k) => fieldError(fields[k])}
+            />
           </CardContent>
         </Card>
       )}

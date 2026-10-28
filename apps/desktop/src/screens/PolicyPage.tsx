@@ -37,10 +37,12 @@ import {
 } from "@alyassir/ui";
 import { asClientError, type ClientError } from "../adapters";
 import { Field, PageHeader } from "../components/common";
+import { FinanceSetupFields, RefundAccountField, emptyFinance, toFinance, type FinanceDraft } from "../components/finance";
 import { Code, Money, MoneyInput, ValidityBadge, formatDay, useCatalog, useLocalName, useOperationKey } from "../components/insurance";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import { formatDateTime } from "../lib/format";
 import { api, useSession } from "../lib/session";
+import { PolicyFinanceSection, useFinance } from "./PolicyFinance";
 import type { Page } from "./Shell";
 import { VehicleDialog } from "./Vehicles";
 
@@ -196,6 +198,53 @@ function certificatesBody(policy: PolicyDto, values: Record<string, string>) {
   return policy.vehicles.map((v) => ({ vehicleId: v.vehicleId, certificateNumber: values[v.vehicleId] ?? "" }));
 }
 
+/** Pay now in cash, or add it to what the client owes (SPEC 15, 16). */
+function SettlementField({ value, onChange }: { value: "pay_now" | "defer"; onChange: (v: "pay_now" | "defer") => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="grid gap-1.5" role="radiogroup" aria-label={t("finance.settlementTitle")}>
+      <span className="text-sm font-medium">{t("finance.settlementTitle")}</span>
+      <div className="flex flex-wrap gap-4">
+        {(["pay_now", "defer"] as const).map((v) => (
+          <label key={v} className="flex items-center gap-2 text-sm">
+            <input type="radio" name="settlement" checked={value === v} onChange={() => onChange(v)} />
+            {t(`finance.settlement.${v}`)}
+          </label>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">{t("finance.settlementHint")}</p>
+    </div>
+  );
+}
+
+/** The manager (or a supervisor with "refunds") may take money given back from another account (SPEC 13.3). */
+function useCanChooseRefund(): boolean {
+  const { isManager, can } = useSession();
+  return isManager || can("sup.refunds");
+}
+
+/** Renewal or change creates a new period, paid like an issue (owner decision 28/10/2026). */
+function PeriodFinance({ policy, durationId, amount, start, value, onChange, err }: { policy: PolicyDto; durationId: string; amount: number | null; start: string | null; value: FinanceDraft; onChange: (v: FinanceDraft) => void; err: (k: string) => string | undefined }) {
+  const { t } = useTranslation();
+  const months = useCatalog().data?.durations.find((d) => d.id === durationId)?.months ?? null;
+  const owed = useFinance(policy.id).data;
+  // Display hint only; the server applies the rule (SPEC 14.4).
+  const allowed = policy.requiresVehicle && !policy.fleet && (months === 6 || months === 12);
+  const effective = !allowed && value.mode === "instalments" ? { ...value, mode: "pay" as const } : value;
+  const otherDebt = owed ? owed.clientOtherDebtCents + owed.totals.remainingCents : 0;
+  return (
+    <div className="grid gap-3 rounded-md border p-3">
+      <span className="text-sm font-semibold">{t("policies.steps.payment")}</span>
+      {otherDebt > 0 && (
+        <Alert variant="warning">
+          <span className="inline-flex flex-wrap gap-1">{t("finance.clientOtherDebts")} <Money cents={otherDebt} /></span>
+        </Alert>
+      )}
+      <FinanceSetupFields value={effective} onChange={onChange} totalCents={amount} instalmentsAllowed={allowed} startDate={start} error={err} />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- renewal and policy change (SPEC 12)
 
 function RenewDialog({ policy, onClose }: DialogProps) {
@@ -207,12 +256,13 @@ function RenewDialog({ policy, onClose }: DialogProps) {
   const [typedEnd, setTypedEnd] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(policy.totalAmountCents);
   const [certs, setCerts] = useState<Record<string, string>>({});
+  const [finance, setFinance] = useState<FinanceDraft>(emptyFinance);
   return (
     <OperationFrame
       title={t("policies.renewTitle", { number: policy.policyNumber })}
       description={t("policies.renewInfo", { last: formatDay(policy.actions.renewalLastDay), start: formatDay(policy.actions.nextStartDate) })}
       path={`/api/policies/${policy.id}/renew`}
-      body={() => ({ idempotencyKey: key, startDate: start, coverageDurationId: durationId, endDate: typedEnd, totalAmountCents: amount, certificates: policy.vehicles.length ? certificatesBody(policy, certs) : undefined })}
+      body={() => ({ idempotencyKey: key, startDate: start, coverageDurationId: durationId, endDate: typedEnd, totalAmountCents: amount, certificates: policy.vehicles.length ? certificatesBody(policy, certs) : undefined, finance: toFinance(finance) })}
       summary={null}
       onClose={onClose}
       form={(err) => (
@@ -228,6 +278,7 @@ function RenewDialog({ policy, onClose }: DialogProps) {
             <MoneyInput id="renewAmount" cents={amount} onChange={setAmount} />
           </Field>
           <CertificateFields policy={policy} values={certs} onChange={setCerts} error={err("certificates.0.certificateNumber")} />
+          <PeriodFinance policy={policy} durationId={durationId} amount={amount} start={start} value={finance} onChange={setFinance} err={err} />
         </>
       )}
     />
@@ -245,12 +296,13 @@ function ChangeDialog({ policy, onClose }: DialogProps) {
   const [typedEnd, setTypedEnd] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(policy.totalAmountCents);
   const [certs, setCerts] = useState<Record<string, string>>({});
+  const [finance, setFinance] = useState<FinanceDraft>(emptyFinance);
   return (
     <OperationFrame
       title={t("policies.changeTitle", { number: policy.policyNumber })}
       description={t("policies.changeInfo", { end: formatDay(policy.endDate) })}
       path={`/api/policies/${policy.id}/change`}
-      body={() => ({ idempotencyKey: key, insuranceTypeId: typeId, policyNumber: number, coverageDurationId: durationId, endDate: typedEnd, totalAmountCents: amount, certificates: certificatesBody(policy, certs) })}
+      body={() => ({ idempotencyKey: key, insuranceTypeId: typeId, policyNumber: number, coverageDurationId: durationId, endDate: typedEnd, totalAmountCents: amount, certificates: certificatesBody(policy, certs), finance: toFinance(finance) })}
       summary={null}
       onClose={onClose}
       form={(err) => (
@@ -268,6 +320,7 @@ function ChangeDialog({ policy, onClose }: DialogProps) {
             <MoneyInput id="changeAmount" cents={amount} onChange={setAmount} />
           </Field>
           <CertificateFields policy={policy} values={certs} onChange={setCerts} error={err("certificates.0.certificateNumber")} />
+          <PeriodFinance policy={policy} durationId={durationId} amount={amount} start={null} value={finance} onChange={setFinance} err={err} />
         </>
       )}
     />
@@ -354,13 +407,16 @@ function VehicleChangeDialog({ policy, onClose }: DialogProps) {
   const [reason, setReason] = useState("");
   const [receipt, setReceipt] = useState("");
   const [adding, setAdding] = useState(false);
+  const [settlement, setSettlement] = useState<"pay_now" | "defer">("pay_now");
+  const [account, setAccount] = useState<"drawer" | "safe" | "bank">("drawer");
+  const canChoose = useCanChooseRefund();
   const plate = (id: string) => vehicles.find((v) => v.id === id)?.plate ?? "";
   return (
     <>
       <OperationFrame
         title={t("policies.vehicleChangeTitle", { number: policy.policyNumber })}
         path={`/api/policies/${policy.id}/vehicle-change`}
-        body={() => ({ idempotencyKey: key, oldVehicleId: oldId, newVehicleId: newId, certificateNumber: certificate, oldPriceCents: oldPrice, newPriceCents: newPrice, reason, paperReceiptNo: receipt })}
+        body={() => ({ idempotencyKey: key, oldVehicleId: oldId, newVehicleId: newId, certificateNumber: certificate, oldPriceCents: oldPrice, newPriceCents: newPrice, reason, paperReceiptNo: receipt, settlement, refundAccount: account })}
         summary={async () => {
           const p = await api<AmountsPreviewDto>("POST", "/api/policies/vehicle-change-preview", { oldPriceCents: oldPrice, newPriceCents: newPrice });
           return [
@@ -371,6 +427,8 @@ function VehicleChangeDialog({ policy, onClose }: DialogProps) {
             [t("policies.difference"), <Money key="d" cents={p.differenceCents} />],
             [t("policies.fee"), <Money key="f" cents={p.feeCents} />],
             [t("policies.net"), <NetLine key="t" preview={p} />],
+            ...(p.netCents > 0 ? [[t("finance.settlementTitle"), t(`finance.settlement.${settlement}`)] as [string, ReactNode]] : []),
+            ...(p.netCents < 0 ? [[t("finance.refundTitle"), t("finance.refundAgainstDues", { account: t(`finance.accounts.${account}`) })] as [string, ReactNode]] : []),
           ];
         }}
         onClose={onClose}
@@ -401,6 +459,8 @@ function VehicleChangeDialog({ policy, onClose }: DialogProps) {
                 <MoneyInput id="vcNewPrice" cents={newPrice} onChange={setNewPrice} />
               </Field>
             </div>
+            <SettlementField value={settlement} onChange={setSettlement} />
+            {canChoose && <RefundAccountField value={account} onChange={setAccount} />}
             <ReasonField value={reason} onChange={setReason} error={err("reason")} />
             <Field id="vcReceipt" label={`${t("policies.paperReceipt")} ${t("common.optional")}`}>
               <Input id="vcReceipt" dir="ltr" value={receipt} onChange={(e) => setReceipt(e.target.value)} />
@@ -430,12 +490,13 @@ function PlateChangeDialog({ policy, onClose }: DialogProps) {
   const [plate, setPlate] = useState("");
   const [certificate, setCertificate] = useState("");
   const [reason, setReason] = useState("");
+  const [settlement, setSettlement] = useState<"pay_now" | "defer">("pay_now");
   const current = policy.vehicles.find((v) => v.vehicleId === vehicleId);
   return (
     <OperationFrame
       title={t("policies.plateChangeTitle", { number: policy.policyNumber })}
       path={`/api/policies/${policy.id}/plate-change`}
-      body={() => ({ idempotencyKey: key, vehicleId, plateType, plate, certificateNumber: certificate, reason })}
+      body={() => ({ idempotencyKey: key, vehicleId, plateType, plate, certificateNumber: certificate, reason, settlement })}
       summary={async () => [
         [t("policies.number"), <Code key="n">{policy.policyNumber}</Code>],
         [t("vehicles.oldPlate"), <Code key="o">{current?.plate}</Code>],
@@ -443,6 +504,7 @@ function PlateChangeDialog({ policy, onClose }: DialogProps) {
         [t("policies.oldCertificate"), <Code key="oc">{current?.certificateNumber}</Code>],
         [t("policies.newCertificate"), <Code key="c">{certificate}</Code>],
         [t("policies.fee"), <FeeSummary key="f" fee={fee} />],
+        [t("finance.settlementTitle"), t(`finance.settlement.${settlement}`)],
       ]}
       onClose={onClose}
       form={(err) => (
@@ -465,6 +527,7 @@ function PlateChangeDialog({ policy, onClose }: DialogProps) {
           <Field id="pcCert" label={t("policies.newCertificate")} error={err("certificateNumber")}>
             <Input id="pcCert" dir="ltr" value={certificate} onChange={(e) => setCertificate(e.target.value)} />
           </Field>
+          <SettlementField value={settlement} onChange={setSettlement} />
           <ReasonField value={reason} onChange={setReason} error={err("reason")} />
         </>
       )}
@@ -479,19 +542,21 @@ function DuplicateDialog({ policy, onClose }: DialogProps) {
   const [vehicleId, setVehicleId] = useState(policy.vehicles[0]?.vehicleId ?? "");
   const [certificate, setCertificate] = useState("");
   const [reason, setReason] = useState("");
+  const [settlement, setSettlement] = useState<"pay_now" | "defer">("pay_now");
   const current = policy.vehicles.find((v) => v.vehicleId === vehicleId);
   return (
     <OperationFrame
       title={t("policies.duplicateTitle", { number: policy.policyNumber })}
       description={t("policies.duplicateHint")}
       path={`/api/policies/${policy.id}/duplicate`}
-      body={() => ({ idempotencyKey: key, vehicleId, certificateNumber: certificate, reason })}
+      body={() => ({ idempotencyKey: key, vehicleId, certificateNumber: certificate, reason, settlement })}
       summary={async () => [
         [t("policies.number"), <Code key="n">{policy.policyNumber}</Code>],
         [t("policies.vehicle"), <Code key="v">{current?.plate}</Code>],
         [t("policies.oldCertificate"), <Code key="o">{current?.certificateNumber}</Code>],
         [t("policies.newCertificate"), <Code key="c">{certificate}</Code>],
         [t("policies.fee"), <FeeSummary key="f" fee={fee} />],
+        [t("finance.settlementTitle"), t(`finance.settlement.${settlement}`)],
       ]}
       onClose={onClose}
       form={(err) => (
@@ -504,6 +569,7 @@ function DuplicateDialog({ policy, onClose }: DialogProps) {
           <Field id="dupCert" label={t("policies.newCertificate")} error={err("certificateNumber")}>
             <Input id="dupCert" dir="ltr" value={certificate} onChange={(e) => setCertificate(e.target.value)} />
           </Field>
+          <SettlementField value={settlement} onChange={setSettlement} />
           <ReasonField value={reason} onChange={setReason} error={err("reason")} />
         </>
       )}
@@ -518,12 +584,14 @@ function FleetAddDialog({ policy, onClose }: DialogProps) {
   const [vehicleId, setVehicleId] = useState("");
   const [certificate, setCertificate] = useState("");
   const [reason, setReason] = useState("");
+  const [amount, setAmount] = useState<number | null>(null);
+  const [settlement, setSettlement] = useState<"pay_now" | "defer">("pay_now");
   return (
     <OperationFrame
       title={t("policies.fleetAdd")}
-      description={t("policies.fleetMoneyNote")}
+      description={t("finance.fleetAddNote")}
       path={`/api/policies/${policy.id}/fleet/add`}
-      body={() => ({ idempotencyKey: key, vehicleId, certificateNumber: certificate, reason })}
+      body={() => ({ idempotencyKey: key, vehicleId, certificateNumber: certificate, reason, amountCents: amount ?? 0, settlement })}
       summary={null}
       onClose={onClose}
       form={(err) => (
@@ -537,6 +605,10 @@ function FleetAddDialog({ policy, onClose }: DialogProps) {
           <Field id="faCert" label={t("policies.certificate")} error={err("certificateNumber")}>
             <Input id="faCert" dir="ltr" value={certificate} onChange={(e) => setCertificate(e.target.value)} />
           </Field>
+          <Field id="faAmount" label={t("finance.fleetAddAmount")} error={err("amountCents")}>
+            <MoneyInput id="faAmount" cents={amount} onChange={setAmount} />
+          </Field>
+          <SettlementField value={settlement} onChange={setSettlement} />
           <ReasonField value={reason} onChange={setReason} error={err("reason")} />
         </>
       )}
@@ -549,13 +621,19 @@ function FleetRemoveDialog({ policy, onClose }: DialogProps) {
   const key = useOperationKey();
   const [vehicleId, setVehicleId] = useState(policy.vehicles[0]?.vehicleId ?? "");
   const [reason, setReason] = useState("");
+  const [refund, setRefund] = useState<number | null>(null);
+  const [account, setAccount] = useState<"drawer" | "safe" | "bank">("drawer");
+  const canChoose = useCanChooseRefund();
   return (
     <OperationFrame
       title={t("policies.fleetRemove")}
-      description={t("policies.fleetMoneyNote")}
+      description={t("finance.fleetRemoveNote")}
       path={`/api/policies/${policy.id}/fleet/remove`}
-      body={() => ({ idempotencyKey: key, vehicleId, reason })}
-      summary={async () => [[t("policies.vehicle"), <Code key="v">{policy.vehicles.find((v) => v.vehicleId === vehicleId)?.plate}</Code>]]}
+      body={() => ({ idempotencyKey: key, vehicleId, reason, refundCents: refund ?? 0, refundAccount: account })}
+      summary={async () => [
+        [t("policies.vehicle"), <Code key="v">{policy.vehicles.find((v) => v.vehicleId === vehicleId)?.plate}</Code>],
+        [t("finance.fleetRemoveAmount"), <Money key="r" cents={refund ?? 0} />],
+      ]}
       destructive
       onClose={onClose}
       form={(err) => (
@@ -565,6 +643,10 @@ function FleetRemoveDialog({ policy, onClose }: DialogProps) {
               {policy.vehicles.map((v) => <option key={v.vehicleId} value={v.vehicleId}>{v.plate}</option>)}
             </NativeSelect>
           </Field>
+          <Field id="frAmount" label={t("finance.fleetRemoveAmount")} hint={t("finance.refundAgainstDuesHint")} error={err("refundCents")}>
+            <MoneyInput id="frAmount" cents={refund} onChange={setRefund} />
+          </Field>
+          {canChoose && <RefundAccountField value={account} onChange={setAccount} />}
           <ReasonField value={reason} onChange={setReason} error={err("reason")} />
         </>
       )}
@@ -574,24 +656,48 @@ function FleetRemoveDialog({ policy, onClose }: DialogProps) {
 
 // ---------------------------------------------------------------- annulment, cancellation, other (SPEC 13, 11.4)
 
+function annulMoneyLines(money: { refundCents: number; writeOffCents: number } | undefined, refundLabel: string, writeOffLabel: string): [string, ReactNode][] {
+  if (!money) return [];
+  const refund: [string, ReactNode] = [refundLabel, <Money key="m" cents={money.refundCents} />];
+  const writeOff: [string, ReactNode] = [writeOffLabel, <Money key="w" cents={money.writeOffCents} />];
+  return [refund, writeOff];
+}
+
 function AnnulDialog({ policy, onClose }: DialogProps) {
   const { t } = useTranslation();
   const key = useOperationKey();
   const [reason, setReason] = useState("");
+  const [account, setAccount] = useState<"drawer" | "safe" | "bank">("drawer");
+  const canChoose = useCanChooseRefund();
+  const finance = useFinance(policy.id).data;
+  const money = finance?.annulment;
   return (
     <OperationFrame
       title={t("policies.annulTitle", { number: policy.policyNumber })}
-      description={t("policies.annulInfo", { date: formatDay(policy.actions.annulUntil) })}
+      description={policy.actions.annulUntil ? t("policies.annulInfo", { date: formatDay(policy.actions.annulUntil) }) : t("finance.annulInstalmentsInfo")}
       path={`/api/policies/${policy.id}/annul`}
-      body={() => ({ idempotencyKey: key, reason })}
+      body={() => ({ idempotencyKey: key, reason, refundAccount: account })}
       summary={async () => [
         [t("policies.number"), <Code key="n">{policy.policyNumber}</Code>],
         [t("policies.client"), <span key="c" dir="auto">{policy.clientName}</span>],
+        ...annulMoneyLines(money, t("finance.annulRefund"), t("finance.annulWriteOff")),
         [t("common.reason"), <span key="r">{reason}</span>],
       ]}
       destructive
       onClose={onClose}
-      form={(err) => <ReasonField value={reason} onChange={setReason} error={err("reason")} />}
+      form={(err) => (
+        <>
+          {money && (!money.allowed || money.reason) && <Alert variant={money.allowed ? "warning" : "error"}>{t(`errors.api.${money.reason ?? "ANNULMENT_NOT_ALLOWED"}`, { defaultValue: t("finance.annulNotAllowed") })}</Alert>}
+          {money && money.allowed && (
+            <dl className="grid gap-2 rounded-md border p-3 text-sm" data-testid="annul-money">
+              <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{t("finance.annulRefund")}</dt><dd><Money cents={money.refundCents} /></dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{t("finance.annulWriteOff")}</dt><dd><Money cents={money.writeOffCents} /></dd></div>
+            </dl>
+          )}
+          {canChoose && money && money.refundCents > 0 && <RefundAccountField value={account} onChange={setAccount} />}
+          <ReasonField value={reason} onChange={setReason} error={err("reason")} />
+        </>
+      )}
     />
   );
 }
@@ -601,15 +707,20 @@ function CancelDialog({ policy, onClose }: DialogProps) {
   const key = useOperationKey();
   const [reason, setReason] = useState("");
   const [refund, setRefund] = useState<number | null>(null);
+  const [payOut, setPayOut] = useState(false);
+  const [account, setAccount] = useState<"drawer" | "safe" | "bank">("drawer");
+  const finance = useFinance(policy.id).data;
+  const hasDebt = (finance?.debts ?? []).some((d) => d.status === "open");
   return (
     <OperationFrame
       title={t("policies.cancelTitle", { number: policy.policyNumber })}
       description={t("policies.cancelInfo")}
       path={`/api/policies/${policy.id}/cancel`}
-      body={() => ({ idempotencyKey: key, reason, refundCents: refund })}
+      body={() => ({ idempotencyKey: key, reason, refundCents: refund, payOut: hasDebt ? payOut : true, refundAccount: account })}
       summary={async () => [
         [t("policies.number"), <Code key="n">{policy.policyNumber}</Code>],
         [t("policies.refund"), <Money key="r" cents={refund} />],
+        [t("finance.refundTitle"), hasDebt && !payOut ? t("finance.cancelAgainstDebt") : t("finance.cancelPayOut", { account: t(`finance.accounts.${account}`) })],
         [t("common.reason"), <span key="x">{reason}</span>],
       ]}
       destructive
@@ -619,6 +730,17 @@ function CancelDialog({ policy, onClose }: DialogProps) {
           <Field id="refund" label={t("policies.refund")} error={err("refundCents")}>
             <MoneyInput id="refund" cents={refund} onChange={setRefund} />
           </Field>
+          {finance && !finance.cancellationAllowed && <Alert variant="error">{t("errors.api.CANCELLATION_INSTALMENTS_OPEN")}</Alert>}
+          {hasDebt && (
+            <div className="flex items-start gap-2">
+              <Checkbox id="payOut" checked={payOut} onCheckedChange={(v) => setPayOut(v === true)} />
+              <div className="grid gap-1">
+                <Label htmlFor="payOut">{t("finance.cancelPayOutChoice")}</Label>
+                <span className="text-xs text-muted-foreground">{t("finance.cancelPayOutHint")}</span>
+              </div>
+            </div>
+          )}
+          {(!hasDebt || payOut) && <RefundAccountField value={account} onChange={setAccount} />}
           <ReasonField value={reason} onChange={setReason} error={err("reason")} />
         </>
       )}
@@ -672,6 +794,7 @@ export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) =>
   const catalog = useCatalog().data;
   const [open, setOpen] = useState<OperationKind | null>(null);
   const query = useQuery({ queryKey: ["policy", id], queryFn: () => api<PolicyDto>("GET", `/api/policies/${id}`) });
+  const finance = useFinance(id).data;
   if (query.error) return <ErrorMessage error={asClientError(query.error)} />;
   const p = query.data;
   if (!p) return null;
@@ -719,6 +842,8 @@ export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) =>
         </CardContent>
       </Card>
 
+      <PolicyFinanceSection policy={p} />
+
       {p.replaces && (
         <Alert>
           <Button variant="link" className="h-auto p-0" onClick={() => onOpen({ kind: "policy", id: p.replaces?.id as string })}>{t("policies.replaces", { number: p.replaces.policyNumber })}</Button>
@@ -744,7 +869,8 @@ export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) =>
         {vehicleOps && button("duplicate", t("policies.duplicate"))}
         {vehicleOps && p.fleet && !a.hasFuturePeriod && button("fleetAdd", t("policies.fleetAdd"))}
         {vehicleOps && p.fleet && !a.hasFuturePeriod && button("fleetRemove", t("policies.fleetRemove"))}
-        {a.annulUntil && button("annul", t("policies.annul"), "destructive")}
+        {/* Unpaid instalments: annulment stays possible after 15 days (SPEC 13.1); the server decides. */}
+        {(a.annulUntil || (active && finance?.paymentState === "instalments_open")) && button("annul", t("policies.annul"), "destructive")}
         {isManager && active && button("cancel", t("policies.cancel"), "destructive")}
         {customTypes.length > 0 && button("custom", t("policies.otherOperation"))}
       </div>

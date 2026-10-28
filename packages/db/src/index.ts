@@ -4,6 +4,7 @@ import * as schema from "./schema";
 
 export * from "./migrate";
 export * as schema from "./schema";
+export type { AccountCode, CertificateReason, DebtSource, InstallmentStatus, PaymentMethod, PaymentStatus, PeriodOperation, TransactionKind } from "./schema";
 
 export type Db = NodePgDatabase<typeof schema>;
 

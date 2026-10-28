@@ -40,6 +40,7 @@ interface SummaryRow extends Record<string, unknown> {
   is_fleet: boolean;
   plates: string[] | null;
   total_amount_cents: string | number;
+  collection_status: PolicySummaryDto["collectionStatus"];
   total: number;
 }
 
@@ -71,7 +72,7 @@ export class PolicyReader {
           p.fleet_id IS NOT NULL AS is_fleet,
           (SELECT array_agg(v.plate ORDER BY pv.created_at) FROM period_vehicles pv JOIN vehicles v ON v.id = pv.vehicle_id
             WHERE pv.period_id = lp.id AND pv.removed_on IS NULL) AS plates,
-          lp.total_amount_cents,
+          lp.total_amount_cents, lp.collection_status,
           lp.end_date AS sort_end
         FROM policies p
         JOIN lp ON lp.policy_id = p.id
@@ -94,6 +95,7 @@ export class PolicyReader {
       isFleet: r.is_fleet,
       plates: r.plates ?? [],
       totalAmountCents: Number(r.total_amount_cents),
+      collectionStatus: r.collection_status,
     }));
     return { items, total: res.rows[0]?.total ?? 0 };
   }

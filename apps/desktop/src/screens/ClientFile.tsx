@@ -11,6 +11,7 @@ import { formatDateTime } from "../lib/format";
 import { api, useSession } from "../lib/session";
 import { ClientDialog, clientDisplayName } from "./Clients";
 import type { Page } from "./Shell";
+import { Debts } from "./Payments";
 import { PlateHistory, VehicleDialog } from "./Vehicles";
 
 function Line({ label, children }: { label: string; children: ReactNode }) {
@@ -161,6 +162,17 @@ export function ClientFile({ id, onOpen }: { id: string; onOpen: (page: Page) =>
                 </TBody>
               </Table>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {can("debts.view") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("finance.debts")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Debts clientId={client.id} onOpen={onOpen} />
           </CardContent>
         </Card>
       )}

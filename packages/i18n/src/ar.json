@@ -43,7 +43,8 @@
     "add": "إضافة",
     "continue": "متابعة",
     "change": "تغيير",
-    "latinHint": "بالحروف الفرنسية، كما في بطاقة التعريف (مثال: Said EL IDRISSI)."
+    "latinHint": "بالحروف الفرنسية، كما في بطاقة التعريف (مثال: Said EL IDRISSI).",
+    "status": "الحالة"
   },
   "theme": {
     "light": "الوضع الفاتح",
@@ -205,7 +206,26 @@
     "notRead": "لم تُقرأ",
     "participants": "المشاركون",
     "pickRecipients": "اختر المستلمين",
-    "sent": "تم الإرسال."
+    "sent": "تم الإرسال.",
+    "events": {
+      "payment_rejected": {
+        "subject": "وسيلة أداء مرفوضة",
+        "intro": "رُفضت وسيلة أداء. عاد المبلغ دينًا على العميل.",
+        "confirmedAt": "تاريخ التأكيد",
+        "rejectedAt": "تاريخ الرفض",
+        "bankBalance": "رصيد البنك بعد الخصم"
+      },
+      "refund_needs_manager": {
+        "subject": "استرجاع يحتاج المدير",
+        "intro": "الدرج لا يكفي لاسترجاع مبلغ لعميل. المرجو التدخل.",
+        "employee": "الموظف"
+      },
+      "instalments_to_debt": {
+        "subject": "أقساط تحولت إلى ديون",
+        "intro": "هذه الأقساط لم تُسدد بعد 3 أيام من موعدها، فتحولت إلى ديون:",
+        "line": "القسط {{seq}} ({{date}}): {{amount}}"
+      }
+    }
   },
   "editRequests": {
     "title": "طلبات التعديل",
@@ -330,7 +350,11 @@
       "policy_fleet_remove_vehicle": "إزالة مركبة من الأسطول",
       "policy_annul": "فسخ بوليصة",
       "policy_cancel": "إلغاء بوليصة",
-      "policy_custom_operation": "عملية أخرى على بوليصة"
+      "policy_custom_operation": "عملية أخرى على بوليصة",
+      "payment_record": "تسجيل أداء",
+      "payment_confirm": "تأكيد تحصيل",
+      "payment_reject": "رفض وسيلة أداء",
+      "system_instalments_to_debt": "تحول أقساط إلى ديون"
     }
   },
   "settings": {
@@ -428,7 +452,21 @@
       "REFUND_TOO_LARGE": "مبلغ الاسترجاع أكبر من مبلغ البوليصة.",
       "PLATE_CHANGE_NEEDS_OPERATION": "المركبة مؤمنة: استعمل عملية «تغيير الترقيم».",
       "SAME_VEHICLE": "اختر مركبة أخرى.",
-      "IDEMPOTENCY_MISMATCH": "هذه العملية أُرسلت من قبل بمعطيات أخرى. أعد فتح النافذة."
+      "IDEMPOTENCY_MISMATCH": "هذه العملية أُرسلت من قبل بمعطيات أخرى. أعد فتح النافذة.",
+      "OVERPAYMENT": "المبلغ أكبر من المتبقي على البوليصة.",
+      "NOTHING_TO_PAY": "لا شيء متبقٍّ للدفع على هذه البوليصة.",
+      "INSTALMENTS_NOT_ALLOWED": "التقسيط غير مسموح لهذه البوليصة (مركبة واحدة، 6 أو 12 شهرًا فقط).",
+      "INSTALMENT_DATES_INVALID": "تواريخ الأقساط غير صحيحة: يجب أن تكون مرتبة وداخل مدة التأمين.",
+      "FLEET_PAYMENT_CHEQUES_ONLY": "الأسطول: الدفع الجزئي بالشيكات فقط، أو دفع كامل المتبقي.",
+      "INSUFFICIENT_BALANCE": "رصيد الحساب لا يكفي لهذه العملية.",
+      "DRAWER_INSUFFICIENT": "الدرج لا يكفي لهذا الاسترجاع. تواصل مع المدير، فقد أُرسل له طلب تلقائي.",
+      "REFUND_ACCOUNT_FORBIDDEN": "فقط المدير يختار حسابًا غير الدرج للاسترجاع.",
+      "PAYMENT_NOT_IN_COLLECTION": "هذه الدفعة ليست قيد التحصيل.",
+      "PAYMENT_ALREADY_REJECTED": "هذه الدفعة مرفوضة من قبل.",
+      "PAYMENT_IN_COLLECTION": "توجد دفعة قيد التحصيل. أكّدها أو ارفضها أولًا.",
+      "ANNULMENT_USE_CANCELLATION": "هذه البوليصة مقسّطة واكتمل سدادها: لا فسخ. استعمل الإلغاء.",
+      "CANCELLATION_INSTALMENTS_OPEN": "لا يمكن إلغاء بوليصة مقسّطة لم يكتمل سدادها.",
+      "AMOUNT_HAS_PAYMENTS": "لا يمكن تغيير المبلغ بعد وجود دفعات."
     },
     "fields": {
       "required": "هذا الحقل إلزامي.",
@@ -600,7 +638,8 @@
     "steps": {
       "client": "1. العميل",
       "vehicles": "2. المركبة",
-      "policy": "3. البوليصة"
+      "policy": "3. البوليصة",
+      "payment": "4. الأداء"
     },
     "pickClient": "اختر العميل",
     "pickVehicles": "اختر المركبة",
@@ -706,5 +745,201 @@
     "fee": "رسم الشهادة الثابت:",
     "typeName": "اسم نوع التأمين",
     "operationName": "اسم العملية"
+  },
+  "finance": {
+    "title": "الأداء والأقساط",
+    "collectionTitle": "التحصيل",
+    "collection": {
+      "paid": "مدفوعة",
+      "in_collection": "قيد التحصيل",
+      "outstanding": "متبقٍّ / دين",
+      "payment_rejected": "وسيلة أداء مرفوضة"
+    },
+    "states": {
+      "fully_paid": "مدفوعة بالكامل.",
+      "direct_debt": "عليها دين مباشر.",
+      "instalments_open": "مقسّطة ولم يكتمل سدادها.",
+      "instalments_paid": "مقسّطة واكتمل سدادها."
+    },
+    "how": "طريقة الأداء",
+    "modes": {
+      "pay": "أداء الآن (كامل أو جزئي)",
+      "instalments": "تقسيط"
+    },
+    "instalmentsRule": "التقسيط فقط لبوليصة مركبة واحدة، مدتها 6 أو 12 شهرًا. لا تقسيط للأسطول.",
+    "fleetRule": "الأسطول: دين، أو دفعات بشيكات، أو دفع كامل.",
+    "instalmentCount": "عدد الأقساط",
+    "instalmentN": "القسط {{n}}",
+    "dueDateN": "تاريخ استحقاق القسط {{n}}",
+    "totalWithFees": "المجموع مع رسوم التقسيط",
+    "feeNote": "البرنامج يحسب الأقساط ورسومها. يمكن تغيير تاريخ قسط بطلب العميل الآن فقط، لا بعد الحفظ.",
+    "paidNow": "ما يدفعه العميل الآن",
+    "paidNowInstalments": "ما يدفعه العميل الآن (يُخصم من الأقساط الأقدم أولًا)",
+    "addPayment": "إضافة دفعة",
+    "removePayment": "حذف هذه الدفعة",
+    "restIsDebt": "ما لم يُدفع الآن يصبح دينًا مباشرًا على العميل.",
+    "method": "طريقة الأداء",
+    "methods": {
+      "cash": "نقدًا",
+      "cheque": "شيك",
+      "transfer": "تحويل بنكي",
+      "card": "بطاقة بنكية"
+    },
+    "amount": "المبلغ",
+    "chequeNumber": "رقم الشيك",
+    "bank": "البنك",
+    "drawerName": "صاحب الشيك",
+    "chequeDue": "تاريخ الاستحقاق",
+    "chequeDueOn": "يستحق في {{date}}",
+    "reference": "رقم العملية",
+    "transferDate": "تاريخ التحويل",
+    "record": "تسجيل أداء",
+    "recordTitle": "تسجيل أداء للبوليصة {{number}}",
+    "oldestFirst": "يُخصم المبلغ من الأقدم إلى الأحدث. لا يُقبل مبلغ أكبر من المتبقي.",
+    "due": "المستحق",
+    "paid": "المدفوع",
+    "inCollection": "قيد التحصيل",
+    "remaining": "المتبقي",
+    "clientOtherDebts": "تنبيه: على هذا العميل ديون أو مبالغ متبقية:",
+    "instalments": "الأقساط",
+    "dueDate": "تاريخ الاستحقاق",
+    "fee": "الرسوم",
+    "debtOn": "يصبح دينًا في {{date}}",
+    "instalmentStatus": {
+      "pending": "لم يُدفع",
+      "partial": "مدفوع جزئيًا",
+      "paid": "مدفوع",
+      "converted_to_debt": "تحوّل إلى دين",
+      "written_off": "سقط"
+    },
+    "debts": "الديون",
+    "source": "المصدر",
+    "debtSources": {
+      "direct": "دين مباشر",
+      "installment": "قسط متأخر",
+      "rejected_payment": "وسيلة أداء مرفوضة",
+      "opening_balance": "رصيد افتتاحي",
+      "certificate_fee": "رسم الشهادة",
+      "price_increase": "زيادة السعر"
+    },
+    "debtStatus": {
+      "open": "غير مسدد",
+      "paid": "مسدد",
+      "written_off": "سقط"
+    },
+    "payments": "الدفعات",
+    "noPayments": "لا توجد دفعات بعد.",
+    "receivedBy": "استلمها",
+    "paymentStatus": {
+      "collected": "محصّلة",
+      "in_collection": "قيد التحصيل",
+      "confirmed": "مؤكدة",
+      "rejected": "مرفوضة"
+    },
+    "paymentsTitle": "الأداءات",
+    "paymentsIntro": "كل الدفعات. الشيكات والتحويلات والبطاقات تبقى «قيد التحصيل» حتى تأكيدها.",
+    "drawerBalance": "رصيد الدرج",
+    "dueSoon": "يستحق خلال 3 أيام",
+    "confirm": "تأكيد التحصيل",
+    "reject": "رفض",
+    "bounce": "ارتجاع",
+    "confirmTitle": "تأكيد التحصيل",
+    "confirmInfo": "يدخل المبلغ إلى البنك.",
+    "rejectTitle": "رفض وسيلة الأداء",
+    "rejectInfo": "يعود المبلغ دينًا على العميل وتبقى البوليصة سارية. إن كان قد أُكد، يُخصم من البنك. يصل للمدير إشعار تلقائي.",
+    "debtsTitle": "الديون",
+    "debtsIntro": "ما بقي على العملاء، بحسب العميل.",
+    "noDebts": "لا توجد ديون.",
+    "clientTotal": "مجموع ما على العميل:",
+    "totalOpen": "المجموع غير المسدد:",
+    "settlementTitle": "طريقة تسوية المبلغ",
+    "settlement": {
+      "pay_now": "يُدفع نقدًا الآن",
+      "defer": "يُضاف إلى أقرب قسط أو إلى الدين"
+    },
+    "settlementHint": "إن كان على العميل أن يدفع: نقدًا الآن، أو يُضاف إلى أقرب قسط غير مسدد، وإلا إلى دينه.",
+    "refundTitle": "الاسترجاع",
+    "refundAgainstDues": "يُخصم من دين العميل أو أقساطه أولًا، والباقي يُصرف من: {{account}}",
+    "refundAgainstDuesHint": "يُخصم أولًا من دين العميل إن وُجد، والباقي يُصرف له.",
+    "refundAccount": "يُصرف المبلغ من",
+    "accounts": {
+      "drawer": "الدرج",
+      "safe": "الخزنة",
+      "bank": "البنك"
+    },
+    "fleetAddNote": "اكتب المبلغ الذي يدفعه العميل لهذه المركبة (بلا رسم 17 درهمًا).",
+    "fleetAddAmount": "المبلغ الذي يدفعه العميل",
+    "fleetRemoveNote": "اكتب المبلغ الذي يُرجَع للعميل لهذه المركبة (بلا رسم 17 درهمًا).",
+    "fleetRemoveAmount": "المبلغ الذي يُرجَع للعميل",
+    "annulRefund": "يُرجَع للعميل",
+    "annulWriteOff": "يسقط من الدين",
+    "annulNotAllowed": "لا يمكن فسخ هذه البوليصة.",
+    "annulInstalmentsInfo": "بوليصة مقسّطة لم يكتمل سدادها: الفسخ مسموح، بلا استرجاع، ويسقط الدين المتبقي.",
+    "cancelPayOutChoice": "صرف المبلغ للعميل بدل خصمه من دينه",
+    "cancelPayOutHint": "افتراضيًا يُخصم مبلغ الاسترجاع من دين العميل. اكتب السبب إن اخترت الصرف.",
+    "cancelAgainstDebt": "يُخصم من دين العميل، والباقي يُصرف",
+    "cancelPayOut": "يُصرف من: {{account}}"
+  },
+  "receipt": {
+    "open": "الإيصال",
+    "print": "طباعة",
+    "list": "الإيصالات",
+    "number": "رقم الإيصال",
+    "kind": "النوع",
+    "kinds": {
+      "payment": "أداء",
+      "operation": "عملية",
+      "refund": "استرجاع"
+    },
+    "cancelled": "ملغى",
+    "cancelReason": "سبب الإلغاء: {{reason}}",
+    "license": "رقم الرخصة: {{number}}",
+    "client": "العميل",
+    "identity": "رقم الهوية",
+    "policy": "البوليصة",
+    "insurer": "الشركة والنوع",
+    "method": "طريقة الأداء",
+    "paid": "المدفوع",
+    "remaining": "المتبقي",
+    "amount": "المبلغ",
+    "user": "المستخدم: {{name}}",
+    "titles": {
+      "payment": "إيصال أداء",
+      "vehicle_change": "وصل تغيير مركبة",
+      "plate_change": "وصل تغيير الترقيم",
+      "duplicate": "وصل نسخة بديلة",
+      "fleet_add_vehicle": "وصل إضافة مركبة للأسطول",
+      "fleet_remove_vehicle": "وصل إزالة مركبة من الأسطول",
+      "annulment": "وصل فسخ",
+      "cancellation": "وصل إلغاء"
+    },
+    "settlement": {
+      "pay_now": "مدفوع نقدًا",
+      "defer": "أُضيف إلى ما على العميل",
+      "refund": "استرجاع للعميل"
+    },
+    "lines": {
+      "amount": "المبلغ",
+      "cheque": "الشيك",
+      "chequeDue": "تاريخ الاستحقاق",
+      "debtReduction": "خُصم من الدين",
+      "difference": "فرق السعر",
+      "fee": "رسم الشهادة",
+      "net": "الصافي",
+      "newCertificate": "الشهادة الجديدة",
+      "newPlate": "الترقيم الجديد",
+      "newVehicle": "المركبة الجديدة",
+      "oldCertificate": "الشهادة القديمة",
+      "oldPlate": "الترقيم القديم",
+      "oldVehicle": "المركبة القديمة",
+      "paid": "المدفوع",
+      "payout": "صُرف للعميل",
+      "refund": "الاسترجاع",
+      "settlement": "التسوية",
+      "transfer": "التحويل",
+      "transferDate": "تاريخ التحويل",
+      "vehicle": "المركبة",
+      "writtenOff": "سقط من الدين"
+    }
   }
 }

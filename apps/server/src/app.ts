@@ -17,6 +17,9 @@ import { PoliciesService } from "./policies/policies.service";
 import { PolicyOperationsService } from "./policies/policy-operations.service";
 import { PolicyReader } from "./policies/policy-reader";
 import { VehiclesService } from "./vehicles/vehicles.service";
+import { FinanceService } from "./money/finance.service";
+import { JobsService } from "./money/jobs.service";
+import { PaymentsService } from "./money/payments.service";
 import { ErrorFilter } from "./common/error.filter";
 import type { ServerConfig } from "./config";
 import { CONTROLLERS } from "./controllers";
@@ -56,6 +59,9 @@ export class AppModule {
         PolicyReader,
         PoliciesService,
         PolicyOperationsService,
+        FinanceService,
+        PaymentsService,
+        JobsService,
       ],
     };
   }

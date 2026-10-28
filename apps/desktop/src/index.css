@@ -79,3 +79,23 @@
     font-family: var(--font-sans);
   }
 }
+
+/* Receipt A5 (SPEC 14.8): only the receipt is printed. */
+@page {
+  size: A5;
+  margin: 10mm;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: fixed;
+    inset: 0;
+    border: none;
+  }
+}

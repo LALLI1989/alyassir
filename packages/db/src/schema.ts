@@ -353,6 +353,186 @@ export const vehiclePlateHistory = pgTable("vehicle_plate_history", {
   operationId: uuid("operation_id"),
 });
 
+// ---------------------------------------------------------------- Phase 3
+
+export type AccountCode = "drawer" | "safe" | "bank";
+
+export const accounts = pgTable("accounts", {
+  code: text("code").$type<AccountCode>().primaryKey(),
+  lockOrder: smallint("lock_order").notNull(),
+  balanceCents: bigint("balance_cents", { mode: "number" }).notNull(),
+  allowNegative: boolean("allow_negative").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  version: integer("version").notNull().default(1),
+});
+
+export const receipts = pgTable("receipts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  number: text("number").notNull(),
+  kind: text("kind").$type<"payment" | "operation" | "refund">().notNull(),
+  status: text("status").$type<"valid" | "cancelled">().notNull().default("valid"),
+  cancelReason: text("cancel_reason"),
+  cancelledAt: ts("cancelled_at"),
+  cancelledBy: uuid("cancelled_by"),
+  policyId: uuid("policy_id"),
+  clientId: uuid("client_id"),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+  issuedAt: ts("issued_at").notNull().defaultNow(),
+  issuedBy: uuid("issued_by"),
+  isHistorical: boolean("is_historical").notNull().default(false),
+  enteredAt: ts("entered_at").notNull().defaultNow(),
+});
+
+export const installmentPlans = pgTable("installment_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  policyId: uuid("policy_id").notNull(),
+  periodId: uuid("period_id").notNull(),
+  count: smallint("count").notNull(),
+  premiumCents: bigint("premium_cents", { mode: "number" }).notNull(),
+  feePerInstalment: bigint("fee_per_instalment", { mode: "number" }).notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by"),
+});
+
+export type InstallmentStatus = "pending" | "partial" | "paid" | "converted_to_debt" | "written_off";
+
+export const installments = pgTable("installments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  planId: uuid("plan_id").notNull(),
+  policyId: uuid("policy_id").notNull(),
+  periodId: uuid("period_id").notNull(),
+  seq: smallint("seq").notNull(),
+  dueDate: day("due_date").notNull(),
+  baseCents: bigint("base_cents", { mode: "number" }).notNull(),
+  feeCents: bigint("fee_cents", { mode: "number" }).notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  paidCents: bigint("paid_cents", { mode: "number" }).notNull().default(0),
+  status: text("status").$type<InstallmentStatus>().notNull().default("pending"),
+  convertedAt: ts("converted_at"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  version: integer("version").notNull().default(1),
+});
+
+export type DebtSource = "direct" | "installment" | "rejected_payment" | "opening_balance" | "certificate_fee" | "price_increase";
+
+export const debts = pgTable("debts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").notNull(),
+  policyId: uuid("policy_id"),
+  periodId: uuid("period_id"),
+  source: text("source").$type<DebtSource>().notNull(),
+  installmentId: uuid("installment_id"),
+  debtDate: day("debt_date").notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  paidCents: bigint("paid_cents", { mode: "number" }).notNull().default(0),
+  writtenOffCents: bigint("written_off_cents", { mode: "number" }).notNull().default(0),
+  status: text("status").$type<"open" | "paid" | "written_off">().notNull().default("open"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  createdBy: uuid("created_by"),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+  version: integer("version").notNull().default(1),
+});
+
+export type PaymentMethod = "cash" | "cheque" | "transfer" | "card";
+export type PaymentStatus = "collected" | "in_collection" | "confirmed" | "rejected";
+
+export const payments = pgTable("payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  idempotencyKey: uuid("idempotency_key"),
+  requestHash: text("request_hash"),
+  policyId: uuid("policy_id").notNull(),
+  periodId: uuid("period_id").notNull(),
+  clientId: uuid("client_id").notNull(),
+  operationId: uuid("operation_id"),
+  method: text("method").$type<PaymentMethod>().notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  status: text("status").$type<PaymentStatus>().notNull(),
+  receivedOn: day("received_on").notNull(),
+  receivedBy: uuid("received_by"),
+  confirmedAt: ts("confirmed_at"),
+  confirmedBy: uuid("confirmed_by"),
+  rejectedAt: ts("rejected_at"),
+  rejectedBy: uuid("rejected_by"),
+  rejectReason: text("reject_reason"),
+  receiptId: uuid("receipt_id"),
+  isHistorical: boolean("is_historical").notNull().default(false),
+  enteredAt: ts("entered_at").notNull().defaultNow(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  version: integer("version").notNull().default(1),
+});
+
+export const paymentAllocations = pgTable("payment_allocations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  paymentId: uuid("payment_id").notNull(),
+  installmentId: uuid("installment_id"),
+  debtId: uuid("debt_id"),
+  cents: bigint("cents", { mode: "number" }).notNull(),
+});
+
+export const chequeDetails = pgTable("cheque_details", {
+  paymentId: uuid("payment_id").primaryKey(),
+  number: text("number").notNull(),
+  bank: text("bank").notNull(),
+  drawerName: text("drawer_name").notNull(),
+  dueDate: day("due_date").notNull(),
+});
+
+export const transferDetails = pgTable("transfer_details", {
+  paymentId: uuid("payment_id").primaryKey(),
+  reference: text("reference").notNull(),
+  bank: text("bank").notNull(),
+  transferDate: day("transfer_date").notNull(),
+});
+
+export const refunds = pgTable("refunds", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  policyId: uuid("policy_id").notNull(),
+  periodId: uuid("period_id").notNull(),
+  clientId: uuid("client_id").notNull(),
+  operationId: uuid("operation_id").notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  accountCode: text("account_code").$type<AccountCode>().notNull(),
+  receiptId: uuid("receipt_id"),
+  paidBy: uuid("paid_by"),
+  paidAt: ts("paid_at").notNull().defaultNow(),
+  isHistorical: boolean("is_historical").notNull().default(false),
+  enteredAt: ts("entered_at").notNull().defaultNow(),
+});
+
+export type TransactionKind = "payment_cash" | "payment_confirmed" | "payment_reversed" | "refund";
+
+export const financialTransactions = pgTable("financial_transactions", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  groupId: uuid("group_id").notNull(),
+  accountCode: text("account_code").$type<AccountCode>().notNull(),
+  amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  kind: text("kind").$type<TransactionKind>().notNull(),
+  paymentId: uuid("payment_id"),
+  refundId: uuid("refund_id"),
+  operationId: uuid("operation_id"),
+  reversesTransactionId: bigint("reverses_transaction_id", { mode: "number" }),
+  businessDate: day("business_date").notNull(),
+  userId: uuid("user_id"),
+  note: text("note"),
+  isHistorical: boolean("is_historical").notNull().default(false),
+  enteredAt: ts("entered_at").notNull().defaultNow(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
+export const jobRuns = pgTable(
+  "job_runs",
+  {
+    job: text("job").notNull(),
+    runDate: day("run_date").notNull(),
+    startedAt: ts("started_at").notNull().defaultNow(),
+    finishedAt: ts("finished_at"),
+    details: jsonb("details").$type<Record<string, unknown>>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.job, t.runDate] })],
+);
+
 export const allTables = {
   systemInfo,
   sequences,
@@ -381,4 +561,16 @@ export const allTables = {
   policyOperations,
   periodVehicles,
   vehiclePlateHistory,
+  accounts,
+  receipts,
+  installmentPlans,
+  installments,
+  debts,
+  payments,
+  paymentAllocations,
+  chequeDetails,
+  transferDetails,
+  refunds,
+  financialTransactions,
+  jobRuns,
 };

@@ -26,6 +26,7 @@ import {
 } from "@alyassir/shared";
 import { AuditService } from "./audit/audit.service";
 import { INSURANCE_CONTROLLERS } from "./controllers-insurance";
+import { PAYMENT_CONTROLLERS } from "./controllers-payments";
 import { AuthService } from "./auth/auth.service";
 import { LoginThrottle } from "./auth/login-throttle";
 import { Authenticated, ManagerOnly, Public } from "./common/access";
@@ -350,4 +351,5 @@ export const CONTROLLERS = [
   MessagesController,
   EditRequestsController,
   ...INSURANCE_CONTROLLERS,
+  ...PAYMENT_CONTROLLERS,
 ];

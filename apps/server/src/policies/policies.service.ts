@@ -1,10 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { schema } from "@alyassir/db";
 import {
   businessDay,
   coverageEnd,
   defaultRenewalStart,
+  instalmentSchedule,
   isAmountLocked,
   isFleetSizeAllowed,
   isRenewalStartAllowed,
@@ -20,6 +21,7 @@ import {
   type UpdatePolicyInput,
 } from "@alyassir/shared";
 import { AuditService } from "../audit/audit.service";
+import { FinanceService } from "../money/finance.service";
 import { AccessService } from "../common/access.service";
 import type { AuthUser, RequestContext } from "../common/context";
 import { requestHash, rethrowConstraint } from "../common/db-errors";
@@ -56,6 +58,7 @@ export class PoliciesService {
     @Inject(AccessService) private readonly access: AccessService,
     @Inject(RealtimeService) private readonly realtime: RealtimeService,
     @Inject(PolicyReader) private readonly reader: PolicyReader,
+    @Inject(FinanceService) private readonly finance: FinanceService,
   ) {}
 
   private today(): string {
@@ -234,6 +237,16 @@ export class PoliciesService {
         today,
         userId,
       });
+      await this.finance.setupPeriod(tx, user, {
+        policy: { id: policy.id, clientId: client.id, isFleet: input.isFleet },
+        periodId: period.id,
+        requiresVehicle: type.requiresVehicle,
+        months: duration.months,
+        startDate: today,
+        premiumCents: input.totalAmountCents,
+        finance: input.finance,
+        today,
+      });
       await insertOperation(tx, {
         policyId: policy.id,
         periodId: period.id,
@@ -298,6 +311,18 @@ export class PoliciesService {
         previousCertificates: new Map(current.map((c) => [c.vehicleId, c.certificateId])),
         today,
         userId: user.id,
+      });
+      const [renewType] = await tx.select().from(schema.insuranceTypes).where(eq(schema.insuranceTypes.id, policy.insuranceTypeId));
+      // Owner decision 28/10/2026: a renewal is paid like a new issue (instalments allowed).
+      await this.finance.setupPeriod(tx, user, {
+        policy: { id: policy.id, clientId: policy.clientId, isFleet: policy.fleetId !== null },
+        periodId: period.id,
+        requiresVehicle: renewType?.requiresVehicle ?? true,
+        months: duration.months,
+        startDate: start,
+        premiumCents: input.totalAmountCents,
+        finance: input.finance,
+        today,
       });
       await insertOperation(tx, {
         policyId,
@@ -383,6 +408,16 @@ export class PoliciesService {
         today,
         userId: user.id,
       });
+      await this.finance.setupPeriod(tx, user, {
+        policy: { id: policy.id, clientId: old.clientId, isFleet: old.fleetId !== null },
+        periodId: period.id,
+        requiresVehicle: type.requiresVehicle,
+        months: duration.months,
+        startDate: today,
+        premiumCents: input.totalAmountCents,
+        finance: input.finance,
+        today,
+      });
       await insertOperation(tx, {
         policyId: policy.id,
         periodId: period.id,
@@ -403,6 +438,34 @@ export class PoliciesService {
       });
       return policy.id;
     });
+  }
+
+  /**
+   * A new total before any payment: the amount due follows (SPEC 14.4: amounts never change once
+   * something was paid). Instalments are recomputed on the same dates.
+   */
+  private async reprice(tx: Tx, period: PeriodRow, totalCents: number): Promise<void> {
+    const [paid] = await tx.select({ id: schema.payments.id }).from(schema.payments).where(eq(schema.payments.periodId, period.id)).limit(1);
+    if (paid) throw new ApiException("AMOUNT_HAS_PAYMENTS");
+    const [plan] = await tx.select().from(schema.installmentPlans).where(eq(schema.installmentPlans.periodId, period.id));
+    if (plan) {
+      const rows = await tx.select().from(schema.installments).where(eq(schema.installments.planId, plan.id)).orderBy(asc(schema.installments.seq)).for("update");
+      if (rows.some((r) => r.amountCents !== r.baseCents + r.feeCents || r.status !== "pending")) throw new ApiException("AMOUNT_HAS_PAYMENTS");
+      const schedule = instalmentSchedule(totalCents, plan.count, period.startDate, plan.feePerInstalment, rows.map((r) => r.dueDate));
+      for (const [i, r] of rows.entries()) {
+        const x = schedule[i];
+        if (!x) continue;
+        await tx.update(schema.installments).set({ baseCents: x.baseCents, feeCents: x.feeCents, amountCents: x.amountCents, updatedAt: new Date(), version: r.version + 1 }).where(eq(schema.installments.id, r.id));
+      }
+      await tx.execute(sql`UPDATE installment_plans SET premium_cents = ${totalCents} WHERE id = ${plan.id}`);
+      return;
+    }
+    const debts = await tx.select().from(schema.debts).where(and(eq(schema.debts.periodId, period.id), eq(schema.debts.source, "direct"))).for("update");
+    const debt = debts[0];
+    if (debt) {
+      await tx.update(schema.debts).set({ amountCents: totalCents, status: "open", updatedAt: new Date(), version: debt.version + 1 }).where(eq(schema.debts.id, debt.id));
+      await this.finance.refreshStatus(tx, period.policyId);
+    }
   }
 
   // ---------------------------------------------------------------- edit (SPEC 11.5)
@@ -452,7 +515,10 @@ export class PoliciesService {
         if (input.endDate !== undefined && input.endDate !== last.endDate) periodChanges.endDate = input.endDate;
         const newEnd = periodChanges.endDate ?? last.endDate;
         if (newEnd < last.startDate) throw new ApiException("END_BEFORE_START");
-        if (amountChanges) periodChanges.totalAmountCents = input.totalAmountCents;
+        if (amountChanges && input.totalAmountCents !== undefined) {
+          periodChanges.totalAmountCents = input.totalAmountCents;
+          await this.reprice(tx, last, input.totalAmountCents);
+        }
 
         if (!Object.keys(policyChanges).length && !Object.keys(periodChanges).length) return;
         await tx.update(schema.policies).set({ ...policyChanges, updatedAt: new Date(), version: policy.version + 1 }).where(eq(schema.policies.id, policyId));

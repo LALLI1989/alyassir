@@ -18,7 +18,7 @@ if [ ! -f apps/server/dist/app.js ] || [ ! -d node_modules ] || [ ! -f apps/desk
 fi
 echo "Starting Alyassir..."
 setsid nohup node apps/server/demo/demo-server.mjs < /dev/null > /tmp/alyassir-server.log 2>&1 &
-setsid bash -c 'cd apps/desktop && exec env VITE_ADAPTER=web VITE_API_URL= ALYASSIR_DEMO_API=http://127.0.0.1:4300 pnpm exec vite preview --outDir dist-demo --port 5173 --strictPort --host 0.0.0.0' < /dev/null > /tmp/alyassir-ui.log 2>&1 &
+setsid bash -c 'cd apps/desktop && exec env VITE_ADAPTER=web VITE_API_URL= ALYASSIR_DEMO_API=http://127.0.0.1:4300 pnpm exec vite preview --outDir dist-demo --port 5173 --strictPort --host ::' < /dev/null > /tmp/alyassir-ui.log 2>&1 &
 for i in $(seq 1 120); do
   if curl -sf http://127.0.0.1:5173/api/health > /dev/null 2>&1; then
     echo ""

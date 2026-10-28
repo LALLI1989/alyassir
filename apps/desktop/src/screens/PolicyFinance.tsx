@@ -49,6 +49,7 @@ export function PolicyFinanceSection({ policy }: { policy: PolicyDto }) {
   const { can } = useSession();
   const finance = useFinance(policy.id);
   const [paying, setPaying] = useState(false);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
   const f = finance.data;
   if (!can("payments.view")) return null;
   if (finance.error) return <ErrorMessage error={asClientError(finance.error)} />;
@@ -219,9 +220,10 @@ export function PolicyFinanceSection({ policy }: { policy: PolicyDto }) {
       </CardContent>
       <Dialog open={paying} onOpenChange={setPaying}>
         <DialogContent closeLabel={t("common.close")} wide>
-          {paying && <RecordPaymentDialog policy={policy} finance={f} onClose={() => setPaying(false)} />}
+          {paying && <RecordPaymentDialog policy={policy} finance={f} onClose={() => setPaying(false)} onPaid={(id) => { setPaying(false); setReceiptId(id); }} />}
         </DialogContent>
       </Dialog>
+      <ReceiptDialog receiptId={receiptId} onClose={() => setReceiptId(null)} />
     </Card>
   );
 }
@@ -236,26 +238,24 @@ function Total({ label, cents, strong }: { label: string; cents: number; strong?
 }
 
 /** Pay an instalment or a debt (SPEC 14.5): oldest first, never more than what is left. */
-function RecordPaymentDialog({ policy, finance, onClose }: { policy: PolicyDto; finance: PolicyFinanceDto; onClose: () => void }) {
+function RecordPaymentDialog({ policy, finance, onClose, onPaid }: { policy: PolicyDto; finance: PolicyFinanceDto; onClose: () => void; onPaid: (receiptId: string | null) => void }) {
   const { t } = useTranslation();
   const fieldError = useFieldError();
   const queries = useQueryClient();
   const key = useOperationKey();
   const [line, setLine] = useState<LineDraft>(emptyLine(policy.isFleet ? "cheque" : "cash"));
-  const [receiptId, setReceiptId] = useState<string | null>(null);
   const pay = useMutation({
     mutationFn: () => api<PolicyFinanceDto>("POST", `/api/policies/${policy.id}/payments`, { idempotencyKey: key, ...toLine(line) }),
     onSuccess: async (f) => {
       queries.setQueryData(["finance", policy.id], f);
       await Promise.all(["policy", "policies", "client", "payments", "debts", "drawer"].map((k) => queries.invalidateQueries({ queryKey: [k] })));
-      const latest = [...f.receipts].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))[0];
-      setReceiptId(latest?.id ?? null);
-      if (!latest) onClose();
+      // The receipt of this payment is the newest one.
+      const latest = [...f.receipts].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt) || b.number.localeCompare(a.number))[0];
+      onPaid(latest?.id ?? null);
     },
   });
   const error = pay.error ? asClientError(pay.error) : null;
   const fields = fieldsOf(error);
-  if (receiptId) return <ReceiptDialog receiptId={receiptId} onClose={onClose} />;
   return (
     <form onSubmit={(e: FormEvent) => { e.preventDefault(); pay.mutate(); }} className="grid gap-4">
       <DialogHeader>

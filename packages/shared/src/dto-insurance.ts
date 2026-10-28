@@ -98,6 +98,8 @@ export interface PolicySummaryDto {
   isFleet: boolean;
   plates: string[];
   totalAmountCents: number;
+  /** Latest period; null before Phase 3 data exists. */
+  collectionStatus: "paid" | "in_collection" | "outstanding" | "payment_rejected" | null;
 }
 
 export interface CoveredVehicleDto {

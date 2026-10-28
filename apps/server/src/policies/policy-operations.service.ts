@@ -5,8 +5,10 @@ import {
   businessDay,
   feeOnlyAmounts,
   isActiveOn,
+  annulmentDecision,
+  cancellationDecision,
   isFleetSizeAllowed,
-  isWithinAnnulmentPeriod,
+  paymentState,
   vehicleChangeAmounts,
 } from "@alyassir/domain";
 import {
@@ -19,6 +21,8 @@ import {
   type FleetRemoveInput,
   type PlateChangeInput,
   type PolicyDto,
+  type ReceiptLine,
+  type RefundAccount,
   type VehicleChangeInput,
 } from "@alyassir/shared";
 import { AuditService } from "../audit/audit.service";
@@ -27,6 +31,10 @@ import type { AuthUser, RequestContext } from "../common/context";
 import { requestHash, rethrowConstraint } from "../common/db-errors";
 import { ApiException } from "../common/errors";
 import { DatabaseService, type Tx } from "../database.service";
+import { MessagesService } from "../messages/messages.service";
+import { FinanceService, type PolicyRef } from "../money/finance.service";
+import { messageManager } from "../money/payments.service";
+import { issueReceipt, receiptContext } from "../money/receipts";
 import { RealtimeService } from "../realtime/realtime.service";
 import { coverageOf, plateValues } from "../vehicles/vehicles.service";
 import {
@@ -64,20 +72,67 @@ export class PolicyOperationsService {
     @Inject(AccessService) private readonly access: AccessService,
     @Inject(RealtimeService) private readonly realtime: RealtimeService,
     @Inject(PolicyReader) private readonly reader: PolicyReader,
+    @Inject(FinanceService) private readonly finance: FinanceService,
+    @Inject(MessagesService) private readonly messages: MessagesService,
   ) {}
 
-  private async run(key: string, hash: string, work: (tx: Tx) => Promise<void>, policyId: string): Promise<PolicyDto> {
+  private async run(key: string, hash: string, work: (tx: Tx) => Promise<void>, policyId: string, user?: AuthUser, operation?: string): Promise<PolicyDto> {
     try {
       await this.database.db.transaction(async (tx) => {
         if ((await claimIdempotencyKey(tx, key, hash)) === null) await work(tx);
       });
     } catch (error) {
+      // SPEC 13.3: the drawer is short and an employee did it: the manager is asked automatically.
+      if (error instanceof ApiException && error.code === "DRAWER_INSUFFICIENT" && user) {
+        const needed = (error.getResponse() as { needed?: number }).needed ?? null;
+        const managerId = await this.database.db.transaction(async (tx) => {
+          const [p] = await tx.select({ number: schema.policies.policyNumber }).from(schema.policies).where(eq(schema.policies.id, policyId));
+          return messageManager(this.messages, tx, "refund_needs_manager", { policyId, policyNumber: p?.number, operation, amountCents: needed, employee: user.displayName });
+        });
+        if (managerId) this.messages.notify([managerId]);
+      }
       rethrowConstraint(error);
     }
+    this.realtime.notifyAll("payments");
     this.realtime.notifyAll("policies");
     this.realtime.notifyAll("vehicles");
     this.realtime.notifyAll("clients");
     return this.reader.get(policyId);
+  }
+
+  private ref(l: Locked): PolicyRef {
+    return { id: l.policy.id, clientId: l.policy.clientId, isFleet: l.policy.fleetId !== null };
+  }
+
+  /** One receipt (A5) per operation with money (SPEC 15, 16, 16.1, 14.8). */
+  private async receipt(tx: Tx, user: AuthUser, l: Locked, kind: "operation" | "refund", title: string, amountCents: number, lines: ReceiptLine[]): Promise<string> {
+    const ctx = await receiptContext(tx, l.policy.id, user.id);
+    const r = await issueReceipt(tx, ctx, { kind, title, amountCents, method: null, paidCents: null, remainingCents: null, lines, year: Number(l.today.slice(0, 4)), userId: user.id });
+    return r.id;
+  }
+
+  /**
+   * The money of an operation: what the client owes is paid now or added to what is due; what the
+   * client is owed is taken off what is due, then paid out. The operation is then settled.
+   */
+  private async settle(
+    tx: Tx,
+    user: AuthUser,
+    l: Locked,
+    periodId: string,
+    op: { id: string; type: string },
+    v: { netCents: number; source: "certificate_fee" | "price_increase"; settlement: "pay_now" | "defer"; refundAccount: RefundAccount; againstDues: boolean; lines: ReceiptLine[] },
+  ): Promise<void> {
+    if (v.netCents === 0) return;
+    const lines: ReceiptLine[] = [...v.lines, { label: "settlement", value: v.netCents > 0 ? v.settlement : "refund" }];
+    const receiptId = await this.receipt(tx, user, l, v.netCents > 0 ? "operation" : "refund", op.type, Math.abs(v.netCents), lines);
+    if (v.netCents > 0) {
+      await this.finance.charge(tx, user, this.ref(l), periodId, { cents: v.netCents, source: v.source, settlement: v.settlement, today: l.today, operationId: op.id, receiptId });
+    } else {
+      await this.finance.credit(tx, user, this.ref(l), periodId, { cents: -v.netCents, account: v.refundAccount, today: l.today, operationId: op.id, receiptId, againstDues: v.againstDues });
+    }
+    await tx.update(schema.policyOperations).set({ settlementStatus: "settled" }).where(eq(schema.policyOperations.id, op.id));
+    await this.finance.refreshStatus(tx, l.policy.id);
   }
 
   /** Locks the policy and its periods, after checking the permission (or a one-time grant). */
@@ -183,9 +238,25 @@ export class PolicyOperationsService {
       await tx.update(schema.periodVehicles).set({ removedOn: l.today, removedByOperation: op.id }).where(eq(schema.periodVehicles.id, old.id));
       await tx.insert(schema.periodVehicles).values({ periodId: period.id, vehicleId: newVehicle.id, certificateId: cert.id, fromDate: l.today });
       if (l.policy.fleetId) await this.swapFleetMember(tx, l.policy.fleetId, input.oldVehicleId, newVehicle.id, l.today, user.id);
+      // SPEC 15: increase -> difference + 17; same -> 17; decrease -> the client receives difference - 17.
+      await this.settle(tx, user, l, period.id, { id: op.id, type: "vehicle_change" }, {
+        netCents: amounts.netCents,
+        source: amounts.differenceCents > 0 ? "price_increase" : "certificate_fee",
+        settlement: input.settlement,
+        refundAccount: input.refundAccount,
+        againstDues: true,
+        lines: [
+          { label: "oldVehicle", value: oldVehicle?.plate ?? "" },
+          { label: "newVehicle", value: newVehicle.plate },
+          { label: "newCertificate", value: input.certificateNumber },
+          { label: "difference", value: "", cents: amounts.differenceCents },
+          { label: "fee", value: "", cents: amounts.feeCents },
+          { label: "net", value: "", cents: amounts.netCents },
+        ],
+      });
       await bumpPolicy(tx, l.policy);
       await this.audit.record(tx, ctx, { action: "policy.vehicle_change", entityType: "policy", entityId: policyId, after: op.details, reason: input.reason });
-    }, policyId);
+    }, policyId, user, "vehicle_change");
   }
 
   private async swapFleetMember(tx: Tx, fleetId: string, oldId: string | null, newId: string | null, today: string, userId: string): Promise<void> {
@@ -246,6 +317,19 @@ export class PolicyOperationsService {
         userId: user.id,
       });
       await tx.update(schema.periodVehicles).set({ certificateId: cert.id }).where(eq(schema.periodVehicles.id, covered.id));
+      await this.settle(tx, user, l, period.id, { id: op.id, type: "plate_change" }, {
+        netCents: amounts.netCents,
+        source: "certificate_fee",
+        settlement: input.settlement,
+        refundAccount: "drawer",
+        againstDues: false,
+        lines: [
+          { label: "oldPlate", value: vehicle.plate },
+          { label: "newPlate", value: plate.plate },
+          { label: "newCertificate", value: input.certificateNumber },
+          { label: "fee", value: "", cents: amounts.feeCents },
+        ],
+      });
       await bumpPolicy(tx, l.policy);
       await this.audit.record(tx, ctx, { action: "policy.plate_change", entityType: "policy", entityId: policyId, after: op.details, reason: input.reason });
     }, policyId);
@@ -289,6 +373,19 @@ export class PolicyOperationsService {
         userId: user.id,
       });
       await tx.update(schema.periodVehicles).set({ certificateId: cert.id }).where(eq(schema.periodVehicles.id, covered.id));
+      await this.settle(tx, user, l, period.id, { id: op.id, type: "duplicate" }, {
+        netCents: amounts.netCents,
+        source: "certificate_fee",
+        settlement: input.settlement,
+        refundAccount: "drawer",
+        againstDues: false,
+        lines: [
+          { label: "vehicle", value: vehicle?.plate ?? "" },
+          { label: "oldCertificate", value: covered.certificateNumber },
+          { label: "newCertificate", value: input.certificateNumber },
+          { label: "fee", value: "", cents: amounts.feeCents },
+        ],
+      });
       await bumpPolicy(tx, l.policy);
       await this.audit.record(tx, ctx, { action: "policy.duplicate", entityType: "policy", entityId: policyId, after: op.details, reason: input.reason });
     }, policyId);
@@ -303,7 +400,7 @@ export class PolicyOperationsService {
       if (!l.policy.fleetId) throw new ApiException("NOT_FLEET");
       const period = this.activeToday(l);
       const vehicle = await this.joiningVehicle(tx, l.policy, input.vehicleId, l.today);
-      // Owner decision (27/10/2026): no financial effect for now; decided in Phase 3.
+      // Owner decision (28/10/2026): an amount typed by the employee, no 17 MAD fee.
       const op = await insertOperation(tx, {
         policyId,
         periodId: period.id,
@@ -312,6 +409,7 @@ export class PolicyOperationsService {
         userId: user.id,
         reason: input.reason,
         details: { vehicleId: vehicle.id, plate: vehicle.plate, certificate: input.certificateNumber },
+        ...(input.amountCents > 0 ? { priceDifferenceCents: input.amountCents, feeCents: 0, netCents: input.amountCents } : {}),
         idempotencyKey: input.idempotencyKey,
         requestHash: hash,
       });
@@ -327,6 +425,14 @@ export class PolicyOperationsService {
       });
       await tx.insert(schema.periodVehicles).values({ periodId: period.id, vehicleId: vehicle.id, certificateId: cert.id, fromDate: l.today });
       await this.swapFleetMember(tx, l.policy.fleetId, null, vehicle.id, l.today, user.id);
+      await this.settle(tx, user, l, period.id, { id: op.id, type: "fleet_add_vehicle" }, {
+        netCents: input.amountCents,
+        source: "price_increase",
+        settlement: input.settlement,
+        refundAccount: "drawer",
+        againstDues: false,
+        lines: [{ label: "vehicle", value: vehicle.plate }, { label: "newCertificate", value: input.certificateNumber }, { label: "amount", value: "", cents: input.amountCents }],
+      });
       await bumpPolicy(tx, l.policy);
       await this.audit.record(tx, ctx, { action: "policy.fleet_add_vehicle", entityType: "policy", entityId: policyId, after: op.details, reason: input.reason });
     }, policyId);
@@ -353,22 +459,33 @@ export class PolicyOperationsService {
         userId: user.id,
         reason: input.reason,
         details: { vehicleId: input.vehicleId, plate: vehicle?.plate, certificate: leaving.certificateNumber },
+        ...(input.refundCents > 0 ? { priceDifferenceCents: -input.refundCents, feeCents: 0, netCents: -input.refundCents } : {}),
         idempotencyKey: input.idempotencyKey,
         requestHash: hash,
       });
       await tx.update(schema.periodVehicles).set({ removedOn: l.today, removedByOperation: op.id }).where(eq(schema.periodVehicles.id, leaving.id));
       await this.swapFleetMember(tx, l.policy.fleetId, input.vehicleId, null, l.today, user.id);
+      // Owner decision (28/10/2026): an amount given back, taken off the client's debt first.
+      await this.settle(tx, user, l, period.id, { id: op.id, type: "fleet_remove_vehicle" }, {
+        netCents: -input.refundCents,
+        source: "price_increase",
+        settlement: "pay_now",
+        refundAccount: input.refundAccount,
+        againstDues: true,
+        lines: [{ label: "vehicle", value: vehicle?.plate ?? "" }, { label: "amount", value: "", cents: -input.refundCents }],
+      });
       await bumpPolicy(tx, l.policy);
       await this.audit.record(tx, ctx, { action: "policy.fleet_remove_vehicle", entityType: "policy", entityId: policyId, after: op.details, reason: input.reason });
-    }, policyId);
+    }, policyId, user, "fleet_remove_vehicle");
   }
 
   // ---------------------------------------------------------------- annulment (SPEC 13.1)
 
   /**
-   * "As if it never existed": the latest period becomes annulled, nothing is deleted. Phase 2 has
-   * no instalments yet, so every policy follows the fully-paid rule: the first 15 days only.
-   * The refund of what was paid and the instalment cases arrive with Phase 3.
+   * "As if it never existed": the latest period becomes annulled, nothing is deleted (SPEC 13.1).
+   * Fully paid: first 15 days, everything paid back. Instalments not fully paid: any time, nothing
+   * back, the rest of the debt falls. Instalments fully paid: no (cancellation). Direct debt: first
+   * 15 days, what was paid comes back and the debt falls (assumption 27.1).
    */
   async annul(ctx: RequestContext, user: AuthUser, policyId: string, input: AnnulInput): Promise<PolicyDto> {
     const hash = requestHash("policy.annul", policyId, input);
@@ -376,7 +493,11 @@ export class PolicyOperationsService {
       const l = await this.begin(tx, ctx, user, policyId, "annul");
       const target = l.period;
       if (target.validityStatus !== "active" || target.endDate < l.today) throw new ApiException("POLICY_NOT_ACTIVE");
-      if (!isWithinAnnulmentPeriod(target.startDate, l.today)) throw new ApiException("ANNULMENT_PERIOD_OVER");
+      const facts = await this.finance.periodFacts(tx, [target.id]);
+      if (facts.inCollectionCents > 0) throw new ApiException("PAYMENT_IN_COLLECTION");
+      const state = paymentState({ hasPlan: facts.hasPlan, remainingCents: facts.remainingCents });
+      const decision = annulmentDecision(state, { startDate: target.startDate, today: l.today, paidCents: facts.paidCents, remainingCents: facts.remainingCents });
+      if (!decision.allowed) throw new ApiException(decision.reason);
       await this.closePeriods(tx, [target], "annulled");
       const op = await insertOperation(tx, {
         policyId,
@@ -385,13 +506,24 @@ export class PolicyOperationsService {
         opDate: l.today,
         userId: user.id,
         reason: input.reason,
-        details: { periodSeq: target.seq, startDate: target.startDate, endDate: target.endDate, totalAmountCents: target.totalAmountCents },
+        details: { periodSeq: target.seq, startDate: target.startDate, endDate: target.endDate, totalAmountCents: target.totalAmountCents, paymentState: state, writeOffCents: decision.writeOffCents },
+        ...(decision.refundCents > 0 ? { priceDifferenceCents: -decision.refundCents, feeCents: 0, netCents: -decision.refundCents } : {}),
         idempotencyKey: input.idempotencyKey,
         requestHash: hash,
       });
+      if (decision.writeOffCents > 0) await this.finance.writeOff(tx, policyId, [target.id]);
+      await this.settle(tx, user, l, target.id, { id: op.id, type: "annulment" }, {
+        netCents: -decision.refundCents,
+        source: "price_increase",
+        settlement: "pay_now",
+        refundAccount: input.refundAccount,
+        againstDues: false,
+        lines: [{ label: "paid", value: "", cents: facts.paidCents }, { label: "refund", value: "", cents: decision.refundCents }, ...(decision.writeOffCents > 0 ? [{ label: "writtenOff", value: "", cents: decision.writeOffCents }] : [])],
+      });
+      await this.finance.refreshStatus(tx, policyId);
       await bumpPolicy(tx, l.policy);
       await this.audit.record(tx, ctx, { action: "policy.annul", entityType: "policy", entityId: policyId, before: { validity: "active" }, after: { validity: "annulled", ...op.details }, reason: input.reason });
-    }, policyId);
+    }, policyId, user, "annulment");
   }
 
   // ---------------------------------------------------------------- cancellation (SPEC 13.2)
@@ -406,6 +538,12 @@ export class PolicyOperationsService {
       if (!targets.length) throw new ApiException("POLICY_NOT_ACTIVE");
       const total = targets.reduce((sum, p) => sum + p.totalAmountCents, 0);
       if (input.refundCents > total) throw new ApiException("REFUND_TOO_LARGE");
+      const facts = await this.finance.periodFacts(tx, targets.map((p) => p.id));
+      if (facts.inCollectionCents > 0) throw new ApiException("PAYMENT_IN_COLLECTION");
+      const state = paymentState({ hasPlan: facts.hasPlan, remainingCents: facts.remainingCents });
+      // SPEC 13.2: no cancellation while instalments are not fully paid; a direct debt takes the refund first.
+      const decision = cancellationDecision(state, { refundCents: input.refundCents, debtRemainingCents: facts.directDebtRemainingCents, payOut: input.payOut });
+      if (!decision.allowed) throw new ApiException(decision.reason);
       await this.closePeriods(tx, targets, "cancelled");
       const op = await insertOperation(tx, {
         policyId,
@@ -414,17 +552,27 @@ export class PolicyOperationsService {
         opDate: l.today,
         userId: user.id,
         reason: input.reason,
-        details: { periods: targets.map((p) => p.seq), refundCents: input.refundCents },
-        // The refund the client receives (negative = paid to the client), settled in Phase 3.
-        priceDifferenceCents: -input.refundCents,
-        feeCents: 0,
-        netCents: -input.refundCents,
+        details: { periods: targets.map((p) => p.seq), refundCents: input.refundCents, payOut: input.payOut, debtReductionCents: decision.debtReductionCents, payoutCents: decision.payoutCents },
+        // The refund the client receives (negative = given to the client).
+        ...(input.refundCents > 0 ? { priceDifferenceCents: -input.refundCents, feeCents: 0, netCents: -input.refundCents } : {}),
         idempotencyKey: input.idempotencyKey,
         requestHash: hash,
       });
+      await this.settle(tx, user, l, l.period.id, { id: op.id, type: "cancellation" }, {
+        netCents: -input.refundCents,
+        source: "price_increase",
+        settlement: "pay_now",
+        refundAccount: input.refundAccount,
+        againstDues: !input.payOut,
+        lines: [
+          { label: "refund", value: "", cents: input.refundCents },
+          { label: "debtReduction", value: "", cents: decision.debtReductionCents },
+          { label: "payout", value: "", cents: decision.payoutCents },
+        ],
+      });
       await bumpPolicy(tx, l.policy);
       await this.audit.record(tx, ctx, { action: "policy.cancel", entityType: "policy", entityId: policyId, before: { validity: "active" }, after: { validity: "cancelled", ...op.details }, reason: input.reason });
-    }, policyId);
+    }, policyId, user, "cancellation");
   }
 
   private async closePeriods(tx: Tx, periods: PeriodRow[], status: "annulled" | "cancelled"): Promise<void> {

@@ -214,7 +214,8 @@ describe("renewal and policy change (SPEC 12): dates, not hours", () => {
   });
 
   it("an employee without the permission renews once with an approved edit request", async () => {
-    const token = await employee("renewer", ["policies.view"]);
+    // May leave the new period unpaid (direct debt), but has no right to renew.
+    const token = await employee("renewer", ["policies.view", "debts.create"]);
     const { policy, vehicle } = await expiring(2);
     const body = () => ({ idempotencyKey: randomUUID(), coverageDurationId: s.months12, totalAmountCents: 1000, certificates: [{ vehicleId: vehicle, certificateNumber: cert() }] });
     const denied = await t.call("POST", `/api/policies/${policy.id}/renew`, { token, body: body() });
@@ -286,7 +287,7 @@ describe("vehicle change (SPEC 15)", () => {
     expect(res.body.endDate).toBe(policy.endDate);
     expect(res.body.vehicles.map((v: { vehicleId: string }) => v.vehicleId)).toEqual([b]);
     const op = res.body.operations[0];
-    expect(op).toMatchObject({ type: "vehicle_change", priceDifferenceCents: 30_000, feeCents: 1700, netCents: 31_700, settlementStatus: "pending", reason: "باع المركبة" });
+    expect(op).toMatchObject({ type: "vehicle_change", priceDifferenceCents: 30_000, feeCents: 1700, netCents: 31_700, settlementStatus: "settled", reason: "باع المركبة" });
     expect(op.details).toMatchObject({ oldCertificate: policy.vehicles[0]?.certificateNumber });
     const file = (await t.call("GET", `/api/clients/${client}`, { token: manager })).body;
     expect(file.vehicles.find((v: { id: string }) => v.id === a).activePolicyId).toBeNull();
@@ -316,7 +317,7 @@ describe("plate change and duplicate (SPEC 16, 16.1)", () => {
     });
     expect(res.status).toBe(200);
     expect(res.body.vehicles[0].plate).toBe("77-W-12");
-    expect(res.body.operations[0]).toMatchObject({ type: "plate_change", feeCents: 1700, netCents: 1700, settlementStatus: "pending" });
+    expect(res.body.operations[0]).toMatchObject({ type: "plate_change", feeCents: 1700, netCents: 1700, settlementStatus: "settled" });
     const v = (await t.call("GET", `/api/vehicles/${vehicle}`, { token: manager })).body;
     expect(v.plateHistory[0]).toMatchObject({ newPlate: "77-W-12" });
     expect(res.body.totalAmountCents).toBe(policy.totalAmountCents);
@@ -388,7 +389,7 @@ describe("annulment and cancellation (SPEC 13, structure)", () => {
     expect(tooMuch.body.code).toBe("REFUND_TOO_LARGE");
     const res = await t.call("POST", `/api/policies/${policy.id}/cancel`, { token: manager, body });
     expect(res.body.validity).toBe("cancelled");
-    expect(res.body.operations[0]).toMatchObject({ type: "cancellation", netCents: -50_000, settlementStatus: "pending" });
+    expect(res.body.operations[0]).toMatchObject({ type: "cancellation", netCents: -50_000, settlementStatus: "settled" });
     expect((await createPolicy(t, manager, s, client, [vehicle])).status).toBe(201);
     const opAgain = await t.call("POST", `/api/policies/${policy.id}/duplicate`, { token: manager, body: { idempotencyKey: randomUUID(), vehicleId: vehicle, certificateNumber: cert(), reason: "x" } });
     expect(opAgain.body.code).toBe("POLICY_NOT_ACTIVE");

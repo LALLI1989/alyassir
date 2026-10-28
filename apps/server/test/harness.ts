@@ -11,6 +11,8 @@ import { createApp } from "../src/app";
 import { bootstrapData } from "../src/setup/common";
 
 const ADMIN_URL = process.env.DATABASE_URL;
+// Tests run the nightly job themselves, with the dates they choose.
+process.env.ALYASSIR_DISABLE_JOBS = "1";
 if (!ADMIN_URL) throw new Error("Tests need DATABASE_URL pointing to a PostgreSQL 16 superuser");
 
 export const OWNER_ROLE = "alyassir_owner_test";

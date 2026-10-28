@@ -178,7 +178,9 @@ export class DrawerService {
         // A question to whoever handed the drawer over (the last closing, or the people already in the
         // session) and to the one receiving it, the manager in copy; each of them can answer.
         const counterpart = open
-          ? (await tx.select({ id: schema.drawerSessionMembers.userId }).from(schema.drawerSessionMembers).where(eq(schema.drawerSessionMembers.sessionId, open.id))).map((m) => m.id)
+          ? (await tx.select({ id: schema.drawerSessionMembers.userId }).from(schema.drawerSessionMembers).where(eq(schema.drawerSessionMembers.sessionId, open.id)))
+              .map((m) => m.id)
+              .filter((id) => id !== user.id)
           : (
               await tx
                 .select({ id: schema.drawerSessions.closedBy })

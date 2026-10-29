@@ -94,7 +94,7 @@ export function Home({ onOpen }: { onOpen: (page: Page) => void }) {
             <CardHeader>
               <CardTitle className="text-base">{t("dashboard.chartPayments")}</CardTitle>
             </CardHeader>
-            <CardContent className="h-64" dir="ltr">
+            <CardContent className="h-64" dir="ltr" data-testid="chart-payments">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dash.charts.paymentsByDay} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="var(--border)" />
@@ -106,7 +106,7 @@ export function Home({ onOpen }: { onOpen: (page: Page) => void }) {
                     labelFormatter={(d) => formatDay(String(d))}
                     formatter={(c) => [`${formatCents(Number(c))} ${t("money.mad")}`, t("dashboard.payments")]}
                   />
-                  <Bar dataKey="cents" fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="cents" fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -117,7 +117,7 @@ export function Home({ onOpen }: { onOpen: (page: Page) => void }) {
             <CardHeader>
               <CardTitle className="text-base">{t("dashboard.chartPolicies")}</CardTitle>
             </CardHeader>
-            <CardContent className="h-64" dir="ltr">
+            <CardContent className="h-64" dir="ltr" data-testid="chart-policies">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dash.charts.policiesByMonth} margin={{ top: 4, right: 8, left: 8, bottom: 0 }} barGap={2}>
                   <CartesianGrid vertical={false} stroke="var(--border)" />
@@ -125,8 +125,8 @@ export function Home({ onOpen }: { onOpen: (page: Page) => void }) {
                   <YAxis allowDecimals={false} tick={axisTick} orientation={rtl ? "right" : "left"} width={40} tickLine={false} axisLine={false} />
                   <Tooltip cursor={{ fill: "var(--accent)" }} contentStyle={tooltipStyle} labelFormatter={(m) => month(String(m))} />
                   <Legend wrapperStyle={{ fontSize: 12, color: "var(--foreground)" }} />
-                  <Bar dataKey="newIssues" name={t("policies.periodOps.new_issue")} fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={18} />
-                  <Bar dataKey="renewals" name={t("policies.periodOps.renewal")} fill="var(--chart-2)" radius={[4, 4, 0, 0]} maxBarSize={18} />
+                  <Bar dataKey="newIssues" name={t("policies.periodOps.new_issue")} fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={18} isAnimationActive={false} />
+                  <Bar dataKey="renewals" name={t("policies.periodOps.renewal")} fill="var(--chart-2)" radius={[4, 4, 0, 0]} maxBarSize={18} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

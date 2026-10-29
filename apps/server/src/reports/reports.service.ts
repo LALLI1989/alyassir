@@ -20,6 +20,9 @@ import { tr, word, type Lang } from "./texts";
 
 type Row = Record<string, unknown>;
 
+/** "2026-10-01" -> "01/10/2026", as on the screens (SPEC 1). */
+const dmy = (day: string) => day.split("-").reverse().join("/");
+
 /**
  * Reports (SPEC 19): computed and written out in the chosen language by the server; the screen
  * shows them, prints them (PDF) and saves them (Excel). Reading only, nothing is changed.
@@ -118,7 +121,7 @@ export class ReportsService {
   /** The filters applied, written out for the header of the printed report and of the Excel file. */
   private async subtitle(def: ReportDef, req: ReportRequest & { from: string; to: string }, lang: Lang): Promise<string> {
     const parts: string[] = [];
-    if (def.filters.includes("period")) parts.push(tr(lang, "reports.periodLine", { from: req.from, to: req.to }));
+    if (def.filters.includes("period")) parts.push(tr(lang, "reports.periodLine", { from: dmy(req.from), to: dmy(req.to) }));
     const name = async (table: string, column: string, id: string) => {
       const res = await this.database.db.execute<{ n: string }>(sql`SELECT ${sql.raw(column)} AS n FROM ${sql.raw(table)} WHERE id = ${id}`);
       return res.rows[0]?.n ?? "";

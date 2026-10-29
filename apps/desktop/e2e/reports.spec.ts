@@ -32,6 +32,9 @@ test("the dashboard: cards and charts from the server", async ({ page }) => {
   await expect(page.getByTestId("dash-drawer")).toBeVisible();
   await expect(page.getByText(ar.dashboard.chartPayments)).toBeVisible();
   await expect(page.getByText(ar.dashboard.chartPolicies)).toBeVisible();
+  // The payments of this month are drawn (at least one bar in each chart).
+  await expect(page.getByTestId("chart-payments").locator(".recharts-bar-rectangle path").first()).toBeVisible();
+  await expect(page.getByTestId("chart-policies").locator(".recharts-bar-rectangle path").first()).toBeVisible();
   await page.getByLabel(ar.dashboard.period).selectOption("year");
   await expect(page.getByTestId("dash-payments")).toBeVisible();
   await page.getByLabel(ar.dashboard.period).selectOption("month");

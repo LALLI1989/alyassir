@@ -41,7 +41,7 @@ async function openPolicy(page: Page, number: string) {
 test("the manager adds an insurance type for RMA", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: ar.shell.insurance, exact: true }).click();
-  await expect(page.getByRole("cell", { name: "RMA", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "RMA", exact: true }).first()).toBeVisible();
   await page.getByLabel(ar.policies.insurer).selectOption({ label: "RMA" });
   await page.getByLabel(ar.insurance.typeName).fill("Assurance automobile");
   await page.getByRole("button", { name: ar.insurance.addType, exact: true }).click();

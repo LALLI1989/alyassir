@@ -259,6 +259,8 @@ export function Shell() {
 
   const is = (kind: Page["kind"], module?: Module) => page.kind === kind && (!module || (page.kind === "module" && page.module === module));
 
+  const askFirstStart = historical?.mode === "pending" && isManager;
+  const mainContent = usb?.state === "block" ? <UsbBlockPage state={usb} /> : askFirstStart ? <FirstStartQuestion /> : content;
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-64 shrink-0 flex-col gap-4 border-e bg-card p-3">
@@ -329,7 +331,7 @@ export function Shell() {
         {historical && <HistoricalBar state={historical} day={operationDay} onDay={setOperationDay} />}
         {usb?.state === "remind" && <UsbBanner state={usb} />}
         <main className="flex-1 overflow-auto p-5">
-          {usb?.state === "block" ? <UsbBlockPage state={usb} /> : historical?.mode === "pending" && isManager ? <FirstStartQuestion /> : content}
+          {mainContent}
         </main>
       </div>
     </div>

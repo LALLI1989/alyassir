@@ -121,9 +121,9 @@ describe("historical entry, as if live since 01/05/2026", () => {
       { dueDate: "2026-05-04", baseCents: 120_000, feeCents: 1_700 },
       { dueDate: "2026-06-04", baseCents: 80_000, feeCents: 0 },
     ];
-    const bad = await insured("2026-05-04", { finance: { instalments: { count: 2, custom: [custom[0], { ...custom[1], baseCents: 1 }] }, payments: [] } });
+    const bad = await insured("2026-05-04", { coverageDurationId: s.months12, finance: { instalments: { count: 2, custom: [custom[0], { ...custom[1], baseCents: 1 }] }, payments: [] } });
     expect(bad.res.body.code).toBe("INSTALMENTS_CUSTOM_INVALID");
-    const good = await insured("2026-05-04", { finance: { instalments: { count: 2, custom }, payments: [] } });
+    const good = await insured("2026-05-04", { coverageDurationId: s.months12, finance: { instalments: { count: 2, custom }, payments: [] } });
     expect(good.res.status).toBe(201);
     const rows = await ownerQuery(t.db, "SELECT amount_cents, manual FROM installments WHERE policy_id = $1 ORDER BY seq", [good.policy.id]);
     expect(rows.rows).toEqual([{ amount_cents: "121700", manual: true }, { amount_cents: "80000", manual: true }]);

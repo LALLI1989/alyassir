@@ -49,7 +49,8 @@ export class HistoricalGuard implements CanActivate {
     const mode = await this.historical.mode();
 
     if (mode === "locked") {
-      if (!asOf || asOf === today) {
+      // A screen that still shows the old date only reads: no date is needed to read.
+      if (!asOf || asOf === today || (req.method === "GET" && !flag(LATE_ENTRY))) {
         setClock(liveClock());
         return true;
       }

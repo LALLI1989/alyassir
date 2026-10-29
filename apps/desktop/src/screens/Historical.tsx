@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { FinishHistoricalDto, HistoricalChecklistDto, HistoricalStateDto } from "@alyassir/shared";
 import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Table, TBody, Td, Th, THead, Tr } from "@alyassir/ui";
-import { asClientError } from "../adapters";
+import { asClientError, setOperationDay } from "../adapters";
 import { Field, PageHeader } from "../components/common";
 import { useHistorical } from "../components/historical";
 import { Money, MoneyInput, formatDay } from "../components/insurance";
@@ -86,7 +86,11 @@ function Finish({ list }: { list: HistoricalChecklistDto }) {
   const [phrase, setPhrase] = useState("");
   const finish = useMutation({
     mutationFn: () => api<FinishHistoricalDto>("POST", "/api/historical/finish", { password, phrase }),
-    onSuccess: () => void client.invalidateQueries(),
+    onSuccess: () => {
+      // Live work now: no more operation date on the requests.
+      setOperationDay(null);
+      void client.invalidateQueries();
+    },
   });
   const submit = (e: FormEvent) => {
     e.preventDefault();

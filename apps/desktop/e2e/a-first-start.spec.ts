@@ -80,4 +80,9 @@ test("all old entries are done: checklist, password and sentence, then live work
   // The page then shows that live work has started (the success line may already be replaced by it).
   await expect(page.getByText(ar.historical.live.split("{{")[0] as string)).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("historical-bar")).toBeHidden();
+  // The one summary message (read now, so the later tests start with no unread message).
+  await page.getByRole("button", { name: new RegExp(ar.shell.messages) }).first().click();
+  await page.getByRole("button", { name: new RegExp(ar.messages.events.historical_finished.subject) }).click();
+  await expect(page.getByText(ar.messages.events.historical_finished.intro)).toBeVisible();
+  await expect(page.getByText(ar.messages.events.historical_finished.policies)).toBeVisible();
 });

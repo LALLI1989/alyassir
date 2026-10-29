@@ -20,6 +20,20 @@ ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_kind_ch
   'transfer_out', 'transfer_in', 'expense', 'expense_reversed', 'insurer_payment', 'bank_withdrawal', 'reversal', 'count_adjustment',
   'opening_balance', 'balance_correction'));
 
+-- No negative balance, except while the old entries are typed (they are checked day by day at
+-- the end, SPEC 22). A CHECK cannot read system_info, so a trigger keeps the same rule.
+ALTER TABLE accounts DROP CONSTRAINT accounts_no_negative;
+CREATE FUNCTION accounts_no_negative() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NOT NEW.allow_negative AND NEW.balance_cents < 0
+     AND coalesce((SELECT historical_mode FROM system_info LIMIT 1), 'locked') = 'locked' THEN
+    RAISE EXCEPTION 'accounts_no_negative: account % would go below zero', NEW.code USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER accounts_no_negative BEFORE INSERT OR UPDATE ON accounts
+  FOR EACH ROW EXECUTE FUNCTION accounts_no_negative();
+
 -- ---------------------------------------------------------------- marks
 -- Instalments typed by hand with their old amounts, fees or dates (historical entry only).
 ALTER TABLE installments ADD COLUMN manual boolean NOT NULL DEFAULT false;

@@ -1,12 +1,12 @@
 /** Pieces shared by first installation (provision) and update (upgrade). */
-import { X509Certificate, randomBytes } from "node:crypto";
+import { X509Certificate, createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { request } from "node:https";
 import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import type { TLSSocket } from "node:tls";
 import { Client } from "pg";
-import { APP_ROLE } from "@alyassir/db";
+import { APP_ROLE, readMigrations } from "@alyassir/db";
 import { PASSWORD_MIN_LENGTH, USERNAME_PATTERN, type Language } from "@alyassir/shared";
 import { hashPassword } from "../auth/passwords";
 import type { SetupLog } from "./log";
@@ -115,7 +115,7 @@ export function writeSecrets(log: SetupLog, file: string, secrets: Secrets, secr
  * Reads the agency/manager file written by the installer, then deletes it at once (it holds
  * the manager's password). Format: UTF-8, one "key=value" per line.
  */
-export function readBootstrap(file: string, log?: SetupLog): Bootstrap {
+export function readBootstrap(file: string, log?: SetupLog, o: { restore?: boolean } = {}): Bootstrap {
   let text: string;
   try {
     text = readFileSync(file, "utf8").replace(/^﻿/, "");
@@ -136,9 +136,12 @@ export function readBootstrap(file: string, log?: SetupLog): Bootstrap {
   };
   // Code points, for support: shows at once if a non-Unicode step damaged the Arabic text.
   log?.info(`Agency name code points: ${[...b.agencyName].map((c) => c.codePointAt(0)?.toString(16)).join(" ")}`);
-  if (!b.agencyName || b.agencyName.length > 150) throw new SetupError("E_BOOTSTRAP_AGENCY", "Agency name missing or too long");
-  if (!USERNAME_PATTERN.test(b.managerUsername)) throw new SetupError("E_BOOTSTRAP_USERNAME", "Invalid manager username");
-  if (b.managerPassword.length < PASSWORD_MIN_LENGTH) throw new SetupError("E_BOOTSTRAP_PASSWORD", "Manager password too short");
+  // Restore as server: the agency and its manager come from the backup; only the folder is asked.
+  if (!o.restore) {
+    if (!b.agencyName || b.agencyName.length > 150) throw new SetupError("E_BOOTSTRAP_AGENCY", "Agency name missing or too long");
+    if (!USERNAME_PATTERN.test(b.managerUsername)) throw new SetupError("E_BOOTSTRAP_USERNAME", "Invalid manager username");
+    if (b.managerPassword.length < PASSWORD_MIN_LENGTH) throw new SetupError("E_BOOTSTRAP_PASSWORD", "Manager password too short");
+  }
   if (!b.backupDir || !existsSync(b.backupDir) || !statSync(b.backupDir).isDirectory()) {
     throw new SetupError("E_BOOTSTRAP_BACKUP_DIR", "Backup folder does not exist");
   }
@@ -190,8 +193,21 @@ export function readWinswEnv(xml: string): Record<string, string> {
   return env;
 }
 
-export function serviceEnv(o: { port: number; pfxPath: string; pfxPassphrase: string; appPassword: string; jwtSecret: string }): Record<string, string> {
+export function serviceEnv(o: {
+  port: number;
+  pfxPath: string;
+  pfxPassphrase: string;
+  appPassword: string;
+  jwtSecret: string;
+  /** Backups (Phase 6B): where PostgreSQL's tools, the data folder and the secrets file are. */
+  pgBin: string;
+  dataDir: string;
+  secretsFile: string;
+}): Record<string, string> {
   return {
+    ALYASSIR_PG_BIN: o.pgBin,
+    ALYASSIR_DATA_DIR: o.dataDir,
+    ALYASSIR_SECRETS_FILE: o.secretsFile,
     NODE_ENV: "production",
     ALYASSIR_HOST: "0.0.0.0",
     ALYASSIR_PORT: String(o.port),
@@ -391,4 +407,45 @@ export function writeResult(log: SetupLog, file: string, r: SetupResult): void {
   // Same result as INI, which the installer (Inno Setup) reads natively.
   writeFileSync(`${file}.ini`, resultIni(r));
   log.info(`Result: ${r.ok ? "SUCCESS" : `FAILED ${r.errorCode ?? ""} at ${r.failedStep ?? "-"}`}`);
+}
+
+/**
+ * Restore as server (SPEC 20.1): the chosen backup must be complete (its SHA-256 file, when present,
+ * matches), readable, and not made by a newer version of the program.
+ */
+export function checkRestoreFile(log: SetupLog, file: string, pgBin: string): void {
+  if (!existsSync(file) || !statSync(file).isFile()) throw new SetupError("E_RESTORE_FILE", `Backup file not found: ${file}`);
+  const fp = `${file}.sha256`;
+  if (existsSync(fp)) {
+    const expected = readFileSync(fp, "utf8").trim().split(/\s+/)[0]?.toLowerCase();
+    const actual = createHash("sha256").update(readFileSync(file)).digest("hex");
+    if (expected !== actual) throw new SetupError("E_RESTORE_CORRUPT", "The backup does not match its SHA-256 fingerprint");
+  }
+  run(log, join(pgBin, "pg_restore.exe"), ["--list", file], { code: "E_RESTORE_CORRUPT" });
+  const out = run(log, join(pgBin, "pg_restore.exe"), ["--data-only", "--table=schema_migrations", "-f", "-", file], { code: "E_RESTORE_CORRUPT" }).stdout;
+  const versions: string[] = [];
+  let inCopy = false;
+  for (const line of out.split(/\r?\n/)) {
+    if (line.startsWith("COPY ") && line.includes("schema_migrations")) inCopy = true;
+    else if (inCopy && line === "\\.") inCopy = false;
+    else if (inCopy && line.trim()) versions.push(line.split("\t")[0] ?? "");
+  }
+  const known = new Set(readMigrations().map((m) => m.version));
+  if (versions.length === 0) throw new SetupError("E_RESTORE_CORRUPT", "No database steps found in the backup");
+  if (versions.some((v) => !known.has(v))) throw new SetupError("E_RESTORE_NEWER", "The backup comes from a newer version of Alyassir");
+  log.info(`Backup to restore: ${file} (database steps ${versions.join(", ")})`);
+}
+
+/** After restoring as server: the backup folder of this computer, and a line in the audit log. */
+export async function restoredAgency(ownerUrl: string, backupDir: string, file: string): Promise<void> {
+  await withClient(ownerUrl, async (c) => {
+    const manager = await c.query<{ id: string }>("SELECT id FROM users WHERE role = 'manager'");
+    if (!manager.rowCount) throw new SetupError("E_RESTORE_CORRUPT", "The backup has no manager");
+    await c.query("UPDATE agency_settings SET backup_dir = $1, updated_at = now() WHERE id = 1", [backupDir]);
+    await c.query("UPDATE backup_runs SET status = 'failed', error = 'interrupted', finished_at = now() WHERE status = 'running'").catch(() => undefined);
+    await c.query(
+      `INSERT INTO audit_log (user_id, action, entity_type, entity_id, after, device) VALUES (NULL, 'system.restore_as_server', 'backup', $1, $2, 'setup')`,
+      [file.split(/[\\/]/).pop() ?? file, JSON.stringify({ file: file.split(/[\\/]/).pop() ?? file, backupDir })],
+    );
+  });
 }

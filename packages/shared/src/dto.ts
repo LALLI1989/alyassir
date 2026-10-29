@@ -139,7 +139,7 @@ export interface EditRequestDto {
 }
 
 /** Realtime "something changed" signal; the client refetches (SPEC 3.2). */
-export type ChangeTopic = "users" | "me" | "settings" | "messages" | "edit_requests" | "audit" | "insurance" | "clients" | "vehicles" | "policies" | "payments" | "drawer" | "expenses" | "accounts" | "claims" | "contacts";
+export type ChangeTopic = "users" | "me" | "settings" | "messages" | "edit_requests" | "audit" | "insurance" | "clients" | "vehicles" | "policies" | "payments" | "drawer" | "expenses" | "accounts" | "claims" | "contacts" | "backups";
 export interface ChangeSignal {
   topic: ChangeTopic;
 }

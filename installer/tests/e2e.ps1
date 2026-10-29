@@ -74,9 +74,9 @@ function Health {
 }
 
 # Calls the API like the desktop app (version and device headers). Returns { status, body }.
-function Api([string]$method, [string]$path, $body = $null, [string]$token = "") {
+function Api([string]$method, [string]$path, $body = $null, [string]$token = "", [int]$seconds = 20) {
   $out = Join-Path $env:RUNNER_TEMP "api-out.json"
-  $curlArgs = @("-sk", "--max-time", "20", "-o", $out, "-w", "%{http_code}", "-X", $method,
+  $curlArgs = @("-sk", "--max-time", "$seconds", "-o", $out, "-w", "%{http_code}", "-X", $method,
     "-H", "content-type: application/json", "-H", "x-alyassir-client-version: 0.1.0", "-H", "x-alyassir-device: CI-WINDOWS", "-H", "x-alyassir-user-active: 1")
   if ($token) { $curlArgs += @("-H", "authorization: Bearer $token") }
   if ($null -ne $body) {
@@ -142,19 +142,19 @@ try {
   Wipe-Everything
 
   if ($PreviousSetup) {
-    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 5) ==="
+    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 6A) ==="
     $code = Install (@("/MODE=server", "/PORT=$Port") + $Bootstrap) $PreviousSetup
-    Check ($code -eq 0) "Phase 5 server installed"
+    Check ($code -eq 0) "Phase 6A server installed"
     $old = Login "gerant" $ManagerPass
-    Check ($old.status -eq 200) "the manager signs in on the Phase 5 server"
+    Check ($old.status -eq 200) "the manager signs in on the Phase 6A server"
     $oldToken = $old.body.accessToken
     $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "Nadia"; password = "nadia-pass" } $oldToken
     Check ($emp.status -eq 201) "an employee is created before the update"
     $msg = Api "POST" "/api/messages/threads" @{ subject = "قبل التحديث"; body = "رسالة محفوظة"; to = @($emp.body.id) } $oldToken
     Check ($msg.status -eq 201) "a message is sent before the update"
-    # A policy saved in Phase 5: the manager receives the empty drawer, then 1 000 MAD in cash at issue.
+    # A policy saved in Phase 6A: the manager receives the empty drawer, then 1 000 MAD in cash at issue.
     $recv = Api "POST" "/api/drawer/receive" @{ shownCents = 0; countedCents = 0; reason = "" } $oldToken
-    Check ($recv.status -eq 200) "the manager receives the drawer on the Phase 5 server"
+    Check ($recv.status -eq 200) "the manager receives the drawer on the Phase 6A server"
     $cat = Api "GET" "/api/insurance/catalog" $null $oldToken
     $rma = @($cat.body.insurers | Where-Object { $_.name -eq "RMA" })[0].id
     $cat = Api "POST" "/api/insurance/types" @{ insurerId = $rma; name = "Assurance automobile"; requiresVehicle = $true; supportsFleet = $false } $oldToken
@@ -167,10 +167,10 @@ try {
     $today = (Get-Date).ToString("yyyy-MM-dd")
     $claim = Api "POST" "/api/claims" @{ policyId = $policy.body.id; accidentDate = $today; place = "Casablanca"; description = "Choc"; requestedCents = 500000 } $oldToken
     Check ($claim.status -eq 201) "a claim is declared before the update"
-    Check ((Api "GET" "/api/dashboard" $null $oldToken).status -eq 404) "the Phase 5 server has no dashboard yet"
+    Check ((Api "GET" "/api/backups" $null $oldToken).status -eq 404) "the Phase 6A server has no backups screen yet"
 
     $code = Install @()
-    Check ($code -eq 0) "update to Phase 6A succeeded"
+    Check ($code -eq 0) "update to Phase 6B succeeded"
     Check ((Get-ChildItem "$Data\backups\pre-update-*.dump").Count -ge 1) "automatic backup taken before updating the database"
     $new = Login "gerant" $ManagerPass
     Check ($new.status -eq 200 -and $new.body.me.role -eq "manager") "the manager still signs in after the update"
@@ -194,7 +194,9 @@ try {
     $close = Api "POST" "/api/drawer/close" @{ sessionVersion = $drawer.body.session.version; countedCents = 100000; reason = "" } $newToken
     Check ($close.status -eq 200 -and $close.body.differenceCents -eq 0) "the drawer is closed with 1 000 MAD, no gap"
     $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
-    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "5") "the five database steps are kept (Phase 6A adds no table)"
+    $bk = Api "GET" "/api/backups" $null $newToken
+    Check ($bk.status -eq 200 -and $bk.body.enabled -eq $true -and $bk.body.dir -eq $BackupDir) "after the update the server takes backups into the same folder"
+    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "6") "the six database steps applied (Phases 1 to 6)"
     Wipe-Everything
   }
 
@@ -271,6 +273,31 @@ try {
   Pop-Location
   Check ($cargoCode -eq 0) "app sees the same fingerprint, refuses another, and the realtime link works over the pinned certificate"
 
+  Write-Host "`n=== 6b. Backups and a restore inside the application (SPEC 20) ==="
+  $token = (Login "gerant" $ManagerPass).body.accessToken
+  $before = Api "POST" "/api/clients" @{ kind = "individual"; fullName = "Karim AVANT"; idType = "cin"; idNumber = "K123456"; phone = "0661111111" } $token
+  Check ($before.status -eq 201) "a client is saved before the backup"
+  $taken = Api "POST" "/api/backups" @{} $token 120
+  $manual = @($taken.body.files | Where-Object { $_.kind -eq "manual" })[0]
+  Check ($taken.status -eq 200 -and $manual -and $manual.checked -eq $true) "a backup is taken now with the server's own PostgreSQL tools (checked)"
+  $dump = Get-ChildItem "$BackupDir\manual\*.dump" | Select-Object -First 1
+  Check ($dump -and (Test-Path "$($dump.FullName).sha256")) "the backup file and its SHA-256 are in the Google Drive folder ($($dump.Name))"
+  $keep = Join-Path $env:RUNNER_TEMP "restore-as-server"
+  New-Item -ItemType Directory -Force -Path $keep | Out-Null
+  Copy-Item $dump.FullName, "$($dump.FullName).sha256" $keep
+  $after = Api "POST" "/api/clients" @{ kind = "individual"; fullName = "Samir APRES"; idType = "cin"; idNumber = "S654321"; phone = "0662222222" } $token
+  Check ($after.status -eq 201) "a client is saved after the backup"
+  $usbState = Api "GET" "/api/backups/usb" $null $token
+  Check ($usbState.status -eq 200 -and $usbState.body.atServer -eq $true) "the server knows this request comes from the server computer (USB copy allowed here)"
+  $restore = Api "POST" "/api/backups/$($manual.id)/restore" @{ password = $ManagerPass } $token 300
+  Check ($restore.status -eq 200 -and $restore.body.restored -eq $manual.name) "the restore succeeds (after a safety copy of the current state)"
+  Check ((Get-ChildItem "$Data\backups\safety\*.dump").Count -ge 1) "the safety copy is in the server's own folder"
+  $h = Health
+  Check ($h -and $h.status -eq "ok" -and $h.database -eq "ok") "the server works after the restore"
+  $token = (Login "gerant" $ManagerPass).body.accessToken
+  $names = @((Api "GET" "/api/clients?pageSize=100" $null $token).body.items | ForEach-Object { $_.fullName })
+  Check (($names -contains "Karim AVANT") -and -not ($names -contains "Samir APRES")) "the data is back as it was at the backup (Karim yes, Samir no)"
+
   Write-Host "`n=== 7. A failed update never loses data ==="
   $code = Install @("/SIMULATEFAIL=api-start")
   Check ($code -eq 10) "the update reports failure"
@@ -317,6 +344,24 @@ try {
   Check ($null -eq (Get-Service AlyassirServer -ErrorAction SilentlyContinue)) "no Windows service"
   Uninstall
   Check (-not (Test-Path "$App\desktop\Alyassir.exe")) "user computer uninstall removes the app"
+
+  Write-Host "`n=== 13. Restore as server: a new server from the backup file (SPEC 20.1) ==="
+  Wipe-Everything
+  $file = (Get-ChildItem (Join-Path $env:RUNNER_TEMP "restore-as-server\*.dump") | Select-Object -First 1).FullName
+  $code = Install @("/MODE=restore", "/PORT=$Port", "/BACKUPFILE=$file", "/BACKUPDIR=$BackupDir")
+  Check ($code -eq 0) "the installer restores the server from the backup"
+  $h = Health
+  Check ($h -and $h.status -eq "ok" -and $h.database -eq "ok") "the restored server answers"
+  $r = Login "gerant" $ManagerPass
+  Check ($r.status -eq 200 -and $r.body.me.role -eq "manager") "the manager signs in with his old password"
+  $names = @((Api "GET" "/api/clients?pageSize=100" $null $r.body.accessToken).body.items | ForEach-Object { $_.fullName })
+  Check ($names -contains "Karim AVANT") "the agency's data is there (Karim AVANT)"
+  Check ((Login "salma" "salma-pass").status -eq 200) "the employees of the backup sign in too"
+  $fp = IniValue "fingerprint"
+  Check ($fp -match "^([0-9A-F]{2}:){31}[0-9A-F]{2}$") "a new fingerprint is shown for the other computers"
+  $secretsNew = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
+  Check ((Psql "alyassir" $secretsNew.dbPassword "SELECT count(*) FROM audit_log WHERE action = 'system.restore_as_server'").Trim() -eq "1") "the restore as server is written in the audit log"
+  Wipe-Everything
 
   Write-Host "`nALL INSTALLER TESTS PASSED"
   Annotate "notice" "Installer tests passed ($($script:Passed.Count) checks)" ($script:Passed -join "`n")

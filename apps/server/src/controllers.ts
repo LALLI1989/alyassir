@@ -30,6 +30,8 @@ import { PAYMENT_CONTROLLERS } from "./controllers-payments";
 import { CASH_CONTROLLERS } from "./controllers-cash";
 import { FOLLOWUP_CONTROLLERS } from "./controllers-followup";
 import { REPORT_CONTROLLERS } from "./controllers-reports";
+import { BACKUP_CONTROLLERS } from "./controllers-backups";
+import { AllowedDuringUsbBlock } from "./backups/maintenance.guard";
 import { AuthService } from "./auth/auth.service";
 import { LoginThrottle } from "./auth/login-throttle";
 import { Authenticated, ManagerOnly, Public } from "./common/access";
@@ -75,6 +77,7 @@ export class SystemController {
   }
 }
 
+@AllowedDuringUsbBlock()
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -108,6 +111,7 @@ export class AuthController {
   }
 }
 
+@AllowedDuringUsbBlock()
 @Controller("me")
 export class MeController {
   constructor(
@@ -358,4 +362,5 @@ export const CONTROLLERS = [
   ...CASH_CONTROLLERS,
   ...FOLLOWUP_CONTROLLERS,
   ...REPORT_CONTROLLERS,
+  ...BACKUP_CONTROLLERS,
 ];

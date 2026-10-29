@@ -3,6 +3,7 @@
  * (same texts as the interface, from @alyassir/i18n); the screen only shows and prints them.
  */
 import { z } from "zod";
+import type { BackupStatusDto } from "./backups";
 import { isIsoDate } from "./insurance";
 
 export const REPORT_CODES = [
@@ -110,6 +111,8 @@ export interface DashboardDto {
   reminders: number;
   openClaims: number | null;
   activity: { userId: string; name: string; actions: number; lastAt: string | null }[] | null;
+  /** Manager only: when the last good backup was taken (Phase 6B). */
+  backup: BackupStatusDto | null;
   charts: {
     paymentsByDay: { day: string; cents: number }[] | null;
     policiesByMonth: { month: string; newIssues: number; renewals: number }[] | null;

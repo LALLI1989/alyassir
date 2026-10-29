@@ -3,7 +3,7 @@
  *
  *   check-port   --port N [--out FILE]        exit 0 free, 3 in use
  *   suggest-port --from N --out FILE          writes the first free port
- *   provision    --app-dir D --data-dir D --port N --result FILE --bootstrap FILE [--simulate-failure-at STEP]
+ *   provision    --app-dir D --data-dir D --port N --result FILE --bootstrap FILE [--restore-file DUMP] [--simulate-failure-at STEP]
  *   upgrade      --app-dir D --result FILE [--bootstrap FILE] [--simulate-failure-at STEP]
  *   unprovision  --app-dir D
  */
@@ -59,6 +59,7 @@ async function main(): Promise<number> {
         port: port(need(flags, "port")),
         resultFile: need(flags, "result"),
         bootstrapFile: need(flags, "bootstrap"),
+        restoreFile: flags["restore-file"],
         simulateFailureAt: flags["simulate-failure-at"],
       });
       return result.ok ? 0 : 1;

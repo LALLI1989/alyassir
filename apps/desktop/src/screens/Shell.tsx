@@ -4,6 +4,7 @@ import {
   Banknote,
   Car,
   ChartColumn,
+  DatabaseBackup,
   HandCoins,
   Landmark,
   Lock,
@@ -51,7 +52,9 @@ import { Home } from "./Home";
 import { Messages } from "./Messages";
 import { ServerStatusPage } from "./ServerSetup";
 import { Settings } from "./Settings";
+import { Backups } from "./Backups";
 import { Reports } from "./Reports";
+import { UsbBanner, UsbBlockPage, useUsb } from "../components/backups";
 import { Users } from "./Users";
 
 export type Page =
@@ -78,6 +81,7 @@ export type Page =
   | { kind: "claims" }
   | { kind: "reminders" }
   | { kind: "reports" }
+  | { kind: "backups" }
   | { kind: "module"; module: Module };
 
 /** Modules that have their screens already (Phases 2 and 3); the others are announced. */
@@ -151,6 +155,7 @@ export function Shell() {
   const [dark, toggleTheme] = useTheme();
   const unread = useQuery({ queryKey: ["unread"], queryFn: () => api<{ count: number }>("GET", "/api/messages/unread-count") }).data?.count ?? 0;
   const reminders = useReminders().data?.total ?? 0;
+  const usb = useUsb().data;
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => api<AgencySettingsDto>("GET", "/api/settings/agency") }).data;
   if (!me) return null;
 
@@ -230,6 +235,9 @@ export function Shell() {
     case "reports":
       content = <Reports />;
       break;
+    case "backups":
+      content = <Backups />;
+      break;
     case "module":
       content = <ComingSoon title={t(`modules.${page.module}`)} />;
       break;
@@ -265,6 +273,7 @@ export function Shell() {
             <NavItem active={is("users")} icon={<UsersIcon />} label={t("shell.users")} onClick={() => setPage({ kind: "users" })} />
             <NavItem active={is("insurance")} icon={<ShieldCheck />} label={t("shell.insurance")} onClick={() => setPage({ kind: "insurance" })} />
             <NavItem active={is("audit")} icon={<ScrollText />} label={t("shell.audit")} onClick={() => setPage({ kind: "audit" })} />
+            <NavItem active={is("backups")} icon={<DatabaseBackup />} label={t("shell.backups")} onClick={() => setPage({ kind: "backups" })} />
             <NavItem active={is("settings")} icon={<SettingsIcon />} label={t("shell.settings")} onClick={() => setPage({ kind: "settings" })} />
           </nav>
         )}
@@ -299,7 +308,8 @@ export function Shell() {
             </Button>
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-5">{content}</main>
+        {usb?.state === "remind" && <UsbBanner state={usb} />}
+        <main className="flex-1 overflow-auto p-5">{usb?.state === "block" ? <UsbBlockPage state={usb} /> : content}</main>
       </div>
     </div>
   );

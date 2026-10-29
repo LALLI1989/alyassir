@@ -260,7 +260,9 @@ export function Shell() {
   const is = (kind: Page["kind"], module?: Module) => page.kind === kind && (!module || (page.kind === "module" && page.module === module));
 
   const askFirstStart = historical?.mode === "pending" && isManager;
-  const mainContent = usb?.state === "block" ? <UsbBlockPage state={usb} /> : askFirstStart ? <FirstStartQuestion /> : content;
+  let mainContent: ReactNode = content;
+  if (askFirstStart) mainContent = <FirstStartQuestion />;
+  if (usb?.state === "block") mainContent = <UsbBlockPage state={usb} />;
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-64 shrink-0 flex-col gap-4 border-e bg-card p-3">

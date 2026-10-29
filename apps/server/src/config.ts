@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * All server settings come from environment variables only (SPEC 4.13).
@@ -15,6 +16,23 @@ export interface ServerConfig {
   testCorsOrigin?: string;
   /** Sign-in attempts per minute and per network address. */
   loginRateLimitPerMinute?: number;
+  /** Backups and restore (SPEC 20). Absent: this server takes no backups (demo). */
+  backup?: BackupConfig;
+}
+
+export interface BackupConfig {
+  /** Folder of pg_dump / pg_restore ("" = found on the PATH). */
+  pgBin: string;
+  /** PostgreSQL superuser, database "postgres" (dump, drop and re-create on restore). */
+  superUrl: string;
+  /** Database owner (migrations after a restore). */
+  ownerUrl: string;
+  dbName: string;
+  dbOwner: string;
+  /** The server's own backup folder (before updates, safety copies before a restore). */
+  internalDir: string;
+  /** Tests only: a folder that plays the USB key. */
+  usbTestDir?: string;
 }
 
 export class ConfigError extends Error {}
@@ -46,11 +64,35 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   }
 
   return {
+    backup: backupConfig(env, testMode),
     host: env.ALYASSIR_HOST ?? "0.0.0.0",
     port,
     databaseUrl: required(env, "DATABASE_URL"),
     jwtSecret,
     tls,
     testCorsOrigin: testMode ? env.ALYASSIR_TEST_CORS_ORIGIN : undefined,
+  };
+}
+
+/**
+ * On the server computer the service gets the PostgreSQL folder, the data folder and the secrets
+ * file (readable by the service and the administrators only).
+ */
+function backupConfig(env: NodeJS.ProcessEnv, testMode: boolean): BackupConfig | undefined {
+  const secretsFile = env.ALYASSIR_SECRETS_FILE;
+  const dataDir = env.ALYASSIR_DATA_DIR;
+  if (!secretsFile || !dataDir) return undefined;
+  const s = JSON.parse(readFileSync(secretsFile, "utf8")) as { pgSuperuser: string; pgSuperPassword: string; dbUser: string; dbPassword: string };
+  const port = env.ALYASSIR_PG_PORT ?? "5433";
+  const url = (user: string, password: string, db: string) =>
+    `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@127.0.0.1:${port}/${db}`;
+  return {
+    pgBin: env.ALYASSIR_PG_BIN ?? "",
+    superUrl: url(s.pgSuperuser, s.pgSuperPassword, "postgres"),
+    ownerUrl: url(s.dbUser, s.dbPassword, "alyassir"),
+    dbName: "alyassir",
+    dbOwner: s.dbUser,
+    internalDir: join(dataDir, "backups"),
+    usbTestDir: testMode ? env.ALYASSIR_TEST_USB_DIR : undefined,
   };
 }

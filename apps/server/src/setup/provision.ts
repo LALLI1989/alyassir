@@ -15,6 +15,8 @@ import {
   PG_PORT,
   PG_SERVICE,
   bootstrapData,
+  checkRestoreFile,
+  restoredAgency,
   certFingerprint,
   dbUrl,
   ensureAppRole,
@@ -59,6 +61,8 @@ export interface ProvisionOptions {
   port: number;
   resultFile: string;
   bootstrapFile: string;
+  /** "Restore as server" (SPEC 20.1): the database comes from this backup instead of a new agency. */
+  restoreFile?: string;
   simulateFailureAt?: string;
 }
 
@@ -95,8 +99,9 @@ export async function provision(o: ProvisionOptions): Promise<SetupResult> {
       code: "E_PREFLIGHT",
       run: async () => {
         // Read (and delete) the manager's password file first, whatever happens next.
-        bootstrap = readBootstrap(o.bootstrapFile, log);
-        log.addSecret(bootstrap.managerPassword);
+        bootstrap = readBootstrap(o.bootstrapFile, log, { restore: !!o.restoreFile });
+        if (bootstrap.managerPassword) log.addSecret(bootstrap.managerPassword);
+        if (o.restoreFile) checkRestoreFile(log, o.restoreFile, p.pgBin);
         if (process.platform !== "win32") throw new SetupError("E_NOT_WINDOWS", "Setup runs on Windows only");
         for (const f of [join(p.pgBin, "initdb.exe"), join(p.pgBin, "pg_ctl.exe"), p.nodeExe, p.mainJs, p.winswSource]) {
           if (!existsSync(f)) throw new SetupError("E_FILES_MISSING", `Missing installed file ${f}`);
@@ -208,6 +213,20 @@ export async function provision(o: ProvisionOptions): Promise<SetupResult> {
       },
     },
     {
+      name: "restore",
+      code: "E_RESTORE",
+      run: () => {
+        // Restore as server: the agency's data comes back from the backup (users and passwords included).
+        if (!o.restoreFile) return;
+        run(log, join(p.pgBin, "pg_restore.exe"), ["-h", "127.0.0.1", "-p", String(PG_PORT), "-U", "postgres", "-d", DB_NAME, "--exit-on-error", o.restoreFile], {
+          code: "E_RESTORE",
+          env: { ...process.env, PGPASSWORD: pgSuperPassword },
+          timeoutMs: 1_800_000,
+        });
+        log.info(`Database restored from ${o.restoreFile}`);
+      },
+    },
+    {
       name: "migrations",
       code: "E_MIGRATION",
       run: async () => {
@@ -220,7 +239,8 @@ export async function provision(o: ProvisionOptions): Promise<SetupResult> {
       code: "E_BOOTSTRAP",
       run: async () => {
         if (!bootstrap) throw new SetupError("E_BOOTSTRAP", "No agency information");
-        await bootstrapData(ownerUrl, bootstrap);
+        if (o.restoreFile) await restoredAgency(ownerUrl, bootstrap.backupDir, o.restoreFile);
+        else await bootstrapData(ownerUrl, bootstrap);
         // The application account must work before going further.
         await withClient(dbUrl(APP_ROLE, appPassword), (c) => c.query("SELECT count(*) FROM users"));
       },
@@ -258,7 +278,7 @@ try {
           mainJs: p.mainJs,
           workDir: join(o.appDir, "server"),
           logDir: p.logDir,
-          env: serviceEnv({ port: o.port, pfxPath: p.pfxPath, pfxPassphrase, appPassword, jwtSecret }),
+          env: serviceEnv({ port: o.port, pfxPath: p.pfxPath, pfxPassphrase, appPassword, jwtSecret, pgBin: p.pgBin, dataDir: o.dataDir, secretsFile: p.secretsFile }),
         }));
         restrictAcl(log, p.serviceDir);
         run(log, p.winswExe, ["install"], { code: "E_SERVICE_INSTALL" });

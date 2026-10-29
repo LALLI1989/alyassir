@@ -201,6 +201,9 @@ export async function upgrade(o: UpgradeOptions): Promise<SetupResult> {
             pfxPassphrase: secrets.pfxPassphrase ?? "",
             appPassword: secrets.appPassword ?? "",
             jwtSecret: secrets.jwtSecret ?? "",
+            pgBin: p.pgBin,
+            dataDir: state.dataDir,
+            secretsFile: p.secretsFile,
           }),
         }));
         restrictAcl(log, p.serviceDir);

@@ -86,6 +86,15 @@ export function Home({ onOpen }: { onOpen: (page: Page) => void }) {
         {dash?.balances?.safe !== null && dash?.balances?.safe !== undefined && <Tile value={<Money cents={dash.balances.safe} />} label={t("finance.accounts.safe")} onClick={() => onOpen({ kind: "accounts" })} />}
         {dash?.balances?.bank !== null && dash?.balances?.bank !== undefined && <Tile value={<Money cents={dash.balances.bank} />} label={t("finance.accounts.bank")} onClick={() => onOpen({ kind: "accounts" })} />}
         {dash?.openClaims !== null && dash?.openClaims !== undefined && <Tile value={dash.openClaims} label={t("dashboard.openClaims")} onClick={() => onOpen({ kind: "claims" })} />}
+        {dash?.backup?.enabled && (
+          <Tile
+            value={<span className={dash.backup.late ? "text-destructive" : undefined}>{dash.backup.lastOkAt ? formatDateTime(dash.backup.lastOkAt) : t("dashboard.backupNever")}</span>}
+            label={t("dashboard.backup")}
+            hint={dash.backup.late ? t("dashboard.backupLate") : undefined}
+            onClick={() => onOpen({ kind: "backups" })}
+            testId="dash-backup"
+          />
+        )}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

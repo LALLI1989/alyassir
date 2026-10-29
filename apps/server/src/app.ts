@@ -28,6 +28,10 @@ import { ContactsService } from "./followup/contacts.service";
 import { RemindersService } from "./followup/reminders.service";
 import { DashboardService } from "./reports/dashboard.service";
 import { ReportsService } from "./reports/reports.service";
+import { BACKUP_CONFIG, BackupsService } from "./backups/backups.service";
+import { BackupJobs } from "./backups/backup-jobs";
+import { MaintenanceGuard } from "./backups/maintenance.guard";
+import { UsbService } from "./backups/usb.service";
 import { ErrorFilter } from "./common/error.filter";
 import type { ServerConfig } from "./config";
 import { CONTROLLERS } from "./controllers";
@@ -49,6 +53,9 @@ export class AppModule {
       providers: [
         { provide: DatabaseService, useFactory: () => new DatabaseService(config.databaseUrl) },
         { provide: LOGIN_RATE_LIMIT, useValue: config.loginRateLimitPerMinute ?? 20 },
+        { provide: BACKUP_CONFIG, useValue: config.backup ?? null },
+        // The maintenance guard (restore, overdue USB copy) runs before the access guard.
+        { provide: APP_GUARD, useClass: MaintenanceGuard },
         { provide: APP_GUARD, useClass: AccessGuard },
         { provide: APP_FILTER, useClass: ErrorFilter },
         AuditService,
@@ -78,6 +85,9 @@ export class AppModule {
         RemindersService,
         ReportsService,
         DashboardService,
+        BackupsService,
+        UsbService,
+        BackupJobs,
       ],
     };
   }

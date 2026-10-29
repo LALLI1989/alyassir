@@ -5,6 +5,7 @@ import type { DashboardDto } from "@alyassir/shared";
 import type { AuthUser } from "../common/context";
 import { DatabaseService } from "../database.service";
 import { RemindersService } from "../followup/reminders.service";
+import { BackupsService } from "../backups/backups.service";
 import { ReportsService } from "./reports.service";
 
 type Row = Record<string, unknown>;
@@ -20,6 +21,7 @@ export class DashboardService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(ReportsService) private readonly reports: ReportsService,
     @Inject(RemindersService) private readonly reminders: RemindersService,
+    @Inject(BackupsService) private readonly backups: BackupsService,
   ) {}
 
   private async one(query: ReturnType<typeof sql>): Promise<Row> {
@@ -117,6 +119,7 @@ export class DashboardService {
       reminders: (await this.reminders.list(user)).total,
       openClaims,
       activity,
+      backup: seen.manager ? await this.backups.status() : null,
       charts: { paymentsByDay, policiesByMonth },
     };
   }

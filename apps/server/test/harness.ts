@@ -3,11 +3,15 @@
  * DATABASE_URL must point to a superuser (CI: the postgres service container).
  */
 import { randomBytes } from "node:crypto";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Client } from "pg";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { APP_ROLE, migrate } from "@alyassir/db";
 import { HEADER_CLIENT_VERSION, HEADER_DEVICE, HEADER_USER_ACTIVE, type LoginResponse } from "@alyassir/shared";
 import { createApp } from "../src/app";
+import type { ServerConfig } from "../src/config";
 import { bootstrapData } from "../src/setup/common";
 
 const ADMIN_URL = process.env.DATABASE_URL;
@@ -91,14 +95,30 @@ export const CLIENT_HEADERS = { [HEADER_CLIENT_VERSION]: "0.1.0", [HEADER_DEVICE
 export interface TestApp {
   app: NestFastifyApplication;
   db: TestDb;
-  call: (method: string, url: string, options?: { token?: string; body?: unknown; headers?: Record<string, string> }) => Promise<{ status: number; body: any }>;
+  call: (method: string, url: string, options?: { token?: string; body?: unknown; headers?: Record<string, string>; remoteAddress?: string }) => Promise<{ status: number; body: any }>;
   login: (username: string, password: string) => Promise<LoginResponse>;
   close: () => Promise<void>;
 }
 
-export async function startApp(options: { listen?: boolean } = {}): Promise<TestApp> {
+/** Backups on the test database: real pg_dump / pg_restore, folders in the temp directory. */
+export function testBackupConfig(db: TestDb): NonNullable<ServerConfig["backup"]> {
+  const root = mkdtempSync(join(tmpdir(), "alyassir-backups-"));
+  const u = new URL(ADMIN_URL as string);
+  return {
+    pgBin: process.env.ALYASSIR_TEST_PG_BIN ?? "",
+    superUrl: urlFor(decodeURIComponent(u.username), decodeURIComponent(u.password), "postgres"),
+    ownerUrl: db.ownerUrl,
+    dbName: db.name,
+    dbOwner: OWNER_ROLE,
+    internalDir: join(root, "internal"),
+    usbTestDir: join(root, "usb"),
+  };
+}
+
+export async function startApp(options: { listen?: boolean; backup?: boolean } = {}): Promise<TestApp> {
   const db = await createTestDb();
   const app = await createApp({
+    ...(options.backup ? { backup: testBackupConfig(db) } : {}),
     host: "127.0.0.1",
     port: 0,
     databaseUrl: db.appUrl,
@@ -117,6 +137,7 @@ export async function startApp(options: { listen?: boolean } = {}): Promise<Test
       method: method as "GET",
       url,
       headers: { ...CLIENT_HEADERS, ...(o.token ? { authorization: `Bearer ${o.token}` } : {}), ...(o.headers ?? {}) },
+      ...(o.remoteAddress ? { remoteAddress: o.remoteAddress } : {}),
       ...(o.body !== undefined ? { payload: o.body as object } : {}),
     });
     let body: unknown = null;

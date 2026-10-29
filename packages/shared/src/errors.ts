@@ -90,6 +90,18 @@ export const ERROR_CODES = [
   "CLAIM_NUMBER_TAKEN",
   "CLAIM_REOPEN_MANAGER",
   "NO_PHONE",
+  // Phase 6B: backups and restore.
+  "BACKUPS_UNAVAILABLE",
+  "BACKUP_DIR_UNUSABLE",
+  "BACKUP_FAILED",
+  "BACKUP_BUSY",
+  "BACKUP_CORRUPT",
+  "BACKUP_NEWER",
+  "RESTORE_FAILED",
+  "RESTORING",
+  "USB_BACKUP_REQUIRED",
+  "USB_NOT_AT_SERVER",
+  "USB_DRIVE_MISSING",
   "INTERNAL",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

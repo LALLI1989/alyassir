@@ -76,6 +76,12 @@ jobs:
       - name: Type check
         if: ${{ !cancelled() }}
         run: tooling/ci-run.sh typecheck pnpm turbo run typecheck --continue
+      # Backups and restore are tested with the real pg_dump / pg_restore of PostgreSQL 16 (Phase 6B).
+      - name: PostgreSQL 16 tools
+        run: |
+          sudo apt-get install -y -q postgresql-client-16 >/dev/null
+          echo "ALYASSIR_TEST_PG_BIN=/usr/lib/postgresql/16/bin" >> "$GITHUB_ENV"
+          /usr/lib/postgresql/16/bin/pg_dump --version
       - name: Tests (server on real PostgreSQL, packages, app)
         if: ${{ !cancelled() }}
         run: tooling/ci-run.sh tests pnpm turbo run test --concurrency=1 --continue

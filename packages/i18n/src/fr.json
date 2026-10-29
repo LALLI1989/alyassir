@@ -117,7 +117,8 @@
     "employeeBadge": "Employé",
     "insurance": "Paramètres d'assurance",
     "accounts": "Comptes",
-    "reminders": "Rappels"
+    "reminders": "Rappels",
+    "backups": "Sauvegardes"
   },
   "modules": {
     "clients": "Clients",
@@ -247,6 +248,16 @@
       "expense_pending": {
         "subject": "Dépense en attente de validation",
         "intro": "Un employé a ajouté une dépense de caisse qui attend votre validation :"
+      },
+      "backup_failed": {
+        "subject": "Échec de sauvegarde",
+        "intro": "Une sauvegarde n'a pas pu être faite. Voir l'écran « Sauvegardes ».",
+        "error": "Erreur"
+      },
+      "usb_skipped": {
+        "subject": "Copie USB du mois passée",
+        "intro": "La copie USB de ce mois a été passée :",
+        "month": "Mois"
       }
     }
   },
@@ -404,7 +415,15 @@
       "claim_update": "Sinistre modifié",
       "claim_status": "Statut de sinistre modifié",
       "whatsapp_template_update": "Modèle WhatsApp modifié",
-      "settings_reminders": "Délais des rappels modifiés"
+      "settings_reminders": "Délais des rappels modifiés",
+      "backup_manual": "Sauvegarde manuelle",
+      "backup_delete": "Suppression d'une sauvegarde",
+      "backup_restore": "Restauration d'une sauvegarde",
+      "backup_settings": "Modification des horaires et sauvegardes",
+      "backup_folder": "Changement du dossier des sauvegardes",
+      "backup_usb": "Copie USB",
+      "backup_usb_skip": "Copie USB passée",
+      "system_restore_as_server": "Restauration comme serveur"
     }
   },
   "settings": {
@@ -530,7 +549,18 @@
       "CLAIM_LATE_DECLARATION": "Le délai de déclaration (5 jours, jour du sinistre compris) est dépassé. Seul le gérant peut l'enregistrer en retard, avec un motif.",
       "CLAIM_NUMBER_TAKEN": "Ce n° de sinistre existe déjà chez la même compagnie.",
       "CLAIM_REOPEN_MANAGER": "Seul le gérant peut rouvrir un sinistre clos ou refusé.",
-      "NO_PHONE": "Le numéro de téléphone du client n'est pas utilisable pour WhatsApp."
+      "NO_PHONE": "Le numéro de téléphone du client n'est pas utilisable pour WhatsApp.",
+      "BACKUPS_UNAVAILABLE": "Ce serveur ne fait pas de sauvegardes.",
+      "BACKUP_DIR_UNUSABLE": "Le dossier des sauvegardes est inutilisable. Choisissez-en un autre.",
+      "BACKUP_FAILED": "La sauvegarde a échoué. Le gérant est averti.",
+      "BACKUP_BUSY": "Une autre sauvegarde est en cours. Réessayez dans une minute.",
+      "BACKUP_CORRUPT": "Le fichier de sauvegarde est abîmé ou incomplet ; il ne peut pas être restauré.",
+      "BACKUP_NEWER": "Cette sauvegarde vient d'une version plus récente du programme. Mettez d'abord le programme à jour.",
+      "RESTORE_FAILED": "La restauration a échoué ; les données sont revenues comme avant.",
+      "RESTORING": "Restauration d'une sauvegarde en cours. Attendez une minute puis réessayez.",
+      "USB_BACKUP_REQUIRED": "La copie USB du mois est obligatoire avant de continuer.",
+      "USB_NOT_AT_SERVER": "La copie USB se fait uniquement depuis l'ordinateur serveur.",
+      "USB_DRIVE_MISSING": "Clé absente, ou impossible d'y écrire."
     },
     "fields": {
       "required": "Ce champ est obligatoire.",
@@ -564,7 +594,14 @@
       "plate_unchanged": "Le nouveau numéro est identique à l'actuel.",
       "fiscal_power_range": "Entre 1 et 99.",
       "latin_only": "Écrivez le nom en lettres latines, comme sur la pièce d'identité.",
-      "same_account": "Choisissez un autre compte que le premier."
+      "same_account": "Choisissez un autre compte que le premier.",
+      "folder_absolute": "Écrivez le chemin complet, par exemple C:\\Alyassir-Sauvegardes.",
+      "folder_missing": "Ce dossier n'existe pas.",
+      "folder_not_writable": "Impossible d'écrire dans ce dossier.",
+      "time_format": "Heure au format 08:00.",
+      "work_days_required": "Choisissez au moins un jour.",
+      "end_before_start": "La fin est avant le début.",
+      "reason_required": "Le motif est obligatoire."
     }
   },
   "money": {
@@ -1253,7 +1290,10 @@
     "chartPayments": "Paiements jour par jour",
     "chartPolicies": "Nouvelles polices et renouvellements (12 mois)",
     "activity": "Activité des utilisateurs aujourd'hui",
-    "actionsToday": "Opérations aujourd'hui"
+    "actionsToday": "Opérations aujourd'hui",
+    "backup": "Dernière sauvegarde",
+    "backupNever": "Aucune",
+    "backupLate": "En retard : voir l'écran des sauvegardes"
   },
   "reports": {
     "title": "Rapports",
@@ -1389,6 +1429,94 @@
       "user": "Employé",
       "validity": "Validité",
       "vehicles": "Véhicules"
+    }
+  },
+  "backups": {
+    "title": "Sauvegardes",
+    "intro": "Le serveur fait une sauvegarde chaque heure pendant les heures de travail et une sauvegarde quotidienne après, dans le dossier ci-dessous. Seul le gérant restaure ou supprime les sauvegardes.",
+    "disabled": "Ce serveur ne fait pas de sauvegardes (version de démonstration).",
+    "folder": "Dossier des sauvegardes (envoyé par Google Drive)",
+    "driveHelp": "Une seule fois : sur l'ordinateur serveur, ouvrez l'application Google Drive, puis « Paramètres », puis « Dossiers de mon ordinateur », et ajoutez ce dossier. Ensuite chaque sauvegarde est envoyée toute seule.",
+    "changeFolder": "Changer de dossier",
+    "folderPath": "Chemin complet du dossier sur l'ordinateur serveur",
+    "folderHint": "Par exemple C:\\Alyassir-Sauvegardes. Le serveur vérifie qu'il peut y écrire.",
+    "folderProblem": {
+      "missing": "Le dossier n'existe pas. Les sauvegardes sont arrêtées jusqu'au choix d'un dossier valable.",
+      "not_writable": "Le serveur ne peut pas écrire dans ce dossier. Les sauvegardes sont arrêtées jusqu'au choix d'un dossier valable."
+    },
+    "lastOk": "Dernière sauvegarde réussie : {{time}}",
+    "never": "Aucune sauvegarde pour l'instant.",
+    "lastError": "La dernière tentative a échoué : {{error}}",
+    "takeNow": "Sauvegarder maintenant",
+    "running": "Sauvegarde en cours…",
+    "files": "Fichiers de sauvegarde",
+    "kinds": {
+      "hourly": "Horaire",
+      "daily": "Quotidienne",
+      "manual": "Manuelle",
+      "safety": "Copie de sécurité avant restauration",
+      "usb": "USB",
+      "pre_update": "Avant mise à jour",
+      "folder": "Dossier"
+    },
+    "columns": {
+      "at": "Date et heure",
+      "kind": "Type",
+      "size": "Taille",
+      "place": "Emplacement",
+      "check": "Contrôle"
+    },
+    "places": {
+      "drive": "Google Drive",
+      "internal": "Dossier du serveur"
+    },
+    "check": {
+      "ok": "Intacte",
+      "none": "Sans empreinte"
+    },
+    "size": "{{mb}} Mo",
+    "restore": "Restaurer",
+    "restoreTitle": "Restaurer la sauvegarde du {{time}}",
+    "restoreWarning": "Toutes les données reviennent à l'état de cette sauvegarde. Tout ce qui a été saisi après disparaît. Avant, le programme fait une copie de sécurité de l'état actuel ; le travail s'arrête une ou deux minutes sur tous les postes, puis chacun se reconnecte.",
+    "restorePassword": "Votre mot de passe pour confirmer",
+    "restoreConfirm": "Oui, restaurer cette sauvegarde",
+    "restoring": "Restauration en cours… n'éteignez pas le serveur.",
+    "restored": "Restauration faite depuis {{name}}. Copie de sécurité : {{safety}}. Reconnectez-vous.",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer définitivement le fichier {{name}} ? La suppression est inscrite au journal d'audit.",
+    "settings": "Horaires et sauvegardes",
+    "settingsHint": "Sauvegarde chaque heure pendant les horaires, quotidienne après. Copie USB le premier vendredi de chaque mois.",
+    "workDays": "Jours de travail",
+    "workStart": "Début",
+    "workEnd": "Fin",
+    "usbTime": "Heure de la copie USB",
+    "days": {
+      "1": "Lundi",
+      "2": "Mardi",
+      "3": "Mercredi",
+      "4": "Jeudi",
+      "5": "Vendredi",
+      "6": "Samedi",
+      "7": "Dimanche"
+    },
+    "usb": {
+      "remind": "La copie USB du mois est due : branchez une clé USB sur l'ordinateur serveur et cliquez « Copier sur la clé USB ». Sinon l'application s'arrête à partir du {{time}}.",
+      "open": "Copie USB",
+      "title": "Copie USB du mois obligatoire",
+      "text": "Pour protéger les données de l'agence, l'application s'arrête sur tous les postes jusqu'à la copie sur une clé USB branchée sur l'ordinateur serveur. Cela prend une minute.",
+      "waiting": "Branchez la clé sur l'ordinateur serveur, puis cliquez « Copier sur la clé USB » depuis ce poste.",
+      "drive": "Clé",
+      "free": "{{gb}} Go libres",
+      "noDrive": "Aucune clé USB. Branchez la clé puis cliquez « Actualiser ».",
+      "refresh": "Actualiser",
+      "copy": "Copier sur la clé USB",
+      "copying": "Copie en cours… ne retirez pas la clé.",
+      "copied": "Copie terminée. Vous pouvez retirer la clé.",
+      "lastDone": "Dernière copie USB : {{time}} ({{name}})",
+      "skip": "Passer cette fois",
+      "skipTitle": "Passer la copie USB de ce mois",
+      "skipReason": "Motif",
+      "skipHint": "Inscrit au journal d'audit ; le gérant est averti."
     }
   }
 }

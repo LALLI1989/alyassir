@@ -101,6 +101,17 @@ function MessageBody({ body, system }: { body: string; system: boolean }) {
       [t("finance.amount"), money(p.amountCents)],
       [t("cash.note"), text(p.note)],
     ];
+  } else if (parsed.event === "backup_failed") {
+    lines = [
+      [t("backups.columns.kind"), t(`backups.kinds.${text(p.kind)}`, { defaultValue: text(p.kind) })],
+      [t("messages.events.backup_failed.error"), text(p.error)],
+    ];
+  } else if (parsed.event === "usb_skipped") {
+    lines = [
+      [t("messages.events.common.employee"), text(p.employee)],
+      [t("messages.events.usb_skipped.month"), text(p.month)],
+      [t("common.reason"), text(p.reason)],
+    ];
   } else if (parsed.event === "instalments_to_debt") {
     const items = Array.isArray(p.items) ? (p.items as Record<string, unknown>[]) : [];
     lines = items.map((x) => [`${text(x.client)} · ${text(x.policyNumber)}`, t("messages.events.instalments_to_debt.line", { seq: text(x.seq), date: day(x.dueDate), amount: money(x.amountCents) })]);

@@ -55,6 +55,10 @@ function where(parts: (SQL | false | "" | undefined | null)[]): SQL {
   return list.length ? sql.join(list, sql` AND `) : sql`true`;
 }
 
+/** Phase 7: only what was entered in historical mode, or only live work. */
+const origin = (col: string, q: QueryInput): SQL | false =>
+  q.req.origin === "historical" ? sql.raw(`${col}`) : q.req.origin === "live" ? sql.raw(`NOT ${col}`) : false;
+
 const between = (col: SQL, q: QueryInput) => sql`${col} BETWEEN ${q.req.from}::date AND ${q.req.to}::date`;
 
 /** The accounts a movement report may show for this user. */
@@ -78,7 +82,7 @@ export const REPORTS: ReportDef[] = [
   {
     code: "policies",
     allowed: both("policies.view"),
-    filters: ["period", "insurer", "type", "status", "user"],
+    filters: ["period", "insurer", "type", "status", "user", "origin"],
     statuses: { prefix: "policies.validities", values: ["active", "expired", "annulled", "cancelled"] },
     columns: [
       { key: "startDate", type: "date" },
@@ -98,12 +102,13 @@ export const REPORTS: ReportDef[] = [
         SELECT ${DAY("pp.start_date")} AS "startDate", p.policy_number AS "policyNumber", ${CLIENT} AS client, i.name AS insurer, t.name AS type,
           pp.operation, ${DAY("pp.end_date")} AS "endDate", pp.total_amount_cents AS amount,
           CASE WHEN pp.validity_status <> 'active' THEN pp.validity_status WHEN pp.end_date < ${q.today}::date THEN 'expired' ELSE 'active' END AS validity,
-          pp.collection_status AS collection, u.display_name AS "user", pp.start_date AS s, p.insurer_id, p.insurance_type_id, pp.created_by
+          pp.collection_status AS collection, u.display_name AS "user", pp.start_date AS s, p.insurer_id, p.insurance_type_id, pp.created_by, pp.is_historical
         FROM policy_periods pp JOIN policies p ON p.id = pp.policy_id JOIN clients c ON c.id = p.client_id
         JOIN insurers i ON i.id = p.insurer_id JOIN insurance_types t ON t.id = p.insurance_type_id
         LEFT JOIN users u ON u.id = pp.created_by
       ) x
       WHERE ${where([
+        origin("x.is_historical", q),
         between(sql`x.s`, q),
         q.req.insurerId && sql`x.insurer_id = ${q.req.insurerId}`,
         q.req.typeId && sql`x.insurance_type_id = ${q.req.typeId}`,
@@ -115,7 +120,7 @@ export const REPORTS: ReportDef[] = [
   {
     code: "payments",
     allowed: both("payments.view"),
-    filters: ["period", "insurer", "method", "status", "user"],
+    filters: ["period", "insurer", "method", "status", "user", "origin"],
     statuses: { prefix: "finance.paymentStatus", values: ["collected", "in_collection", "confirmed", "rejected"] },
     columns: [
       { key: "date", type: "date" },
@@ -134,6 +139,7 @@ export const REPORTS: ReportDef[] = [
       FROM payments pm JOIN policies p ON p.id = pm.policy_id JOIN clients c ON c.id = pm.client_id JOIN insurers i ON i.id = p.insurer_id
       LEFT JOIN receipts r ON r.id = pm.receipt_id LEFT JOIN users u ON u.id = pm.received_by
       WHERE ${where([
+        origin("pm.is_historical", q),
         between(sql`pm.received_on`, q),
         q.req.insurerId && sql`p.insurer_id = ${q.req.insurerId}`,
         q.req.method && sql`pm.method = ${q.req.method}`,
@@ -217,7 +223,7 @@ export const REPORTS: ReportDef[] = [
   {
     code: "movements",
     allowed: (v) => v.can("reports.view") && (v.drawer || v.vault),
-    filters: ["period", "account", "user"],
+    filters: ["period", "account", "user", "origin"],
     columns: [
       { key: "date", type: "date" },
       { key: "time", type: "datetime" },
@@ -234,7 +240,8 @@ export const REPORTS: ReportDef[] = [
         CASE WHEN t.amount_cents < 0 THEN -t.amount_cents ELSE 0 END AS "moneyOut",
         u.display_name AS "user", t.note
       FROM financial_transactions t LEFT JOIN users u ON u.id = t.user_id
-      WHERE ${where([between(sql`t.business_date`, q), accountFilter(sql`t.account_code`, q), q.req.userId && sql`t.user_id = ${q.req.userId}`])}
+      WHERE ${where([
+        origin("t.is_historical", q), between(sql`t.business_date`, q), accountFilter(sql`t.account_code`, q), q.req.userId && sql`t.user_id = ${q.req.userId}`])}
       ORDER BY t.business_date, t.id LIMIT ${q.limit}`,
   },
   {
@@ -275,7 +282,7 @@ export const REPORTS: ReportDef[] = [
   {
     code: "expenses",
     allowed: both("expenses.view"),
-    filters: ["period", "status", "user"],
+    filters: ["period", "status", "user", "origin"],
     statuses: { prefix: "cash.expenseStatus", values: ["pending", "approved", "rejected", "cancelled"] },
     columns: [
       { key: "date", type: "date" },
@@ -291,6 +298,7 @@ export const REPORTS: ReportDef[] = [
         e.account_code AS account, e.status, u.display_name AS "user", e.note
       FROM expenses e JOIN expense_categories ec ON ec.id = e.category_id LEFT JOIN users u ON u.id = e.created_by
       WHERE ${where([
+        origin("e.is_historical", q),
         between(sql`e.expense_date`, q),
         q.req.status && sql`e.status = ${q.req.status}`,
         q.req.userId && sql`e.created_by = ${q.req.userId}`,
@@ -404,7 +412,7 @@ export const REPORTS: ReportDef[] = [
   {
     code: "claims",
     allowed: both("claims.view"),
-    filters: ["period", "insurer", "status"],
+    filters: ["period", "insurer", "status", "origin"],
     statuses: { prefix: "followup.claimStatus", values: ["declared", "expertise", "processing", "closed", "rejected"] },
     columns: [
       { key: "declaredOn", type: "date" },
@@ -423,6 +431,7 @@ export const REPORTS: ReportDef[] = [
         cl.requested_cents AS requested, cl.compensated_cents AS compensated
       FROM claims cl JOIN clients c ON c.id = cl.client_id JOIN policies p ON p.id = cl.policy_id JOIN insurers i ON i.id = cl.insurer_id
       WHERE ${where([
+        origin("cl.is_historical", q),
         between(sql`cl.declared_on`, q),
         q.req.insurerId && sql`cl.insurer_id = ${q.req.insurerId}`,
         q.req.status && sql`cl.status = ${q.req.status}`,
@@ -432,7 +441,7 @@ export const REPORTS: ReportDef[] = [
   {
     code: "cancellations",
     allowed: both("policies.view"),
-    filters: ["period", "insurer", "status", "user"],
+    filters: ["period", "insurer", "status", "user", "origin"],
     statuses: { prefix: "reports.cancelKinds", values: ["annulment", "cancellation"] },
     columns: [
       { key: "date", type: "date" },
@@ -450,6 +459,7 @@ export const REPORTS: ReportDef[] = [
       FROM policy_operations o JOIN policies p ON p.id = o.policy_id JOIN clients c ON c.id = p.client_id JOIN insurers i ON i.id = p.insurer_id
       LEFT JOIN users u ON u.id = o.performed_by
       WHERE ${where([
+        origin("o.is_historical", q),
         sql`o.operation_type IN ('annulment', 'cancellation')`,
         between(sql`o.op_date`, q),
         q.req.insurerId && sql`p.insurer_id = ${q.req.insurerId}`,

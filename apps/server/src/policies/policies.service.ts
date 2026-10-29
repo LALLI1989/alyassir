@@ -44,6 +44,7 @@ import {
   type PolicyRow,
 } from "./policy-core";
 import { PolicyReader } from "./policy-reader";
+import { isHistorical, opDay } from "../common/clock";
 
 interface Certified {
   vehicleId: string;
@@ -62,7 +63,7 @@ export class PoliciesService {
   ) {}
 
   private today(): string {
-    return businessDay(new Date());
+    return opDay();
   }
 
   /** Runs one policy operation: one transaction, the idempotency key, clear errors, a signal. */
@@ -155,7 +156,7 @@ export class PoliciesService {
     if (v.end < v.start) throw new ApiException("END_BEFORE_START");
     const [period] = await tx
       .insert(schema.policyPeriods)
-      .values({
+      .values({ isHistorical: isHistorical(), 
         policyId: v.policy.id,
         seq: v.seq,
         previousPeriodId: v.previous?.id ?? null,

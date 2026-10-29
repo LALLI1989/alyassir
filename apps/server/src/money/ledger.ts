@@ -7,6 +7,7 @@ import { asc, inArray, sql } from "drizzle-orm";
 import { schema, type AccountCode, type TransactionKind } from "@alyassir/db";
 import { ApiException } from "../common/errors";
 import type { Tx } from "../database.service";
+import { isHistorical, moneyDayOf } from "../common/clock";
 
 const ORDER: Record<AccountCode, number> = { drawer: 1, safe: 2, bank: 3 };
 
@@ -29,7 +30,8 @@ export async function lockAccounts(
   codes: AccountCode[],
   opts: { holder?: string } = {},
 ): Promise<Map<AccountCode, typeof schema.accounts.$inferSelect>> {
-  if (opts.holder && codes.includes("drawer")) await requireDrawerHolder(tx, opts.holder);
+  // Historical entry (SPEC 22): no drawer sessions for past days; cash goes to the drawer directly.
+  if (opts.holder && codes.includes("drawer") && !isHistorical()) await requireDrawerHolder(tx, opts.holder);
   const unique = [...new Set(codes)].sort((a, b) => ORDER[a] - ORDER[b]);
   const rows = await tx.select().from(schema.accounts).where(inArray(schema.accounts.code, unique)).orderBy(asc(schema.accounts.lockOrder)).for("update");
   return new Map(rows.map((r) => [r.code, r]));
@@ -54,17 +56,22 @@ export interface Movement {
   withdrawalId?: string | null;
 }
 
-/** Balance of a locked account, refusing to go below zero (SPEC 17.1). The account must be locked. */
+/**
+ * Balance of a locked account, refusing to go below zero (SPEC 17.1). The account must be locked.
+ * Historical entry: the check is suspended (checked day by day at the end) and the movement is
+ * marked historical; a policy entered late after going live moves today's money (owner decision 29/10/2026).
+ */
 export async function post(tx: Tx, m: Movement): Promise<number> {
   if (!Number.isSafeInteger(m.amountCents) || m.amountCents === 0) throw new ApiException("INTERNAL", { message: "bad movement" });
+  const historical = isHistorical();
   const res = await tx.execute<{ balance_cents: string }>(sql`
     UPDATE accounts SET balance_cents = balance_cents + ${m.amountCents}, updated_at = now(), version = version + 1
-    WHERE code = ${m.account} AND (allow_negative OR balance_cents + ${m.amountCents} >= 0)
+    WHERE code = ${m.account} AND (allow_negative OR ${historical} OR balance_cents + ${m.amountCents} >= 0)
     RETURNING balance_cents`);
   if (!res.rows[0]) throw new ApiException("INSUFFICIENT_BALANCE");
   // Every drawer movement belongs to the open session, if there is one (per-person detail at closing).
   let sessionId: string | null = null;
-  if (m.account === "drawer") {
+  if (m.account === "drawer" && !historical) {
     const open = await tx.execute<{ id: string }>(sql`SELECT id FROM drawer_sessions WHERE status = 'open'`);
     sessionId = open.rows[0]?.id ?? null;
   }
@@ -84,9 +91,10 @@ export async function post(tx: Tx, m: Movement): Promise<number> {
       transferId: m.transferId ?? null,
       insurerPaymentId: m.insurerPaymentId ?? null,
       withdrawalId: m.withdrawalId ?? null,
-      businessDate: m.businessDate,
+      businessDate: moneyDayOf(m.businessDate),
       userId: m.userId,
       note: m.note ?? null,
+      isHistorical: historical,
     })
     .returning({ id: schema.financialTransactions.id });
   if (!row) throw new ApiException("INTERNAL");

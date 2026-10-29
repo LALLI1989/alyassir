@@ -27,7 +27,7 @@ export const REPORT_CODES = [
 export type ReportCode = (typeof REPORT_CODES)[number];
 
 /** Filters a report may offer (the screen shows only the ones the report uses). */
-export const REPORT_FILTERS = ["period", "insurer", "type", "status", "user", "account", "method"] as const;
+export const REPORT_FILTERS = ["period", "insurer", "type", "status", "user", "account", "method", "origin"] as const;
 export type ReportFilter = (typeof REPORT_FILTERS)[number];
 
 /** Rows are capped; the screen asks to narrow the filters beyond that. */
@@ -47,6 +47,8 @@ export const reportRequestSchema = z
     userId: uuid.optional(),
     account: z.enum(["drawer", "safe", "bank"]).optional(),
     method: z.enum(["cash", "cheque", "transfer", "card"]).optional(),
+    /** Phase 7: entered in historical mode, or live work. */
+    origin: z.enum(["historical", "live"]).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.from && v.to && v.from > v.to) ctx.addIssue({ code: "custom", message: "end_before_start", path: ["to"] });

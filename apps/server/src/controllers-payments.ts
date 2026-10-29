@@ -14,6 +14,7 @@ import { ApiException } from "./common/errors";
 import { parse } from "./common/zod";
 import { FinanceService } from "./money/finance.service";
 import { PaymentsService } from "./money/payments.service";
+import { LateEntryAllowed } from "./historical/historical.guard";
 
 const uuid = new ParseUUIDPipe({ exceptionFactory: () => new ApiException("NOT_FOUND") });
 
@@ -26,6 +27,7 @@ export class PolicyPaymentsController {
 
   /** Instalments shown before saving, computed by the server (SPEC 14.4). */
   @RequirePermission("policies.view")
+  @LateEntryAllowed()
   @Post("instalments-preview")
   @HttpCode(200)
   preview(@Body() body: unknown) {

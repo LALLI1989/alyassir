@@ -27,7 +27,8 @@ async function signIn(page: Page) {
 test("the backups screen: a backup now, then on the dashboard", async ({ page }) => {
   await signIn(page);
   await page.getByRole("button", { name: ar.shell.backups }).click();
-  await expect(page.getByTestId("backup-last")).toHaveText(ar.backups.never);
+  // Already one: the backup taken when live work started (a-first-start.spec.ts).
+  await expect(page.getByTestId("backup-last")).not.toHaveText(ar.backups.never);
   await page.getByRole("button", { name: ar.backups.takeNow }).click();
   const files = page.getByTestId("backup-files");
   // Either the list of files, or an error whose text then shows in the test report.

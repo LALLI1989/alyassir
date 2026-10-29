@@ -1,7 +1,7 @@
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ChangeTopic, MeDto, PermissionCode } from "@alyassir/shared";
-import { adapter, lastUserInput, noteUserInput, type LinkState, type LoginResult } from "../adapters";
+import { adapter, lastUserInput, noteUserInput, type LinkState, type LoginResult, type RequestOptions } from "../adapters";
 import i18n from "./i18n";
 
 export const queryClient = new QueryClient({
@@ -15,7 +15,7 @@ export const queryClient = new QueryClient({
 const TOPIC_KEYS: Record<ChangeTopic, string[]> = {
   users: ["users", "directory"],
   me: ["me"],
-  settings: ["settings"],
+  settings: ["settings", "historical", "historicalChecklist"],
   messages: ["threads", "thread", "unread"],
   edit_requests: ["editRequests"],
   audit: ["audit"],
@@ -32,8 +32,8 @@ const TOPIC_KEYS: Record<ChangeTopic, string[]> = {
   backups: ["backups", "usb", "dashboard"],
 };
 
-export function api<T>(method: string, path: string, body?: unknown): Promise<T> {
-  return adapter.request<T>(method, path, body);
+export function api<T>(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<T> {
+  return adapter.request<T>(method, path, body, options);
 }
 
 interface SessionValue {

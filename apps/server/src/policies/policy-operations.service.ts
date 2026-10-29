@@ -52,6 +52,7 @@ import {
   type PolicyRow,
 } from "./policy-core";
 import { PolicyReader } from "./policy-reader";
+import { operationInstant, opDay } from "../common/clock";
 
 interface Locked {
   policy: PolicyRow;
@@ -140,7 +141,7 @@ export class PolicyOperationsService {
     const policy = await lockPolicy(tx, policyId);
     await this.access.require(tx, ctx, user, code, { entityType: "policy", entityId: policyId, operation });
     const periods = await lockPeriods(tx, policyId);
-    return { policy, periods, period: latest(periods), today: businessDay(new Date()) };
+    return { policy, periods, period: latest(periods), today: opDay() };
   }
 
   /**
@@ -579,7 +580,7 @@ export class PolicyOperationsService {
     const ids = periods.map((p) => p.id);
     await tx
       .update(schema.policyPeriods)
-      .set({ validityStatus: status, statusChangedAt: new Date(), updatedAt: new Date() })
+      .set({ validityStatus: status, statusChangedAt: operationInstant(), updatedAt: new Date() })
       .where(and(inArray(schema.policyPeriods.id, ids), eq(schema.policyPeriods.validityStatus, "active")));
   }
 

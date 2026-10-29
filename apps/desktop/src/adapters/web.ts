@@ -4,14 +4,16 @@
  */
 import { io, type ManagerOptions, type Socket, type SocketOptions } from "socket.io-client";
 import {
+  HEADER_AS_OF,
   HEADER_CLIENT_VERSION,
+  HEADER_LATE_REASON,
   HEADER_DEVICE,
   HEADER_USER_ACTIVE,
   type ChangeTopic,
   type LoginResponse,
   type RefreshResponse,
 } from "@alyassir/shared";
-import { asClientError, base64Bytes, userIsActive, type Adapter, type LinkState, type LoginResult } from "./types";
+import { asClientError, base64Bytes, operationHeaders, userIsActive, type Adapter, type RequestOptions, type LinkState, type LoginResult } from "./types";
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://127.0.0.1:4199";
 const VERSION = "0.1.0";
@@ -24,9 +26,13 @@ const endListeners = new Set<Listener<string>>();
 let tokens: { access: string; refresh: string } | null = null;
 let socket: Socket | null = null;
 
-function headers(): Record<string, string> {
+function headers(options?: RequestOptions, hasBody = true): Record<string, string> {
+  const op = operationHeaders(options);
   return {
-    "content-type": "application/json",
+    ...(op.asOf ? { [HEADER_AS_OF]: op.asOf } : {}),
+    ...(op.lateReason ? { [HEADER_LATE_REASON]: op.lateReason } : {}),
+    // Like the desktop app: a JSON type only with a body (an empty JSON body is refused).
+    ...(hasBody ? { "content-type": "application/json" } : {}),
     [HEADER_CLIENT_VERSION]: VERSION,
     [HEADER_DEVICE]: "BROWSER-TEST",
     [HEADER_USER_ACTIVE]: userIsActive() ? "1" : "0",
@@ -34,10 +40,10 @@ function headers(): Record<string, string> {
   };
 }
 
-async function raw(method: string, path: string, body?: unknown): Promise<{ status: number; data: unknown }> {
+async function raw(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<{ status: number; data: unknown }> {
   let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, { method, headers: headers(), ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    res = await fetch(`${BASE}${path}`, { method, headers: headers(options, body !== undefined), ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
   } catch {
     throw { code: "NETWORK" };
   }
@@ -111,10 +117,10 @@ export const webAdapter: Adapter = {
     return null;
   },
 
-  async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    let r = await raw(method, path, body);
+  async request<T>(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<T> {
+    let r = await raw(method, path, body, options);
     if (r.status === 401 && (r.data as { code?: string } | null)?.code === "UNAUTHENTICATED" && (await refresh())) {
-      r = await raw(method, path, body);
+      r = await raw(method, path, body, options);
     }
     if (r.status === 401) {
       const code = (r.data as { code?: string } | null)?.code ?? "UNAUTHENTICATED";

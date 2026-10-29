@@ -23,7 +23,7 @@ const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" 
 export const systemInfo = pgTable("system_info", {
   id: smallint("id").primaryKey(),
   minClientVersion: text("min_client_version").notNull(),
-  historicalMode: text("historical_mode").$type<"open" | "locked">().notNull(),
+  historicalMode: text("historical_mode").$type<"pending" | "open" | "locked">().notNull(),
   goLiveAt: ts("go_live_at"),
   createdAt: ts("created_at").notNull(),
 });
@@ -297,6 +297,7 @@ export const policyPeriods = pgTable("policy_periods", {
   createdBy: uuid("created_by"),
   updatedAt: ts("updated_at").notNull().defaultNow(),
   version: integer("version").notNull().default(1),
+  isHistorical: boolean("is_historical").notNull().default(false),
 });
 
 export type CertificateReason = "new_issue" | "renewal" | "policy_change" | "vehicle_change" | "plate_change" | "duplicate" | "fleet_add_vehicle";
@@ -335,6 +336,7 @@ export const policyOperations = pgTable("policy_operations", {
   isHistorical: boolean("is_historical").notNull().default(false),
   enteredAt: ts("entered_at").notNull().defaultNow(),
   createdAt: ts("created_at").notNull().defaultNow(),
+  lateEntryReason: text("late_entry_reason"),
 });
 
 export const periodVehicles = pgTable("period_vehicles", {
@@ -421,6 +423,7 @@ export const installments = pgTable("installments", {
   createdAt: ts("created_at").notNull().defaultNow(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
   version: integer("version").notNull().default(1),
+  manual: boolean("manual").notNull().default(false),
 });
 
 export type DebtSource = "direct" | "installment" | "rejected_payment" | "opening_balance" | "certificate_fee" | "price_increase";
@@ -441,6 +444,7 @@ export const debts = pgTable("debts", {
   createdBy: uuid("created_by"),
   updatedAt: ts("updated_at").notNull().defaultNow(),
   version: integer("version").notNull().default(1),
+  isHistorical: boolean("is_historical").notNull().default(false),
 });
 
 export type PaymentMethod = "cash" | "cheque" | "transfer" | "card";
@@ -521,7 +525,9 @@ export type TransactionKind =
   | "insurer_payment"
   | "bank_withdrawal"
   | "reversal"
-  | "count_adjustment";
+  | "count_adjustment"
+  | "opening_balance"
+  | "balance_correction";
 
 export const financialTransactions = pgTable("financial_transactions", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
@@ -649,6 +655,7 @@ export const transfers = pgTable("transfers", {
   reason: text("reason"),
   createdBy: uuid("created_by").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
+  isHistorical: boolean("is_historical").notNull().default(false),
 });
 
 export const insurerPayments = pgTable("insurer_payments", {
@@ -720,6 +727,7 @@ export const claims = pgTable("claims", {
   updatedBy: uuid("updated_by"),
   version: integer("version").notNull().default(1),
   archivedAt: ts("archived_at"),
+  isHistorical: boolean("is_historical").notNull().default(false),
 });
 
 export type ContactKind = "called" | "no_answer" | "promise" | "note" | "whatsapp";

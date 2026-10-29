@@ -101,6 +101,7 @@ export function Reports() {
       ...(has("user") && filters.userId ? { userId: filters.userId } : {}),
       ...(has("account") && filters.account ? { account: filters.account } : {}),
       ...(has("method") && filters.method ? { method: filters.method } : {}),
+      ...(has("origin") && filters.origin ? { origin: filters.origin } : {}),
     };
   };
   const run = useMutation({ mutationFn: () => api<ReportDto>("POST", `/api/reports/${code}`, body()) });
@@ -182,6 +183,11 @@ export function Reports() {
               {has("method") && (
                 <Select id="reportMethod" label={t("reports.filters.method")} value={filters.method ?? ""} onChange={(v) => set({ method: pick(v) as Filters["method"] })}>
                   {(["cash", "cheque", "transfer", "card"] as const).filter((m) => code !== "collections" || m !== "cash").map((m) => <option key={m} value={m}>{t(`finance.methods.${m}`)}</option>)}
+                </Select>
+              )}
+              {has("origin") && (
+                <Select id="reportOrigin" label={t("reports.filters.origin")} value={filters.origin ?? ""} onChange={(v) => set({ origin: pick(v) as Filters["origin"] })}>
+                  {(["historical", "live"] as const).map((o) => <option key={o} value={o}>{t(`reports.origins.${o}`)}</option>)}
                 </Select>
               )}
               <Button onClick={() => { setSaved(null); run.mutate(); }} disabled={run.isPending}>

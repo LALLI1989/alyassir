@@ -101,6 +101,14 @@ function MessageBody({ body, system }: { body: string; system: boolean }) {
       [t("finance.amount"), money(p.amountCents)],
       [t("cash.note"), text(p.note)],
     ];
+  } else if (parsed.event === "historical_finished") {
+    lines = [
+      [t("messages.events.historical_finished.policies"), text(p.policies)],
+      [t("messages.events.historical_finished.payments"), text(p.payments)],
+      [t("messages.events.historical_finished.debts"), `${text(p.debtsCreated)} · ${money(p.debtsCents)}`],
+      [t("messages.events.historical_finished.cheques"), text(p.chequesInCollection)],
+      [t("messages.events.historical_finished.backup"), text(p.backup)],
+    ];
   } else if (parsed.event === "backup_failed") {
     lines = [
       [t("backups.columns.kind"), t(`backups.kinds.${text(p.kind)}`, { defaultValue: text(p.kind) })],

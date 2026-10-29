@@ -142,19 +142,19 @@ try {
   Wipe-Everything
 
   if ($PreviousSetup) {
-    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 6A) ==="
+    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 6B) ==="
     $code = Install (@("/MODE=server", "/PORT=$Port") + $Bootstrap) $PreviousSetup
-    Check ($code -eq 0) "Phase 6A server installed"
+    Check ($code -eq 0) "Phase 6B server installed"
     $old = Login "gerant" $ManagerPass
-    Check ($old.status -eq 200) "the manager signs in on the Phase 6A server"
+    Check ($old.status -eq 200) "the manager signs in on the Phase 6B server"
     $oldToken = $old.body.accessToken
     $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "Nadia"; password = "nadia-pass" } $oldToken
     Check ($emp.status -eq 201) "an employee is created before the update"
     $msg = Api "POST" "/api/messages/threads" @{ subject = "قبل التحديث"; body = "رسالة محفوظة"; to = @($emp.body.id) } $oldToken
     Check ($msg.status -eq 201) "a message is sent before the update"
-    # A policy saved in Phase 6A: the manager receives the empty drawer, then 1 000 MAD in cash at issue.
+    # A policy saved in Phase 6B: the manager receives the empty drawer, then 1 000 MAD in cash at issue.
     $recv = Api "POST" "/api/drawer/receive" @{ shownCents = 0; countedCents = 0; reason = "" } $oldToken
-    Check ($recv.status -eq 200) "the manager receives the drawer on the Phase 6A server"
+    Check ($recv.status -eq 200) "the manager receives the drawer on the Phase 6B server"
     $cat = Api "GET" "/api/insurance/catalog" $null $oldToken
     $rma = @($cat.body.insurers | Where-Object { $_.name -eq "RMA" })[0].id
     $cat = Api "POST" "/api/insurance/types" @{ insurerId = $rma; name = "Assurance automobile"; requiresVehicle = $true; supportsFleet = $false } $oldToken
@@ -167,10 +167,10 @@ try {
     $today = (Get-Date).ToString("yyyy-MM-dd")
     $claim = Api "POST" "/api/claims" @{ policyId = $policy.body.id; accidentDate = $today; place = "Casablanca"; description = "Choc"; requestedCents = 500000 } $oldToken
     Check ($claim.status -eq 201) "a claim is declared before the update"
-    Check ((Api "GET" "/api/backups" $null $oldToken).status -eq 404) "the Phase 6A server has no backups screen yet"
+    Check ((Api "GET" "/api/historical" $null $oldToken).status -eq 404) "the Phase 6B server has no historical entry yet"
 
     $code = Install @()
-    Check ($code -eq 0) "update to Phase 6B succeeded"
+    Check ($code -eq 0) "update to Phase 7 succeeded"
     Check ((Get-ChildItem "$Data\backups\pre-update-*.dump").Count -ge 1) "automatic backup taken before updating the database"
     $new = Login "gerant" $ManagerPass
     Check ($new.status -eq 200 -and $new.body.me.role -eq "manager") "the manager still signs in after the update"
@@ -196,7 +196,12 @@ try {
     $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
     $bk = Api "GET" "/api/backups" $null $newToken
     Check ($bk.status -eq 200 -and $bk.body.enabled -eq $true -and $bk.body.dir -eq $BackupDir) "after the update the server takes backups into the same folder"
-    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "6") "the six database steps applied (Phases 1 to 6)"
+    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "7") "the seven database steps applied (Phases 1 to 7)"
+    $hist = Api "GET" "/api/historical" $null $newToken
+    Check ($hist.status -eq 200 -and $hist.body.mode -eq "locked") "a server that already worked live stays live after the update (no first-start question)"
+    $empToken = (Login "nadia" "nadia-pass").body.accessToken
+    $empClient = Api "POST" "/api/clients" @{ kind = "individual"; fullName = "Rachid APRES"; idType = "cin"; idNumber = "RA112233"; phone = "0663333333" } $empToken
+    Check ($empClient.body.code -eq "FORBIDDEN") "the employee is limited only by his permissions, not by the historical entry"
     Wipe-Everything
   }
 
@@ -248,6 +253,10 @@ try {
   $s = Login "gerant" $ManagerPass
   Check ($s.status -eq 200 -and $s.body.me.role -eq "manager" -and $s.body.me.language -eq "ar") "the manager typed in the installer signs in"
   $token = $s.body.accessToken
+  $hist = Api "GET" "/api/historical" $null $token
+  Check ($hist.status -eq 200 -and $hist.body.mode -eq "pending") "a new installation asks first: do you have old policies?"
+  $hist = Api "POST" "/api/historical/answer" @{ hasOldPolicies = $false } $token
+  Check ($hist.status -eq 200 -and $hist.body.mode -eq "locked") "the manager answers no: live work starts at once"
   $agency = Api "GET" "/api/settings/agency" $null $token
   $expectedName = "وكالة اليسير للتأمين"
   $gotCodes = (([int[]][char[]]"$($agency.body.nameAr)") | ForEach-Object { $_.ToString("X4") }) -join " "

@@ -8,6 +8,8 @@ import { schema } from "@alyassir/db";
 import { normalizeDocumentNumber } from "@alyassir/shared";
 import { ApiException } from "../common/errors";
 import type { Tx } from "../database.service";
+import { clock, isHistorical, opDay } from "../common/clock";
+import { businessDay, isInOrder } from "@alyassir/domain";
 
 export type PolicyRow = typeof schema.policies.$inferSelect;
 export type PeriodRow = typeof schema.policyPeriods.$inferSelect;
@@ -30,7 +32,24 @@ export async function claimIdempotencyKey(tx: Tx, key: string, hash: string): Pr
 export async function lockPolicy(tx: Tx, id: string): Promise<PolicyRow> {
   const [p] = await tx.select().from(schema.policies).where(eq(schema.policies.id, id)).for("update");
   if (!p) throw new ApiException("NOT_FOUND");
+  await assertInOrder(tx, id);
   return p;
+}
+
+/**
+ * Historical entry (SPEC 22): inside one policy, operations are entered oldest first. With an
+ * operation date in the past, nothing may come before the last operation or payment already entered.
+ */
+export async function assertInOrder(tx: Tx, policyId: string): Promise<void> {
+  const day = opDay();
+  if (day >= businessDay(new Date())) return;
+  const res = await tx.execute<{ last: string | null }>(sql`
+    SELECT to_char(greatest(
+      (SELECT max(op_date) FROM policy_operations WHERE policy_id = ${policyId}),
+      (SELECT max(received_on) FROM payments WHERE policy_id = ${policyId}),
+      (SELECT max(t.business_date) FROM financial_transactions t JOIN payments pm ON pm.id = t.payment_id WHERE pm.policy_id = ${policyId})
+    ), 'YYYY-MM-DD') AS last`);
+  if (!isInOrder(day, res.rows[0]?.last ?? null)) throw new ApiException("OUT_OF_ORDER", { message: res.rows[0]?.last ?? "" });
 }
 
 /** All periods of a policy, oldest first, locked. */
@@ -138,7 +157,7 @@ export async function insertOperation(
   const net = v.netCents ?? null;
   const [row] = await tx
     .insert(schema.policyOperations)
-    .values({
+    .values({ isHistorical: isHistorical(), lateEntryReason: clock().lateReason, 
       policyId: v.policyId,
       periodId: v.periodId,
       operationType: v.type,

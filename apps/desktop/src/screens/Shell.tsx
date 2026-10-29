@@ -5,6 +5,8 @@ import {
   Car,
   ChartColumn,
   DatabaseBackup,
+  History as HistoryIcon,
+  Zap,
   HandCoins,
   Landmark,
   Lock,
@@ -53,6 +55,8 @@ import { Messages } from "./Messages";
 import { ServerStatusPage } from "./ServerSetup";
 import { Settings } from "./Settings";
 import { Backups } from "./Backups";
+import { Historical } from "./Historical";
+import { FirstStartQuestion, HistoricalBar, useHistorical, useOperationDay } from "../components/historical";
 import { Reports } from "./Reports";
 import { UsbBanner, UsbBlockPage, useUsb } from "../components/backups";
 import { Users } from "./Users";
@@ -82,6 +86,8 @@ export type Page =
   | { kind: "reminders" }
   | { kind: "reports" }
   | { kind: "backups" }
+  | { kind: "historical" }
+  | { kind: "quickEntry" }
   | { kind: "module"; module: Module };
 
 /** Modules that have their screens already (Phases 2 and 3); the others are announced. */
@@ -156,6 +162,8 @@ export function Shell() {
   const unread = useQuery({ queryKey: ["unread"], queryFn: () => api<{ count: number }>("GET", "/api/messages/unread-count") }).data?.count ?? 0;
   const reminders = useReminders().data?.total ?? 0;
   const usb = useUsb().data;
+  const historical = useHistorical().data;
+  const [operationDay, setOperationDay] = useOperationDay(historical);
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => api<AgencySettingsDto>("GET", "/api/settings/agency") }).data;
   if (!me) return null;
 
@@ -238,6 +246,12 @@ export function Shell() {
     case "backups":
       content = <Backups />;
       break;
+    case "historical":
+      content = <Historical />;
+      break;
+    case "quickEntry":
+      content = <PolicyNew key="quick" quick onOpen={setPage} />;
+      break;
     case "module":
       content = <ComingSoon title={t(`modules.${page.module}`)} />;
       break;
@@ -245,6 +259,10 @@ export function Shell() {
 
   const is = (kind: Page["kind"], module?: Module) => page.kind === kind && (!module || (page.kind === "module" && page.module === module));
 
+  const askFirstStart = historical?.mode === "pending" && isManager;
+  let mainContent: ReactNode = content;
+  if (askFirstStart) mainContent = <FirstStartQuestion />;
+  if (usb?.state === "block") mainContent = <UsbBlockPage state={usb} />;
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-64 shrink-0 flex-col gap-4 border-e bg-card p-3">
@@ -254,6 +272,9 @@ export function Shell() {
         </div>
         <nav className="grid gap-1" aria-label={t("shell.sectionWork")}>
           <NavItem active={is("home")} icon={<HomeIcon />} label={t("shell.home")} onClick={() => setPage({ kind: "home" })} />
+          {isManager && historical?.mode === "open" && (
+            <NavItem active={is("quickEntry")} icon={<Zap />} label={t("shell.quickEntry")} onClick={() => setPage({ kind: "quickEntry" })} />
+          )}
           <NavItem active={is("reminders")} icon={<BellRing />} label={t("shell.reminders")} badge={reminders} onClick={() => setPage({ kind: "reminders" })} />
           <NavItem active={is("messages")} icon={<Mail />} label={t("shell.messages")} badge={unread} onClick={() => setPage({ kind: "messages" })} />
           <NavItem active={is("editRequests")} icon={<ClipboardList />} label={t("shell.editRequests")} onClick={() => setPage({ kind: "editRequests" })} />
@@ -274,6 +295,7 @@ export function Shell() {
             <NavItem active={is("insurance")} icon={<ShieldCheck />} label={t("shell.insurance")} onClick={() => setPage({ kind: "insurance" })} />
             <NavItem active={is("audit")} icon={<ScrollText />} label={t("shell.audit")} onClick={() => setPage({ kind: "audit" })} />
             <NavItem active={is("backups")} icon={<DatabaseBackup />} label={t("shell.backups")} onClick={() => setPage({ kind: "backups" })} />
+            <NavItem active={is("historical")} icon={<HistoryIcon />} label={t("shell.historical")} onClick={() => setPage({ kind: "historical" })} />
             <NavItem active={is("settings")} icon={<SettingsIcon />} label={t("shell.settings")} onClick={() => setPage({ kind: "settings" })} />
           </nav>
         )}
@@ -308,8 +330,11 @@ export function Shell() {
             </Button>
           </div>
         </header>
+        {historical && <HistoricalBar state={historical} day={operationDay} onDay={setOperationDay} />}
         {usb?.state === "remind" && <UsbBanner state={usb} />}
-        <main className="flex-1 overflow-auto p-5">{usb?.state === "block" ? <UsbBlockPage state={usb} /> : content}</main>
+        <main className="flex-1 overflow-auto p-5">
+          {mainContent}
+        </main>
       </div>
     </div>
   );

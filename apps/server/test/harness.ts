@@ -50,7 +50,8 @@ export interface TestDb {
   drop: () => Promise<void>;
 }
 
-export async function createTestDb(options: { bootstrap?: boolean } = {}): Promise<TestDb> {
+/** By default the test server works live (already went live); `historical` keeps the first-start question (Phase 7). */
+export async function createTestDb(options: { bootstrap?: boolean; historical?: boolean } = {}): Promise<TestDb> {
   const name = `alyassir_t_${randomBytes(6).toString("hex")}`;
   await admin(async (c) => {
     for (const [role, pw] of [[OWNER_ROLE, OWNER_PASSWORD], [APP_ROLE, APP_PASSWORD]] as const) {
@@ -70,6 +71,12 @@ export async function createTestDb(options: { bootstrap?: boolean } = {}): Promi
       language: "ar",
       backupDir: "C:\\Backups",
     });
+  }
+  if (!options.historical) {
+    const c = new Client({ connectionString: ownerUrl });
+    await c.connect();
+    await c.query("UPDATE system_info SET historical_mode = 'locked', go_live_at = now()");
+    await c.end();
   }
   return {
     name,
@@ -115,8 +122,8 @@ export function testBackupConfig(db: TestDb): NonNullable<ServerConfig["backup"]
   };
 }
 
-export async function startApp(options: { listen?: boolean; backup?: boolean } = {}): Promise<TestApp> {
-  const db = await createTestDb();
+export async function startApp(options: { listen?: boolean; backup?: boolean; historical?: boolean } = {}): Promise<TestApp> {
+  const db = await createTestDb({ historical: options.historical });
   const app = await createApp({
     ...(options.backup ? { backup: testBackupConfig(db) } : {}),
     host: "127.0.0.1",

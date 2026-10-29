@@ -118,7 +118,9 @@
     "insurance": "Paramètres d'assurance",
     "accounts": "Comptes",
     "reminders": "Rappels",
-    "backups": "Sauvegardes"
+    "backups": "Sauvegardes",
+    "historical": "Saisie de l'historique",
+    "quickEntry": "Saisie rapide"
   },
   "modules": {
     "clients": "Clients",
@@ -258,6 +260,15 @@
         "subject": "Copie USB du mois passée",
         "intro": "La copie USB de ce mois a été passée :",
         "month": "Mois"
+      },
+      "historical_finished": {
+        "subject": "Le travail réel a commencé",
+        "intro": "La saisie de l'historique est terminée et le travail réel a commencé. Récapitulatif :",
+        "policies": "Polices saisies",
+        "payments": "Paiements",
+        "debts": "Échéances devenues des dettes",
+        "cheques": "Moyens de paiement en cours d'encaissement",
+        "backup": "Sauvegarde"
       }
     }
   },
@@ -423,7 +434,12 @@
       "backup_folder": "Changement du dossier des sauvegardes",
       "backup_usb": "Copie USB",
       "backup_usb_skip": "Copie USB passée",
-      "system_restore_as_server": "Restauration comme serveur"
+      "system_restore_as_server": "Restauration comme serveur",
+      "historical_open": "Ouverture de la saisie de l'historique",
+      "historical_go_live": "Début du travail réel sans historique",
+      "historical_opening": "Solde d'ouverture",
+      "historical_correction": "Correction de solde",
+      "historical_finish": "Toutes les anciennes saisies sont faites"
     }
   },
   "settings": {
@@ -560,7 +576,17 @@
       "RESTORING": "Restauration d'une sauvegarde en cours. Attendez une minute puis réessayez.",
       "USB_BACKUP_REQUIRED": "La copie USB du mois est obligatoire avant de continuer.",
       "USB_NOT_AT_SERVER": "La copie USB se fait uniquement depuis l'ordinateur serveur.",
-      "USB_DRIVE_MISSING": "Clé absente, ou impossible d'y écrire."
+      "USB_DRIVE_MISSING": "Clé absente, ou impossible d'y écrire.",
+      "HISTORICAL_MODE_ACTIVE": "Le gérant saisit l'historique. Aucune opération avant le début du travail réel.",
+      "HISTORICAL_DATE_INVALID": "Date de l'opération refusée : du 01/05/2026 à aujourd'hui.",
+      "HISTORICAL_NOT_OPEN": "Le mode saisie de l'historique n'est pas ouvert.",
+      "HISTORICAL_NEGATIVE_DAYS": "Un jour a un solde négatif : corrigez-le avant de terminer.",
+      "OUT_OF_ORDER": "Dans une même police, les opérations se saisissent de la plus ancienne à la plus récente. Une opération plus récente existe déjà.",
+      "FINISH_PHRASE_WRONG": "La phrase n'est pas exacte. Tapez-la telle quelle.",
+      "LATE_ENTRY_NOT_ALLOWED": "Après le début du travail réel, une date ancienne n'est permise qu'au gérant pour une nouvelle police ou un renouvellement.",
+      "LATE_REASON_REQUIRED": "Écrivez le motif de la police en retard.",
+      "DRAWER_NOT_IN_HISTORICAL": "Pas de prise ni de clôture du tiroir pendant la saisie de l'historique.",
+      "INSTALMENTS_CUSTOM_INVALID": "Échéances saisies à la main incorrectes : dates dans l'ordre et parts égales au montant de la police."
     },
     "fields": {
       "required": "Ce champ est obligatoire.",
@@ -1167,7 +1193,9 @@
       "insurer_payment": "Paiement à une compagnie",
       "bank_withdrawal": "Retrait bancaire",
       "reversal": "Mouvement inverse",
-      "count_adjustment": "Ajustement après comptage"
+      "count_adjustment": "Ajustement après comptage",
+      "opening_balance": "Solde d'ouverture",
+      "balance_correction": "Correction de solde"
     },
     "reverse": "Mouvement inverse",
     "reversed": "Annulé",
@@ -1315,7 +1343,8 @@
       "status": "Statut",
       "user": "Employé",
       "account": "Compte",
-      "method": "Moyen de paiement"
+      "method": "Moyen de paiement",
+      "origin": "Origine"
     },
     "dueStatus": {
       "open": "Non réglé",
@@ -1429,6 +1458,10 @@
       "user": "Employé",
       "validity": "Validité",
       "vehicles": "Véhicules"
+    },
+    "origins": {
+      "historical": "Saisie de l'historique",
+      "live": "Travail réel"
     }
   },
   "backups": {
@@ -1518,5 +1551,52 @@
       "skipReason": "Motif",
       "skipHint": "Inscrit au journal d'audit ; le gérant est averti."
     }
+  },
+  "historical": {
+    "barManager": "Mode saisie de l'historique : tout ce que vous saisissez est enregistré à la date de l'opération.",
+    "barEmployee": "Le gérant saisit l'historique. Vous pouvez seulement consulter jusqu'au début du travail réel.",
+    "operationDay": "Date de l'opération",
+    "question": "Avez-vous d'anciennes polices ?",
+    "questionText": "Si l'agence travaillait avant aujourd'hui, choisissez « Oui » pour saisir tout son travail depuis le 01/05/2026 à sa vraie date, puis commencer le travail réel. Si elle commence aujourd'hui, choisissez « Non ».",
+    "yes": "Oui, je saisis d'abord l'historique",
+    "no": "Non, on commence le travail réel maintenant",
+    "title": "Saisie de l'historique",
+    "intro": "Saisissez tout le travail de l'agence depuis le 01/05/2026 comme si le programme tournait : choisissez la « Date de l'opération » dans la barre jaune, puis utilisez les écrans habituels ou la « Saisie rapide ». À la fin, cliquez le bouton en bas de page.",
+    "opening": "Solde d'ouverture au {{date}}",
+    "openingHint": "L'argent présent le premier jour de l'agence (souvent zéro).",
+    "checklist": "Contrôles avant de terminer",
+    "entered": "Saisi jusqu'ici : {{policies}} police(s), {{payments}} paiement(s), {{expenses}} dépense(s).",
+    "inProgram": "Dans le programme",
+    "actual": "Montant réel",
+    "correctionReason": "Motif de la correction",
+    "correct": "Corriger",
+    "negativeDays": "Jours terminés avec un solde négatif (à corriger avant de terminer, par exemple par le solde d'ouverture ou une opération oubliée) :",
+    "noNegative": "Aucun jour avec un solde négatif.",
+    "overdue": "Échéances en retard qui deviendront des dettes à la fin : {{count}} —",
+    "cheques": "Moyens de paiement en cours d'encaissement : {{count}} —",
+    "expired": "Polices expirées : {{count}}",
+    "finishTitle": "Toutes les anciennes saisies sont faites",
+    "finishHint": "Une sauvegarde est faite d'abord, puis le travail réel commence pour tous : les échéances en retard deviennent des dettes et vous recevez un message récapitulatif. Ensuite, plus de date ancienne, sauf une police en retard saisie par le gérant avec un motif.",
+    "negativeBlocks": "Il reste un jour avec un solde négatif : corrigez-le d'abord.",
+    "password": "Votre mot de passe",
+    "phraseLabel": "Tapez la phrase : {{phrase}}",
+    "phrase": "Toutes les anciennes saisies sont faites",
+    "finishButton": "Commencer le travail réel",
+    "finished": "Le travail réel a commencé. {{debts}} échéance(s) en retard sont devenues des dettes. Voir le message récapitulatif.",
+    "live": "Le travail réel a commencé le {{time}}.",
+    "helpTitle": "Corriger une ancienne erreur",
+    "helpLate": "Une police oubliée : « Nouvelle police » puis « Police en retard, à une date ancienne » avec le motif. Son argent entre dans le tiroir du jour.",
+    "helpCorrect": "Un montant faux dans les comptes : une correction à la date du jour avec un motif écrit (écran des comptes).",
+    "helpRestore": "Une grosse erreur : le gérant restaure une sauvegarde précédente depuis l'écran « Sauvegardes ».",
+    "quickTitle": "Saisie rapide des anciennes polices",
+    "quickIntro": "Enregistrez et passez à la suivante avec Ctrl+Entrée. Le dernier type d'assurance et la durée restent choisis. La date est la « Date de l'opération » de la barre jaune.",
+    "quickSaved": "Police {{number}} enregistrée. Saisissez la suivante.",
+    "saveNext": "Enregistrer et suivante (Ctrl+Entrée)",
+    "lateEntry": "Police en retard, à une date ancienne (gérant seulement)",
+    "lateDay": "Date de la police",
+    "lateReason": "Motif",
+    "lateHint": "L'argent entre dans le tiroir du jour. Inscrit au journal d'audit.",
+    "manualInstalments": "Saisir les échéances à la main, avec leurs anciennes valeurs",
+    "manualHint": "Pour chaque échéance : la date, la part de la prime, puis les frais. La somme des parts égale le montant de la police. Chaque échéance est marquée « saisie à la main »."
   }
 }

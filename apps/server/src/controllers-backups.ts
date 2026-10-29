@@ -2,6 +2,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put } from "@nestjs/common";
 import { backupDirSchema, backupSettingsSchema, restoreSchema, usbCopySchema, usbSkipSchema } from "@alyassir/shared";
 import { AllowedDuringUsbBlock } from "./backups/maintenance.guard";
+import { AllowedBeforeGoLive } from "./historical/historical.guard";
 import { BackupsService } from "./backups/backups.service";
 import { UsbService } from "./backups/usb.service";
 import { Authenticated, ManagerOnly } from "./common/access";
@@ -65,6 +66,7 @@ class BackupsController {
 }
 
 /** The monthly USB copy: everyone sees its state; the copy is made at the server computer. */
+@AllowedBeforeGoLive()
 @AllowedDuringUsbBlock()
 @Controller("backups/usb")
 class UsbController {

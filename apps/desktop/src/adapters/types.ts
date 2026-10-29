@@ -49,7 +49,7 @@ export interface Adapter {
 
   login(username: string, password: string): Promise<LoginResult>;
   logout(): Promise<void>;
-  request<T>(method: string, path: string, body?: unknown): Promise<T>;
+  request<T>(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<T>;
   /** Opens a wa.me link in the browser of the computer (SPEC 18.4). */
   openWhatsapp(url: string): Promise<void>;
   /** Saves a report file (Excel); returns where it was saved (desktop: the Downloads folder). */
@@ -84,4 +84,24 @@ export function base64Bytes(data: string): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(new ArrayBuffer(bin.length));
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+
+/** Historical entry (Phase 7): the operation date chosen by the manager, sent with every request. */
+let operationDay: string | null = null;
+export function setOperationDay(day: string | null): void {
+  operationDay = day;
+}
+export function currentOperationDay(): string | null {
+  return operationDay;
+}
+
+/** A late policy after going live: its old date and the manager's reason, for this request only. */
+export interface RequestOptions {
+  asOf?: string;
+  lateReason?: string;
+}
+
+export function operationHeaders(options?: RequestOptions): { asOf: string | null; lateReason: string | null } {
+  const asOf = options?.asOf ?? operationDay;
+  return { asOf: asOf ?? null, lateReason: options?.lateReason ? encodeURIComponent(options.lateReason) : null };
 }

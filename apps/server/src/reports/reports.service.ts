@@ -132,6 +132,7 @@ export class ReportsService {
     if (req.userId && def.filters.includes("user")) parts.push(`${tr(lang, "reports.filters.user")}: ${await name("users", "display_name", req.userId)}`);
     if (req.account && def.filters.includes("account")) parts.push(`${tr(lang, "reports.filters.account")}: ${word(lang, "finance.accounts", req.account)}`);
     if (req.method && def.filters.includes("method")) parts.push(`${tr(lang, "reports.filters.method")}: ${word(lang, "finance.methods", req.method)}`);
+    if (req.origin && def.filters.includes("origin")) parts.push(`${tr(lang, "reports.filters.origin")}: ${word(lang, "reports.origins", req.origin)}`);
     return parts.join(" · ");
   }
 }

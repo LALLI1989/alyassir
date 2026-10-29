@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
@@ -193,7 +193,9 @@ export class BackupsService {
       if (!row) return null;
       try {
         mkdirSync(dir, { recursive: true });
-        const name = kind === "daily" ? `alyassir-daily-${slot}.dump` : backupFileName(kind, now);
+        let name = kind === "daily" ? `alyassir-daily-${slot}.dump` : backupFileName(kind, now);
+        // Two copies in the same second (two restores in a row) never overwrite each other.
+        for (let s = 1; kind !== "daily" && kind !== "hourly" && existsSync(join(dir, name)) && s < 60; s++) name = backupFileName(kind, new Date(now.getTime() + s * 1000));
         const path = join(dir, name);
         const done = await dumpDatabase(cfg, path);
         await db

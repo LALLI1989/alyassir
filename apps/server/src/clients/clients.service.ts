@@ -21,6 +21,7 @@ import { DatabaseService, type DbOrTx } from "../database.service";
 import { PolicyReader } from "../policies/policy-reader";
 import { RealtimeService } from "../realtime/realtime.service";
 import { VehiclesService } from "../vehicles/vehicles.service";
+import { opDay } from "../common/clock";
 
 type Row = typeof schema.clients.$inferSelect;
 
@@ -88,7 +89,7 @@ export class ClientsService {
   /** Quick search by part of the name, by phone or by identity number (SPEC 9.1). */
   async search(q: ClientSearch): Promise<Page<ClientDto>> {
     const c = schema.clients;
-    const today = businessDay(new Date());
+    const today = opDay();
     const text = q.q.trim();
     const filters = [];
     if (!q.includeArchived) filters.push(sql`${c.archivedAt} IS NULL`);
@@ -116,7 +117,7 @@ export class ClientsService {
   }
 
   async get(id: string, db: DbOrTx = this.database.db): Promise<ClientDto> {
-    const today = businessDay(new Date());
+    const today = opDay();
     const [row] = await db.select({ client: schema.clients, active: this.activeCount(today) }).from(schema.clients).where(eq(schema.clients.id, id));
     if (!row) throw new ApiException("NOT_FOUND");
     return this.toDto(row.client, row.active);

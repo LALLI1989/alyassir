@@ -7,3 +7,4 @@ export * from "./cash";
 export * from "./followup";
 export * from "./periods";
 export * from "./backups";
+export * from "./historical";

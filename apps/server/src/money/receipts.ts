@@ -7,6 +7,7 @@ import { schema } from "@alyassir/db";
 import type { PaymentMethodCode, ReceiptDto, ReceiptLine } from "@alyassir/shared";
 import { ApiException } from "../common/errors";
 import type { Tx } from "../database.service";
+import { isHistorical, moneyInstant } from "../common/clock";
 
 /** Next number for the year: 2026-000001. Rolled back with the transaction, so no gap. */
 export async function nextReceiptNumber(tx: Tx, year: number): Promise<string> {
@@ -74,7 +75,7 @@ export async function issueReceipt(
   const policy = ctx.policy ? { number: ctx.policy.number, insurer: ctx.policy.insurer, type: ctx.policy.type } : null;
   const [r] = await tx
     .insert(schema.receipts)
-    .values({
+    .values({ isHistorical: isHistorical(), 
       number,
       kind: v.kind,
       policyId: ctx.policy?.id ?? null,
@@ -92,6 +93,7 @@ export async function issueReceipt(
         lines: v.lines,
       },
       issuedBy: v.userId,
+      issuedAt: moneyInstant(),
     })
     .returning({ id: schema.receipts.id });
   if (!r) throw new ApiException("INTERNAL");

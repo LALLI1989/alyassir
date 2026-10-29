@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { ChangeTopic } from "@alyassir/shared";
-import { asClientError, base64Bytes, userIsActive, type Adapter, type Health, type LinkError, type LinkState, type LoginResult, type Probe, type SavedServer } from "./types";
+import { asClientError, base64Bytes, operationHeaders, type RequestOptions, userIsActive, type Adapter, type Health, type LinkError, type LinkState, type LoginResult, type Probe, type SavedServer } from "./types";
 
 function asLinkError(error: unknown): LinkError {
   if (typeof error === "object" && error !== null && "code" in error) return error as LinkError;
@@ -47,8 +47,8 @@ export const tauriAdapter: Adapter = {
 
   login: (username, password) => api<LoginResult>("api_login", { username, password }),
   logout: () => api<void>("api_logout"),
-  request: <T>(method: string, path: string, body?: unknown) =>
-    api<T>("api_request", { method, path, body: body ?? null, userActive: userIsActive() }),
+  request: <T>(method: string, path: string, body?: unknown, options?: RequestOptions) =>
+    api<T>("api_request", { method, path, body: body ?? null, userActive: userIsActive(), ...operationHeaders(options) }),
   openWhatsapp: async (url: string) => {
     await invoke("open_whatsapp", { url });
   },

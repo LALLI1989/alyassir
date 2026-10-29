@@ -17,6 +17,7 @@ import { rethrowConstraint } from "../common/db-errors";
 import { ApiException } from "../common/errors";
 import { DatabaseService, type DbOrTx } from "../database.service";
 import { RealtimeService } from "../realtime/realtime.service";
+import { opDay } from "../common/clock";
 
 type Row = typeof schema.vehicles.$inferSelect;
 
@@ -61,7 +62,7 @@ export class VehiclesService {
 
   private async toDtos(db: DbOrTx, rows: Row[]): Promise<VehicleDto[]> {
     if (!rows.length) return [];
-    const today = businessDay(new Date());
+    const today = opDay();
     const ids = rows.map((r) => r.id);
     const h = schema.vehiclePlateHistory;
     const [history, users] = await Promise.all([
@@ -157,7 +158,7 @@ export class VehiclesService {
         if (before.version !== input.version) throw new ApiException("VERSION_CONFLICT");
         const plate = plateValues(input.plateType, input.plate);
         const plateChanged = plate.plateNormalized !== before.plateNormalized || plate.plateType !== before.plateType;
-        if (plateChanged && (await coverageOf(tx, id, businessDay(new Date())))) throw new ApiException("PLATE_CHANGE_NEEDS_OPERATION");
+        if (plateChanged && (await coverageOf(tx, id, opDay()))) throw new ApiException("PLATE_CHANGE_NEEDS_OPERATION");
         const values = { ...plate, fiscalPower: input.fiscalPower, fuel: input.fuel, brand: input.brand };
         await tx.update(schema.vehicles).set({ ...values, updatedAt: new Date(), version: before.version + 1 }).where(eq(schema.vehicles.id, id));
         if (plateChanged) {
@@ -186,7 +187,7 @@ export class VehiclesService {
       if (!before) throw new ApiException("NOT_FOUND");
       await this.access.require(tx, ctx, user, "vehicles.edit", { entityType: "vehicle", entityId: id, operation: "archive" });
       if (before.version !== version) throw new ApiException("VERSION_CONFLICT");
-      if (archived && (await coverageOf(tx, id, businessDay(new Date())))) throw new ApiException("HAS_ACTIVE_POLICY");
+      if (archived && (await coverageOf(tx, id, opDay()))) throw new ApiException("HAS_ACTIVE_POLICY");
       await tx
         .update(schema.vehicles)
         .set({ archivedAt: archived ? new Date() : null, updatedAt: new Date(), version: before.version + 1 })

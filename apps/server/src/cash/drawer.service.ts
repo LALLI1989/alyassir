@@ -13,6 +13,7 @@ import { MessagesService } from "../messages/messages.service";
 import { post } from "../money/ledger";
 import { messageManager } from "../money/payments.service";
 import { RealtimeService } from "../realtime/realtime.service";
+import { isHistorical } from "../common/clock";
 
 /** Serialises receiving and closing the drawer (taken before the session row and the accounts). */
 async function lockDrawerDesk(tx: Tx): Promise<void> {
@@ -131,6 +132,8 @@ export class DrawerService {
 
   /** Receive the drawer: open the session, or join the open one, with what was really found. */
   async receive(ctx: RequestContext, user: AuthUser, input: { shownCents: number; countedCents: number; reason: string }): Promise<DrawerStateDto> {
+    // Historical entry (SPEC 22): no drawer sessions for past days.
+    if (isHistorical()) throw new ApiException("DRAWER_NOT_IN_HISTORICAL");
     if (!this.handlesCash(user)) throw new ApiException("FORBIDDEN");
     let notifyIds: string[] = [];
     await this.database.db.transaction(async (tx) => {
@@ -239,6 +242,7 @@ export class DrawerService {
    * the people in it, the manager or a supervisor with that power, with a reason (SPEC 17.3).
    */
   async close(ctx: RequestContext, user: AuthUser, input: { sessionVersion: number; countedCents: number; reason: string }): Promise<ClosingDto> {
+    if (isHistorical()) throw new ApiException("DRAWER_NOT_IN_HISTORICAL");
     let closedId = "";
     let report = false;
     await this.database.db.transaction(async (tx) => {
@@ -351,7 +355,7 @@ export class DrawerService {
         SELECT business_date AS d, count(*) AS closings, max(closed_at) AS last_closed
         FROM drawer_sessions WHERE status = 'closed' GROUP BY business_date
       ), m AS (
-        SELECT business_date AS d, max(created_at) AS last_move FROM financial_transactions WHERE account_code = 'drawer' GROUP BY business_date
+        SELECT business_date AS d, max(created_at) AS last_move FROM financial_transactions WHERE account_code = 'drawer' AND NOT is_historical GROUP BY business_date
       )
       SELECT to_char(coalesce(c.d, m.d), 'YYYY-MM-DD') AS d, coalesce(c.closings, 0) AS closings, c.last_closed, m.last_move
       FROM c FULL JOIN m ON m.d = c.d

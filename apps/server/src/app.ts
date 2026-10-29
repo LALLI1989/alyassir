@@ -32,6 +32,9 @@ import { BACKUP_CONFIG, BackupsService } from "./backups/backups.service";
 import { BackupJobs } from "./backups/backup-jobs";
 import { MaintenanceGuard } from "./backups/maintenance.guard";
 import { UsbService } from "./backups/usb.service";
+import { HistoricalGuard } from "./historical/historical.guard";
+import { HistoricalService } from "./historical/historical.service";
+import { runInRequest } from "./common/clock";
 import { ErrorFilter } from "./common/error.filter";
 import type { ServerConfig } from "./config";
 import { CONTROLLERS } from "./controllers";
@@ -57,6 +60,8 @@ export class AppModule {
         // The maintenance guard (restore, overdue USB copy) runs before the access guard.
         { provide: APP_GUARD, useClass: MaintenanceGuard },
         { provide: APP_GUARD, useClass: AccessGuard },
+        // After the access guard (the user is known): the operation date of the request (SPEC 22).
+        { provide: APP_GUARD, useClass: HistoricalGuard },
         { provide: APP_FILTER, useClass: ErrorFilter },
         AuditService,
         AuthService,
@@ -88,6 +93,7 @@ export class AppModule {
         BackupsService,
         UsbService,
         BackupJobs,
+        HistoricalService,
       ],
     };
   }
@@ -108,6 +114,8 @@ export async function createApp(config: ServerConfig): Promise<NestFastifyApplic
   await app.register(rateLimit as never, { max: 1200, timeWindow: "1 minute" });
   // Browser tests only (the desktop app does not use CORS). All methods the API uses.
   if (config.testCorsOrigin) app.enableCors({ origin: config.testCorsOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"] });
+  // One store per request for its operation date (historical entry, SPEC 22), after the body is read.
+  app.getHttpAdapter().getInstance().addHook("preHandler", (_req: unknown, _reply: unknown, done: () => void) => runInRequest(done));
   app.setGlobalPrefix("api");
   app.enableShutdownHooks();
 

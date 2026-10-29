@@ -28,6 +28,7 @@ import { CollectionBadge, FinanceSetupFields, emptyFinance, toFinance, type Fina
 import { Code, Money, MoneyInput, ValidityBadge, formatDay, useCatalog, useOperationKey } from "../components/insurance";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import { api, useSession } from "../lib/session";
+import { useHistorical } from "../components/historical";
 import { ClientDialog, clientDisplayName } from "./Clients";
 import type { Page } from "./Shell";
 import { VehicleDialog } from "./Vehicles";
@@ -174,21 +175,71 @@ function ClientPicker({ onPick }: { onPick: (id: string) => void }) {
   );
 }
 
+const LAST_TYPE = "alyassir.quick.type";
+const LAST_DURATION = "alyassir.quick.duration";
+const remembered = (k: string) => {
+  try {
+    return localStorage.getItem(k) ?? "";
+  } catch {
+    return "";
+  }
+};
+const remember = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    // Only a convenience.
+  }
+};
+
+/**
+ * Quick entry of old policies (SPEC 22): the same form, saved with Ctrl+Enter, then empty again for
+ * the next one, keeping the last insurer and insurance type.
+ */
+function QuickEntry({ onOpen }: { onOpen: (page: Page) => void }) {
+  const { t } = useTranslation();
+  const [round, setRound] = useState(0);
+  const [last, setLast] = useState<PolicyDto | null>(null);
+  return (
+    <div className="grid gap-3">
+      {last && (
+        <Alert variant="success" data-testid="quick-saved">
+          {t("historical.quickSaved", { number: last.policyNumber })}{" "}
+          <button type="button" className="underline" onClick={() => onOpen({ kind: "policy", id: last.id })}>{t("common.open")}</button>
+        </Alert>
+      )}
+      <PolicyForm key={round} quick onOpen={onOpen} onSaved={(p) => { setLast(p); setRound((r) => r + 1); }} />
+    </div>
+  );
+}
+
 /** New policy in three parts: client, vehicle(s), policy (SPEC 11). */
-export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: string; onOpen: (page: Page) => void }) {
+export function PolicyNew({ clientId, onOpen, quick }: { clientId?: string; onOpen: (page: Page) => void; quick?: boolean }) {
+  return quick ? <QuickEntry onOpen={onOpen} /> : <PolicyForm clientId={clientId} onOpen={onOpen} />;
+}
+
+function PolicyForm({ clientId: initialClient, onOpen, quick, onSaved }: { clientId?: string; onOpen: (page: Page) => void; quick?: boolean; onSaved?: (p: PolicyDto) => void }) {
   const { t } = useTranslation();
   const fieldError = useFieldError();
-  const { can } = useSession();
+  const { can, isManager } = useSession();
+  const historical = useHistorical().data;
   const key = useOperationKey();
   const catalog = useCatalog().data;
   const [clientId, setClientId] = useState(initialClient ?? "");
-  const [typeId, setTypeId] = useState("");
+  const [typeId, setTypeId] = useState(() => (quick ? remembered(LAST_TYPE) : ""));
+  // After going live: a policy entered late with its old date, by the manager, with a reason (owner decision 29/10/2026).
+  const lateAllowed = isManager && historical?.mode === "locked";
+  const [late, setLate] = useState(false);
+  const [lateDay, setLateDay] = useState("");
+  const [lateReason, setLateReason] = useState("");
+  const lateReady = late && lateDay !== "" && lateReason.trim().length >= 3;
+  const lateOptions = lateReady ? { asOf: lateDay, lateReason: lateReason.trim() } : undefined;
   const [isFleet, setIsFleet] = useState(false);
   const [fleetName, setFleetName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [certificates, setCertificates] = useState<Record<string, string>>({});
   const [policyNumber, setPolicyNumber] = useState("");
-  const [durationId, setDurationId] = useState("");
+  const [durationId, setDurationId] = useState(() => (quick ? remembered(LAST_DURATION) : ""));
   const [typedEnd, setTypedEnd] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | null>(null);
   const [addingVehicle, setAddingVehicle] = useState(false);
@@ -202,9 +253,9 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
     if (!durationId && durations.length) setDurationId(durations.find((d) => d.months === 12)?.id ?? durations[0]?.id ?? "");
   }, [durations, durationId]);
   const preview = useQuery({
-    queryKey: ["datesPreview", durationId],
-    queryFn: () => api<DatesPreviewDto>("POST", "/api/policies/dates-preview", { coverageDurationId: durationId }),
-    enabled: Boolean(durationId),
+    queryKey: ["datesPreview", durationId, lateOptions?.asOf ?? ""],
+    queryFn: () => api<DatesPreviewDto>("POST", "/api/policies/dates-preview", { coverageDurationId: durationId }, lateOptions),
+    enabled: Boolean(durationId) && (!late || lateReady),
   });
   const freeVehicles = (file.data?.vehicles ?? []).filter((v) => !v.archived && !v.activePolicyId);
   const fleet = Boolean(type?.supportsFleet && isFleet);
@@ -229,8 +280,14 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
         fleetName,
         vehicles: type?.requiresVehicle ? selected.map((vehicleId) => ({ vehicleId, certificateNumber: certificates[vehicleId] ?? "" })) : [],
         finance: toFinance(finance),
-      }),
-    onSuccess: (p) => onOpen({ kind: "policy", id: p.id }),
+      }, lateOptions),
+    onSuccess: (p) => {
+      if (quick) {
+        remember(LAST_TYPE, typeId);
+        remember(LAST_DURATION, durationId);
+        onSaved?.(p);
+      } else onOpen({ kind: "policy", id: p.id });
+    },
   });
   const error = create.error ? asClientError(create.error) : null;
   const fields = fieldsOf(error);
@@ -245,8 +302,38 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-5">
-      <PageHeader title={t("policies.newTitle")} />
+    <form
+      onSubmit={submit}
+      className="grid gap-5"
+      onKeyDown={(e) => {
+        // Save and next (SPEC 22: quick entry).
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          if (clientId && type && !create.isPending) create.mutate();
+        }
+      }}
+    >
+      <PageHeader title={quick ? t("historical.quickTitle") : t("policies.newTitle")} intro={quick ? t("historical.quickIntro") : undefined} />
+      {lateAllowed && !quick && (
+        <Card>
+          <CardContent className="grid gap-3 pt-5">
+            <div className="flex items-center gap-2">
+              <Checkbox id="lateEntry" checked={late} onCheckedChange={(v) => setLate(v === true)} />
+              <Label htmlFor="lateEntry">{t("historical.lateEntry")}</Label>
+            </div>
+            {late && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field id="lateDay" label={t("historical.lateDay")}>
+                  <Input id="lateDay" type="date" dir="ltr" min={historical?.firstDay} max={historical?.today} value={lateDay} onChange={(e) => setLateDay(e.target.value)} />
+                </Field>
+                <Field id="lateReason" label={t("historical.lateReason")} hint={t("historical.lateHint")}>
+                  <Input id="lateReason" dir="auto" value={lateReason} onChange={(e) => setLateReason(e.target.value)} />
+                </Field>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <CardTitle>{t("policies.steps.client")}</CardTitle>
@@ -381,6 +468,7 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
               onChange={setFinance}
               totalCents={amount}
               instalmentsAllowed={instalmentsAllowed}
+              allowManual={isManager && historical?.mode === "open"}
               startDate={preview.data?.startDate ?? null}
               error={(k) => fieldError(fields[k])}
             />
@@ -391,8 +479,8 @@ export function PolicyNew({ clientId: initialClient, onOpen }: { clientId?: stri
       {error && error.code !== "VALIDATION" && <ErrorMessage error={error} />}
       {error?.code === "VALIDATION" && !fields.policyNumber && !fields.totalAmountCents && !fields.endDate && <ErrorMessage error={error} />}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => onOpen(initialClient ? { kind: "client", id: initialClient } : { kind: "policies" })}>{t("common.cancel")}</Button>
-        <Button type="submit" disabled={!clientId || !type || create.isPending}>{t("common.create")}</Button>
+        {!quick && <Button type="button" variant="outline" onClick={() => onOpen(initialClient ? { kind: "client", id: initialClient } : { kind: "policies" })}>{t("common.cancel")}</Button>}
+        <Button type="submit" disabled={!clientId || !type || create.isPending || (late && !lateReady)}>{quick ? t("historical.saveNext") : t("common.create")}</Button>
       </div>
 
       <Dialog open={addingVehicle} onOpenChange={setAddingVehicle}>

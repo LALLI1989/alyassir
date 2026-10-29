@@ -54,6 +54,13 @@ await owner.end();
 if (fresh) {
   await bootstrapData(ownerUrl, { agencyName: "وكالة اليسير للتأمين", managerUsername: "gerant", managerPassword: "gerant123", language: "ar", backupDir: "/tmp" });
 }
+// The demo works live (Phase 7: no "do you have old policies?" question here).
+{
+  const c = new Client({ connectionString: ownerUrl });
+  await c.connect();
+  await c.query("UPDATE system_info SET historical_mode = 'locked', go_live_at = coalesce(go_live_at, now()) WHERE historical_mode <> 'locked'");
+  await c.end();
+}
 
 const app = await createApp({
   host: "127.0.0.1",

@@ -3,6 +3,8 @@ import { and, count, desc, eq, gte, lte, type SQL } from "drizzle-orm";
 import { schema } from "@alyassir/db";
 import type { AuditEntryDto, AuditQuery, Page } from "@alyassir/shared";
 import type { RequestContext } from "../common/context";
+import { businessDay } from "@alyassir/domain";
+import { clock } from "../common/clock";
 import { DatabaseService, type DbOrTx } from "../database.service";
 
 export interface AuditEntry {
@@ -34,14 +36,20 @@ export class AuditService {
   constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
 
   async record(tx: DbOrTx, ctx: RequestContext, entry: AuditEntry, userId: string | null = ctx.user?.id ?? null): Promise<void> {
+    // Historical entry or a late policy (SPEC 22): the log keeps the real time of the entry ("at")
+    // and the operation date it was given.
+    const c = clock();
+    const dated = c.day !== businessDay(new Date());
+    const after = entry.after === undefined ? null : scrub(entry.after);
     await tx.insert(schema.auditLog).values({
       userId,
       action: entry.action,
       entityType: entry.entityType ?? null,
       entityId: entry.entityId ?? null,
       before: entry.before === undefined ? null : scrub(entry.before),
-      after: entry.after === undefined ? null : scrub(entry.after),
-      reason: entry.reason ?? null,
+      after: dated ? { ...(after && typeof after === "object" && !Array.isArray(after) ? (after as Record<string, unknown>) : { value: after }), operationDate: c.day } : after,
+      reason: entry.reason ?? c.lateReason ?? null,
+      isHistorical: c.historical,
       device: ctx.device,
       ip: ctx.ip,
     });

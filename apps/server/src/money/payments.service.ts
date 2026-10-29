@@ -23,6 +23,8 @@ import { MessagesService } from "../messages/messages.service";
 import { RealtimeService } from "../realtime/realtime.service";
 import { feeCents, FinanceService } from "./finance.service";
 import { lockAccounts, post } from "./ledger";
+import { moneyInstant, opDay } from "../common/clock";
+import { assertInOrder } from "../policies/policy-core";
 
 /** Automatic message to the manager (SPEC 8): a code as subject, the facts as data. */
 export async function messageManager(messages: MessagesService, tx: Tx, event: string, params: Record<string, unknown>): Promise<string | null> {
@@ -48,10 +50,10 @@ export class PaymentsService {
 
   /** Schedule shown before saving: the server computes it (SPEC 4.2). */
   async instalmentPreview(totalAmountCents: number, count: number, startDate: string | null, dates: (string | null)[]): Promise<InstalmentPreviewDto> {
-    const start = startDate ?? businessDay(new Date());
+    const start = startDate ?? opDay();
     const schedule = instalmentSchedule(totalAmountCents, count, start, await feeCents(this.database.db), dates);
     return {
-      instalments: schedule.map((x) => ({ seq: x.seq, dueDate: x.dueDate, amountCents: x.amountCents, feeCents: x.feeCents })),
+      instalments: schedule.map((x) => ({ seq: x.seq, dueDate: x.dueDate, baseCents: x.baseCents, amountCents: x.amountCents, feeCents: x.feeCents })),
       totalCents: schedule.reduce((s, x) => s + x.amountCents, 0),
     };
   }
@@ -69,10 +71,11 @@ export class PaymentsService {
         }
         const [policy] = await tx.select().from(schema.policies).where(eq(schema.policies.id, policyId)).for("update");
         if (!policy) throw new ApiException("NOT_FOUND");
+        await assertInOrder(tx, policyId);
         const [last] = await tx.select().from(schema.policyPeriods).where(eq(schema.policyPeriods.policyId, policyId)).orderBy(desc(schema.policyPeriods.seq)).limit(1);
         if (!last) throw new ApiException("INTERNAL");
         const { idempotencyKey: _k, ...line } = input;
-        const today = businessDay(new Date());
+        const today = opDay();
         const result = await this.finance.pay(tx, user, { id: policy.id, clientId: policy.clientId, isFleet: policy.fleetId !== null }, last.id, line, today, {
           idempotencyKey: input.idempotencyKey,
           requestHash: hash,
@@ -99,6 +102,7 @@ export class PaymentsService {
     await tx.select({ id: schema.policies.id }).from(schema.policies).where(eq(schema.policies.id, peek.policyId)).for("update");
     const [payment] = await tx.select().from(schema.payments).where(eq(schema.payments.id, paymentId)).for("update");
     if (!payment) throw new ApiException("NOT_FOUND");
+    await assertInOrder(tx, peek.policyId);
     return payment;
   }
 
@@ -111,9 +115,9 @@ export class PaymentsService {
       await lockAccounts(tx, ["bank"]);
       await tx
         .update(schema.payments)
-        .set({ status: "confirmed", confirmedAt: new Date(), confirmedBy: user.id, version: payment.version + 1 })
+        .set({ status: "confirmed", confirmedAt: moneyInstant(), confirmedBy: user.id, version: payment.version + 1 })
         .where(eq(schema.payments.id, paymentId));
-      await post(tx, { groupId: randomUUID(), account: "bank", amountCents: payment.amountCents, kind: "payment_confirmed", businessDate: businessDay(new Date()), userId: user.id, paymentId });
+      await post(tx, { groupId: randomUUID(), account: "bank", amountCents: payment.amountCents, kind: "payment_confirmed", businessDate: opDay(), userId: user.id, paymentId });
       await this.finance.refreshStatus(tx, payment.policyId);
       await this.audit.record(tx, ctx, { action: "payment.confirm", entityType: "payment", entityId: paymentId, before: { status: "in_collection" }, after: { status: "confirmed" } });
     });
@@ -133,7 +137,7 @@ export class PaymentsService {
       if (payment.version !== version) throw new ApiException("VERSION_CONFLICT");
       if (payment.status === "rejected") throw new ApiException("PAYMENT_ALREADY_REJECTED");
       if (payment.status === "collected") throw new ApiException("PAYMENT_NOT_IN_COLLECTION");
-      const today = businessDay(new Date());
+      const today = opDay();
       let bankBalance: number | null = null;
       if (payment.status === "confirmed") {
         await lockAccounts(tx, ["bank"]);
@@ -147,7 +151,7 @@ export class PaymentsService {
       }
       await tx
         .update(schema.payments)
-        .set({ status: "rejected", rejectedAt: new Date(), rejectedBy: user.id, rejectReason: reason, version: payment.version + 1 })
+        .set({ status: "rejected", rejectedAt: moneyInstant(), rejectedBy: user.id, rejectReason: reason, version: payment.version + 1 })
         .where(eq(schema.payments.id, paymentId));
       await this.finance.newDebt(tx, { clientId: payment.clientId, policyId: payment.policyId, periodId: payment.periodId, source: "rejected_payment", amountCents: payment.amountCents, debtDate: today, userId: user.id });
       if (payment.receiptId) {

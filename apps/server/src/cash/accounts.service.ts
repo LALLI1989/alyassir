@@ -12,6 +12,7 @@ import { ApiException } from "../common/errors";
 import { DatabaseService, type Tx } from "../database.service";
 import { lockAccounts, post } from "../money/ledger";
 import { RealtimeService } from "../realtime/realtime.service";
+import { isHistorical, opDay } from "../common/clock";
 
 type Reversible = "transfer" | "insurer_payment" | "withdrawal";
 
@@ -137,10 +138,10 @@ export class AccountsService {
       await this.database.db.transaction(async (tx) => {
         if (await this.once(tx, "transfers", input.idempotencyKey, hash)) return;
         await lockAccounts(tx, [input.from, input.to], { holder: user.id });
-        const today = businessDay(new Date());
+        const today = opDay();
         const [row] = await tx
           .insert(schema.transfers)
-          .values({ idempotencyKey: input.idempotencyKey, requestHash: hash, fromAccount: input.from, toAccount: input.to, amountCents: input.amountCents, businessDate: today, reference: input.reference, createdBy: user.id })
+          .values({ isHistorical: isHistorical(),  idempotencyKey: input.idempotencyKey, requestHash: hash, fromAccount: input.from, toAccount: input.to, amountCents: input.amountCents, businessDate: today, reference: input.reference, createdBy: user.id })
           .returning();
         if (!row) throw new ApiException("INTERNAL");
         const groupId = randomUUID();
@@ -169,10 +170,10 @@ export class AccountsService {
         const [insurer] = await tx.select().from(schema.insurers).where(eq(schema.insurers.id, input.insurerId));
         if (!insurer) throw new ApiException("NOT_FOUND");
         await lockAccounts(tx, [input.account], { holder: user.id });
-        const today = businessDay(new Date());
+        const today = opDay();
         const [row] = await tx
           .insert(schema.insurerPayments)
-          .values({ idempotencyKey: input.idempotencyKey, requestHash: hash, insurerId: input.insurerId, accountCode: input.account, amountCents: input.amountCents, businessDate: today, reference: input.reference, note: input.note, createdBy: user.id })
+          .values({ isHistorical: isHistorical(),  idempotencyKey: input.idempotencyKey, requestHash: hash, insurerId: input.insurerId, accountCode: input.account, amountCents: input.amountCents, businessDate: today, reference: input.reference, note: input.note, createdBy: user.id })
           .returning();
         if (!row) throw new ApiException("INTERNAL");
         await post(tx, { groupId: randomUUID(), account: input.account, amountCents: -input.amountCents, kind: "insurer_payment", businessDate: today, userId: user.id, insurerPaymentId: row.id, note: input.note || null });
@@ -194,10 +195,10 @@ export class AccountsService {
         const [reason] = await tx.select().from(schema.withdrawalReasons).where(eq(schema.withdrawalReasons.id, input.reasonId));
         if (!reason || reason.archivedAt) throw new ApiException("NOT_FOUND");
         await lockAccounts(tx, ["bank"]);
-        const today = businessDay(new Date());
+        const today = opDay();
         const [row] = await tx
           .insert(schema.bankWithdrawals)
-          .values({ idempotencyKey: input.idempotencyKey, requestHash: hash, reasonId: input.reasonId, amountCents: input.amountCents, businessDate: today, explanation: input.explanation, reference: input.reference, createdBy: user.id })
+          .values({ isHistorical: isHistorical(),  idempotencyKey: input.idempotencyKey, requestHash: hash, reasonId: input.reasonId, amountCents: input.amountCents, businessDate: today, explanation: input.explanation, reference: input.reference, createdBy: user.id })
           .returning();
         if (!row) throw new ApiException("INTERNAL");
         await post(tx, { groupId: randomUUID(), account: "bank", amountCents: -input.amountCents, kind: "bank_withdrawal", businessDate: today, userId: user.id, withdrawalId: row.id, note: input.explanation });
@@ -218,7 +219,7 @@ export class AccountsService {
     try {
       await this.database.db.transaction(async (tx) => {
         if (await this.once(tx, table, input.idempotencyKey, hash)) return;
-        const today = businessDay(new Date());
+        const today = opDay();
         const groupId = randomUUID();
         const originals = async (column: "transfer_id" | "insurer_payment_id" | "withdrawal_id") =>
           (await tx.execute<{ id: string; account_code: AccountCode; amount_cents: string }>(sql`SELECT id, account_code, amount_cents FROM financial_transactions WHERE ${sql.identifier(column)} = ${input.id}::uuid ORDER BY id`)).rows;
@@ -231,7 +232,7 @@ export class AccountsService {
           await lockAccounts(tx, [o.fromAccount, o.toAccount], { holder: user.id });
           const [row] = await tx
             .insert(schema.transfers)
-            .values({ idempotencyKey: input.idempotencyKey, requestHash: hash, fromAccount: o.toAccount, toAccount: o.fromAccount, amountCents: o.amountCents, businessDate: today, reference: o.reference, reversesId: o.id, reason: input.reason, createdBy: user.id })
+            .values({ isHistorical: isHistorical(),  idempotencyKey: input.idempotencyKey, requestHash: hash, fromAccount: o.toAccount, toAccount: o.fromAccount, amountCents: o.amountCents, businessDate: today, reference: o.reference, reversesId: o.id, reason: input.reason, createdBy: user.id })
             .returning();
           if (!row) throw new ApiException("INTERNAL");
           for (const t of await originals("transfer_id")) {
@@ -244,7 +245,7 @@ export class AccountsService {
           await lockAccounts(tx, [o.accountCode], { holder: user.id });
           const [row] = await tx
             .insert(schema.insurerPayments)
-            .values({ idempotencyKey: input.idempotencyKey, requestHash: hash, insurerId: o.insurerId, accountCode: o.accountCode, amountCents: o.amountCents, businessDate: today, reference: o.reference, note: o.note, reversesId: o.id, reason: input.reason, createdBy: user.id })
+            .values({ isHistorical: isHistorical(),  idempotencyKey: input.idempotencyKey, requestHash: hash, insurerId: o.insurerId, accountCode: o.accountCode, amountCents: o.amountCents, businessDate: today, reference: o.reference, note: o.note, reversesId: o.id, reason: input.reason, createdBy: user.id })
             .returning();
           if (!row) throw new ApiException("INTERNAL");
           for (const t of await originals("insurer_payment_id")) {
@@ -257,7 +258,7 @@ export class AccountsService {
           await lockAccounts(tx, ["bank"]);
           const [row] = await tx
             .insert(schema.bankWithdrawals)
-            .values({ idempotencyKey: input.idempotencyKey, requestHash: hash, reasonId: o.reasonId, amountCents: o.amountCents, businessDate: today, explanation: o.explanation, reference: o.reference, reversesId: o.id, reason: input.reason, createdBy: user.id })
+            .values({ isHistorical: isHistorical(),  idempotencyKey: input.idempotencyKey, requestHash: hash, reasonId: o.reasonId, amountCents: o.amountCents, businessDate: today, explanation: o.explanation, reference: o.reference, reversesId: o.id, reason: input.reason, createdBy: user.id })
             .returning();
           if (!row) throw new ApiException("INTERNAL");
           for (const t of await originals("withdrawal_id")) {

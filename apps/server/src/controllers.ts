@@ -31,7 +31,9 @@ import { CASH_CONTROLLERS } from "./controllers-cash";
 import { FOLLOWUP_CONTROLLERS } from "./controllers-followup";
 import { REPORT_CONTROLLERS } from "./controllers-reports";
 import { BACKUP_CONTROLLERS } from "./controllers-backups";
+import { HISTORICAL_CONTROLLERS } from "./controllers-historical";
 import { AllowedDuringUsbBlock } from "./backups/maintenance.guard";
+import { AllowedBeforeGoLive } from "./historical/historical.guard";
 import { AuthService } from "./auth/auth.service";
 import { LoginThrottle } from "./auth/login-throttle";
 import { Authenticated, ManagerOnly, Public } from "./common/access";
@@ -78,6 +80,7 @@ export class SystemController {
 }
 
 @AllowedDuringUsbBlock()
+@AllowedBeforeGoLive()
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -112,6 +115,7 @@ export class AuthController {
 }
 
 @AllowedDuringUsbBlock()
+@AllowedBeforeGoLive()
 @Controller("me")
 export class MeController {
   constructor(
@@ -267,6 +271,7 @@ export class AuditController {
   }
 }
 
+@AllowedBeforeGoLive()
 @Controller("messages")
 export class MessagesController {
   constructor(@Inject(MessagesService) private readonly messages: MessagesService) {}
@@ -363,4 +368,5 @@ export const CONTROLLERS = [
   ...FOLLOWUP_CONTROLLERS,
   ...REPORT_CONTROLLERS,
   ...BACKUP_CONTROLLERS,
+  ...HISTORICAL_CONTROLLERS,
 ];

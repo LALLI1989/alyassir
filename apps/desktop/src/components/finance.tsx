@@ -12,7 +12,7 @@ import {
   type PaymentMethodCode,
   type ReceiptDto,
 } from "@alyassir/shared";
-import { Badge, Button, Dialog, DialogContent, DialogFooter, Input, Label, NativeSelect, cn } from "@alyassir/ui";
+import { Badge, Button, Checkbox, Dialog, DialogContent, DialogFooter, Input, Label, NativeSelect, cn } from "@alyassir/ui";
 import { formatDateTime } from "../lib/format";
 import { api } from "../lib/session";
 import { Field } from "./common";
@@ -106,13 +106,17 @@ export interface FinanceDraft {
   count: 2 | 3 | 4;
   dates: string[];
   lines: LineDraft[];
+  /** Historical entry only: the old instalments typed by hand (date, part of the premium, fee). */
+  manual?: boolean;
+  custom?: { dueDate: string; baseCents: number | null; feeCents: number | null }[];
 }
 
 export const emptyFinance = (): FinanceDraft => ({ mode: "pay", count: 2, dates: [], lines: [] });
 
 export function toFinance(d: FinanceDraft): FinanceSetupInput {
+  const custom = d.manual && d.custom ? d.custom.slice(0, d.count).map((x) => ({ dueDate: x.dueDate, baseCents: x.baseCents ?? 0, feeCents: x.feeCents ?? 0 })) : undefined;
   return {
-    instalments: d.mode === "instalments" ? { count: d.count, dates: d.dates.slice(0, d.count).map((x) => x || null) } : null,
+    instalments: d.mode === "instalments" ? { count: d.count, dates: d.dates.slice(0, d.count).map((x) => x || null), ...(custom ? { custom } : {}) } : null,
     payments: d.lines.map(toLine),
   };
 }
@@ -121,13 +125,15 @@ export function toFinance(d: FinanceDraft): FinanceSetupInput {
  * How a new period is paid (SPEC 14.4): pay now (one or more payments, the rest becomes a direct
  * debt), or instalments (2, 3 or 4, computed by the server, dates changeable only now).
  */
-export function FinanceSetupFields({ value, onChange, totalCents, instalmentsAllowed, startDate, error }: {
+export function FinanceSetupFields({ value, onChange, totalCents, instalmentsAllowed, startDate, error, allowManual }: {
   value: FinanceDraft;
   onChange: (v: FinanceDraft) => void;
   totalCents: number | null;
   instalmentsAllowed: boolean;
   startDate: string | null;
   error: (k: string) => string | undefined;
+  /** Historical entry: the manager may type the old instalments as they were. */
+  allowManual?: boolean;
 }) {
   const { t } = useTranslation();
   const set = (patch: Partial<FinanceDraft>) => onChange({ ...value, ...patch });
@@ -154,7 +160,39 @@ export function FinanceSetupFields({ value, onChange, totalCents, instalmentsAll
               {[2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
             </NativeSelect>
           </Field>
-          {preview.data && (
+          {allowManual && preview.data && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="manualInstalments"
+                checked={value.manual === true}
+                onCheckedChange={(v) =>
+                  set({
+                    manual: v === true,
+                    // Start from the server's schedule, then the manager types the old values.
+                    custom: preview.data?.instalments.map((x) => ({ dueDate: x.dueDate, baseCents: x.baseCents, feeCents: x.feeCents })),
+                  })
+                }
+              />
+              <Label htmlFor="manualInstalments">{t("historical.manualInstalments")}</Label>
+            </div>
+          )}
+          {value.manual && value.custom && (
+            <div className="grid gap-2 rounded-md border p-3 text-sm" data-testid="manual-instalments">
+              {value.custom.slice(0, value.count).map((x, i) => {
+                const put = (patch: Partial<typeof x>) => set({ custom: value.custom?.map((y, j) => (j === i ? { ...y, ...patch } : y)) });
+                return (
+                  <div key={i} className="grid items-center gap-2 sm:grid-cols-4">
+                    <span>{t("finance.instalmentN", { n: i + 1 })}</span>
+                    <Input type="date" dir="ltr" aria-label={t("finance.dueDateN", { n: i + 1 })} value={x.dueDate} onChange={(e) => put({ dueDate: e.target.value })} />
+                    <MoneyInput id={`manualBase${i}`} cents={x.baseCents} onChange={(c) => put({ baseCents: c })} />
+                    <MoneyInput id={`manualFee${i}`} cents={x.feeCents} onChange={(c) => put({ feeCents: c })} />
+                  </div>
+                );
+              })}
+              <p className="text-xs text-muted-foreground">{t("historical.manualHint")}</p>
+            </div>
+          )}
+          {preview.data && !value.manual && (
             <div className="grid gap-2 rounded-md border p-3 text-sm" data-testid="instalments-preview">
               {preview.data.instalments.map((x, i) => (
                 <div key={x.seq} className="grid items-center gap-2 sm:grid-cols-3">

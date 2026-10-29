@@ -33,7 +33,7 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
     const tick = () => {
       if (this.running) return;
       this.running = true;
-      this.runDebtConversion(businessDay(new Date()))
+      this.liveTick()
         .catch((e: unknown) => this.logger.error(e instanceof Error ? e.message : String(e)))
         .finally(() => (this.running = false));
     };
@@ -46,8 +46,18 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
     if (this.timer) clearInterval(this.timer);
   }
 
-  /** Converts every instalment due on or before today - 3 that is still unpaid. Returns how many. */
-  async runDebtConversion(today: string): Promise<number> {
+  /** Nothing becomes a debt by itself before going live (SPEC 22: the real state is typed in). */
+  private async liveTick(): Promise<number> {
+    const [info] = await this.database.db.select({ mode: schema.systemInfo.historicalMode }).from(schema.systemInfo);
+    if (info?.mode !== "locked") return 0;
+    return this.runDebtConversion(businessDay(new Date()));
+  }
+
+  /**
+   * Converts every instalment due on or before today - 3 that is still unpaid. Returns how many.
+   * `silent`: no message per policy (going live sends one summary instead).
+   */
+  async runDebtConversion(today: string, opts: { silent?: boolean } = {}): Promise<number> {
     const db = this.database.db;
     const claimed = await db
       .insert(schema.jobRuns)
@@ -85,7 +95,7 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
         }
         await this.finance.refreshStatus(tx, policyId);
         if (converted.length) {
-          managerId = await messageManager(this.messages, tx, "instalments_to_debt", { items: converted });
+          if (!opts.silent) managerId = await messageManager(this.messages, tx, "instalments_to_debt", { items: converted });
           await tx.insert(schema.auditLog).values({ userId: null, action: "system.instalments_to_debt", entityType: "policy", entityId: policyId, after: { items: converted }, device: "server" });
         }
         items.push(...converted);

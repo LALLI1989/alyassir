@@ -11,6 +11,7 @@ import {
   chargeTarget,
   collectionStatus,
   creditAgainstDues,
+  customInstalmentsProblem,
   debtConversionDay,
   instalmentSchedule,
   isInstalmentAllowed,
@@ -35,6 +36,7 @@ import { ApiException } from "../common/errors";
 import { DatabaseService, type DbOrTx, type Tx } from "../database.service";
 import { lockAccounts, post } from "./ledger";
 import { issueReceipt, receiptContext } from "./receipts";
+import { isHistorical, moneyDayOf, opDay } from "../common/clock";
 
 type InstRow = typeof schema.installments.$inferSelect;
 type DebtRow = typeof schema.debts.$inferSelect;
@@ -124,7 +126,7 @@ export class FinanceService {
   async newDebt(tx: Tx, v: { clientId: string; policyId: string; periodId: string; source: DebtSource; amountCents: number; debtDate: string; userId: string | null; installmentId?: string }): Promise<DebtRow> {
     const [row] = await tx
       .insert(schema.debts)
-      .values({
+      .values({ isHistorical: isHistorical(), 
         clientId: v.clientId,
         policyId: v.policyId,
         periodId: v.periodId,
@@ -174,8 +176,16 @@ export class FinanceService {
     if (f.instalments) {
       if (!isInstalmentAllowed({ requiresVehicle: p.requiresVehicle, isFleet: p.policy.isFleet, months: p.months })) throw new ApiException("INSTALMENTS_NOT_ALLOWED");
       const custom = f.instalments.dates.slice(0, f.instalments.count);
-      const schedule = instalmentSchedule(p.premiumCents, f.instalments.count, p.startDate, fee, custom);
-      if (!areInstalmentDatesValid(p.startDate, schedule.map((x) => x.dueDate))) throw new ApiException("INSTALMENT_DATES_INVALID");
+      let schedule = instalmentSchedule(p.premiumCents, f.instalments.count, p.startDate, fee, custom);
+      let manual = false;
+      // Historical entry only (SPEC 22): the old instalments as they really were, marked "typed by hand".
+      if (f.instalments.custom) {
+        if (!isHistorical()) throw new ApiException("INSTALMENTS_CUSTOM_INVALID");
+        const problem = customInstalmentsProblem(p.premiumCents, p.startDate, f.instalments.count, f.instalments.custom);
+        if (problem) throw new ApiException(problem);
+        schedule = f.instalments.custom.map((x, i) => ({ seq: i + 1, dueDate: x.dueDate, baseCents: x.baseCents, feeCents: x.feeCents, amountCents: x.baseCents + x.feeCents }));
+        manual = true;
+      } else if (!areInstalmentDatesValid(p.startDate, schedule.map((x) => x.dueDate))) throw new ApiException("INSTALMENT_DATES_INVALID");
       const [plan] = await tx
         .insert(schema.installmentPlans)
         .values({ policyId: p.policy.id, periodId: p.periodId, count: f.instalments.count, premiumCents: p.premiumCents, feePerInstalment: fee, createdBy: user.id })
@@ -191,6 +201,7 @@ export class FinanceService {
           baseCents: x.baseCents,
           feeCents: x.feeCents,
           amountCents: x.amountCents,
+          manual,
         })),
       );
     } else {
@@ -260,14 +271,14 @@ export class FinanceService {
         paidCents: line.amountCents,
         remainingCents: remainingAfter,
         lines,
-        year: Number(today.slice(0, 4)),
+        year: Number(moneyDayOf(today).slice(0, 4)),
         userId: user.id,
       });
       receiptId = r.id;
     }
     const [payment] = await tx
       .insert(schema.payments)
-      .values({
+      .values({ isHistorical: isHistorical(), 
         idempotencyKey: o.idempotencyKey ?? null,
         requestHash: o.requestHash ?? null,
         policyId: policy.id,
@@ -277,7 +288,7 @@ export class FinanceService {
         method: line.method,
         amountCents: line.amountCents,
         status: cash ? "collected" : "in_collection",
-        receivedOn: today,
+        receivedOn: moneyDayOf(today),
         receivedBy: user.id,
         receiptId,
       })
@@ -375,7 +386,7 @@ export class FinanceService {
     }
     const [refund] = await tx
       .insert(schema.refunds)
-      .values({ policyId: policy.id, periodId, clientId: policy.clientId, operationId: v.operationId, amountCents: v.cents, accountCode: v.account as AccountCode, receiptId: v.receiptId, paidBy: user.id })
+      .values({ isHistorical: isHistorical(),  policyId: policy.id, periodId, clientId: policy.clientId, operationId: v.operationId, amountCents: v.cents, accountCode: v.account as AccountCode, receiptId: v.receiptId, paidBy: user.id })
       .returning();
     if (!refund) throw new ApiException("INTERNAL");
     await post(tx, { groupId: randomUUID(), account: v.account, amountCents: -v.cents, kind: "refund", businessDate: v.today, userId: user.id, refundId: refund.id, operationId: v.operationId });
@@ -428,7 +439,7 @@ export class FinanceService {
 
   async paymentDtos(db: DbOrTx, where: SQL | undefined, limit = 500, offset = 0): Promise<PaymentDto[]> {
     const p = schema.payments;
-    const today = businessDay(new Date());
+    const today = opDay();
     const rows = await db
       .select({
         payment: p,
@@ -507,7 +518,7 @@ export class FinanceService {
   /** The money page of a policy: latest period's schedule, payments, debts, receipts, what is possible. */
   async finance(policyId: string): Promise<PolicyFinanceDto> {
     const db = this.database.db;
-    const today = businessDay(new Date());
+    const today = opDay();
     const [policy] = await db.select().from(schema.policies).where(eq(schema.policies.id, policyId));
     if (!policy) throw new ApiException("NOT_FOUND");
     const periods = await db.select().from(schema.policyPeriods).where(eq(schema.policyPeriods.policyId, policyId)).orderBy(asc(schema.policyPeriods.seq));

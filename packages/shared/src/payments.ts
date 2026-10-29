@@ -191,6 +191,6 @@ export interface PolicyFinanceDto {
 }
 
 export interface InstalmentPreviewDto {
-  instalments: { seq: number; dueDate: string; amountCents: number; feeCents: number }[];
+  instalments: { seq: number; dueDate: string; baseCents: number; amountCents: number; feeCents: number }[];
   totalCents: number;
 }

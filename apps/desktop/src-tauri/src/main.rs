@@ -241,8 +241,26 @@ async fn api_request(
     path: String,
     body: Option<Value>,
     user_active: bool,
+    as_of: Option<String>,
+    late_reason: Option<String>,
 ) -> Result<Value, Value> {
     let shared = state.inner().clone();
+    // Historical entry (Phase 7): the operation date chosen by the manager, and the reason of a late policy.
+    let mut extra: Vec<(String, String)> = Vec::new();
+    if let Some(day) = as_of {
+        let ok = day.len() == 10 && day.chars().enumerate().all(|(i, c)| if i == 4 || i == 7 { c == '-' } else { c.is_ascii_digit() });
+        if !ok {
+            return Err(json!({ "code": "HISTORICAL_DATE_INVALID" }));
+        }
+        extra.push(("x-alyassir-as-of".into(), day));
+    }
+    if let Some(reason) = late_reason {
+        let ok = reason.len() <= 3000 && reason.chars().all(|c| c.is_ascii_alphanumeric() || "%-_.~!*'()".contains(c));
+        if !ok {
+            return Err(json!({ "code": "LATE_REASON_REQUIRED" }));
+        }
+        extra.push(("x-alyassir-late-reason".into(), reason));
+    }
     let mut refreshed = false;
     loop {
         let (server, access) = match access_token(&shared, false).await {
@@ -253,7 +271,9 @@ async fn api_request(
                 return Err(json!({ "code": code }));
             }
         };
-        let reply = server.send(&method, &path, body.as_ref(), &headers(Some(&access), user_active)).await.map_err(link_error)?;
+        let mut all = headers(Some(&access), user_active);
+        all.extend(extra.iter().cloned());
+        let reply = server.send(&method, &path, body.as_ref(), &all).await.map_err(link_error)?;
         if reply.status == 401 {
             let code = reply.body.get("code").and_then(|c| c.as_str()).unwrap_or("UNAUTHENTICATED").to_string();
             // An expired access token: refresh once and retry. Any other 401 ends the session.

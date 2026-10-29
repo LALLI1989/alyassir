@@ -41,6 +41,7 @@ import { PoliciesService } from "./policies/policies.service";
 import { PolicyOperationsService } from "./policies/policy-operations.service";
 import { PolicyReader } from "./policies/policy-reader";
 import { VehiclesService } from "./vehicles/vehicles.service";
+import { LateEntryAllowed } from "./historical/historical.guard";
 
 const uuid = new ParseUUIDPipe({ exceptionFactory: () => new ApiException("NOT_FOUND") });
 const vehicleQuery = z.object({ q: z.string().trim().max(30).default("") });
@@ -225,6 +226,7 @@ export class PoliciesController {
 
   /** The end date the server will use, shown before saving (the screen does not compute dates). */
   @RequirePermission("policies.view")
+  @LateEntryAllowed()
   @Post("dates-preview")
   @HttpCode(200)
   datesPreview(@Body() body: unknown) {
@@ -254,6 +256,7 @@ export class PoliciesController {
   }
 
   @RequirePermission("policies.create")
+  @LateEntryAllowed()
   @Post()
   create(@Body() body: unknown, @Ctx() ctx: RequestContext, @CurrentUser() user: AuthUser) {
     return this.policies.create(ctx, user, parse(createPolicySchema, body));
@@ -266,6 +269,7 @@ export class PoliciesController {
   }
 
   @PermissionOrGrant("policies.create")
+  @LateEntryAllowed()
   @Post(":id/renew")
   @HttpCode(200)
   renew(@Param("id", uuid) id: string, @Body() body: unknown, @Ctx() ctx: RequestContext, @CurrentUser() user: AuthUser) {

@@ -26,6 +26,7 @@ import {
 } from "@alyassir/shared";
 import { ApiException } from "../common/errors";
 import { DatabaseService, type DbOrTx } from "../database.service";
+import { opDay } from "../common/clock";
 
 interface SummaryRow extends Record<string, unknown> {
   id: string;
@@ -101,13 +102,13 @@ export class PolicyReader {
   }
 
   async summaries(by: { clientId: string }): Promise<PolicySummaryDto[]> {
-    const today = businessDay(new Date());
+    const today = opDay();
     return (await this.query([sql`client_id = ${by.clientId}`], today, 500, 0)).items;
   }
 
   /** Search by policy number, certificate, plate, client name, identity or phone. */
   async search(q: PolicySearch): Promise<Page<PolicySummaryDto>> {
-    const today = businessDay(new Date());
+    const today = opDay();
     const filters: SQL[] = [];
     if (q.validity !== "all") filters.push(sql`validity = ${q.validity}`);
     if (q.endingWithinDays !== undefined) filters.push(sql`validity = 'active' AND sort_end <= ${addDays(today, q.endingWithinDays)}`);
@@ -128,7 +129,7 @@ export class PolicyReader {
   }
 
   async get(id: string, db: DbOrTx = this.database.db): Promise<PolicyDto> {
-    const today = businessDay(new Date());
+    const today = opDay();
     const now = new Date();
     const [p] = await db.select().from(schema.policies).where(eq(schema.policies.id, id));
     if (!p) throw new ApiException("NOT_FOUND");

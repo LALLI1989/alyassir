@@ -9,6 +9,7 @@ import { rethrowConstraint } from "../common/db-errors";
 import { ApiException } from "../common/errors";
 import { DatabaseService, type DbOrTx } from "../database.service";
 import { RealtimeService } from "../realtime/realtime.service";
+import { isHistorical, opDay } from "../common/clock";
 
 const PROBLEM: Record<ClaimDateProblem, ErrorCode> = {
   accident_in_future: "CLAIM_ACCIDENT_IN_FUTURE",
@@ -135,14 +136,14 @@ export class ClaimsService {
       await this.database.db.transaction(async (tx) => {
         const [policy] = await tx.select().from(schema.policies).where(eq(schema.policies.id, input.policyId));
         if (!policy) throw new ApiException("NOT_FOUND");
-        const today = businessDay(new Date());
+        const today = opDay();
         const { periodId, problem } = await this.check(tx, policy.id, input.accidentDate, today);
         const late = problem === "late_declaration";
         if (problem && !late) throw new ApiException(PROBLEM[problem]);
         if (late && (user.role !== "manager" || !input.lateReason)) throw new ApiException("CLAIM_LATE_DECLARATION", { managerMay: true });
         const [row] = await tx
           .insert(schema.claims)
-          .values({
+          .values({ isHistorical: isHistorical(), 
             clientId: policy.clientId,
             policyId: policy.id,
             periodId,

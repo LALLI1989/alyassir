@@ -14,6 +14,7 @@ import { MessagesService } from "../messages/messages.service";
 import { lockAccounts, post, requireDrawerHolder } from "../money/ledger";
 import { messageManager } from "../money/payments.service";
 import { RealtimeService } from "../realtime/realtime.service";
+import { isHistorical, opDay } from "../common/clock";
 
 type ExpenseRow = typeof schema.expenses.$inferSelect;
 
@@ -132,15 +133,16 @@ export class ExpensesService {
         }
         const [cat] = await tx.select().from(schema.expenseCategories).where(and(eq(schema.expenseCategories.id, input.categoryId), isNull(schema.expenseCategories.archivedAt)));
         if (!cat) throw new ApiException("NOT_FOUND");
-        const sessionId = await requireDrawerHolder(tx, user.id);
+        // Historical entry: no drawer session for past days (SPEC 22).
+        const sessionId = isHistorical() ? null : await requireDrawerHolder(tx, user.id);
         const [row] = await tx
           .insert(schema.expenses)
-          .values({
+          .values({ isHistorical: isHistorical(), 
             idempotencyKey: input.idempotencyKey,
             requestHash: hash,
             categoryId: input.categoryId,
             amountCents: input.amountCents,
-            expenseDate: businessDay(new Date()),
+            expenseDate: opDay(),
             note: input.note,
             createdBy: user.id,
             sessionId,
@@ -203,7 +205,7 @@ export class ExpensesService {
       if (expenseNext(row.status, "approve") === null) throw new ApiException("EXPENSE_NOT_PENDING");
       // The cash already left the drawer when the expense was recorded: no need to receive it again.
       await lockAccounts(tx, [input.account]);
-      await post(tx, { groupId: randomUUID(), account: input.account, amountCents: -row.amountCents, kind: "expense", businessDate: businessDay(new Date()), userId: user.id, expenseId: id });
+      await post(tx, { groupId: randomUUID(), account: input.account, amountCents: -row.amountCents, kind: "expense", businessDate: opDay(), userId: user.id, expenseId: id });
       await tx
         .update(schema.expenses)
         .set({ status: "approved", accountCode: input.account, decidedAt: new Date(), decidedBy: user.id, updatedAt: new Date(), version: row.version + 1 })
@@ -245,7 +247,7 @@ export class ExpensesService {
           account: row.accountCode,
           amountCents: row.amountCents,
           kind: "expense_reversed",
-          businessDate: businessDay(new Date()),
+          businessDate: opDay(),
           userId: user.id,
           expenseId: id,
           reverses: original?.id ?? null,

@@ -27,6 +27,6 @@ pnpm + Turborepo monorepo. Desktop: Tauri 2 + React + TypeScript strict + Tailwi
 
 ## Where we are
 Phases 0 to 7 approved and merged (6A dashboard/reports, 6B backups/restore and 7 historical entry mode on 29/10/2026).
-Next: Phase 8 per `docs/SPEC.md` (needs a plan and the owner's approval first). The repository is public (free CI minutes).
+All phases of `docs/SPEC.md` section 21 are done (Phase 7 is the last). Any new work needs a plan and the owner's approval first. The repository is public (free CI minutes).
 Owner decisions: `docs/SPEC.md` section 30.
 All testing happens on GitHub (CI), never on the owner's computer.

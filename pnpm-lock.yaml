@@ -102,6 +102,9 @@ importers:
       '@alyassir/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@alyassir/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@alyassir/shared':
         specifier: workspace:*
         version: link:../../packages/shared

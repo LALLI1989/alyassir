@@ -26,12 +26,13 @@ const endListeners = new Set<Listener<string>>();
 let tokens: { access: string; refresh: string } | null = null;
 let socket: Socket | null = null;
 
-function headers(options?: RequestOptions): Record<string, string> {
+function headers(options?: RequestOptions, hasBody = true): Record<string, string> {
   const op = operationHeaders(options);
   return {
     ...(op.asOf ? { [HEADER_AS_OF]: op.asOf } : {}),
     ...(op.lateReason ? { [HEADER_LATE_REASON]: op.lateReason } : {}),
-    "content-type": "application/json",
+    // Like the desktop app: a JSON type only with a body (an empty JSON body is refused).
+    ...(hasBody ? { "content-type": "application/json" } : {}),
     [HEADER_CLIENT_VERSION]: VERSION,
     [HEADER_DEVICE]: "BROWSER-TEST",
     [HEADER_USER_ACTIVE]: userIsActive() ? "1" : "0",
@@ -42,7 +43,7 @@ function headers(options?: RequestOptions): Record<string, string> {
 async function raw(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<{ status: number; data: unknown }> {
   let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, { method, headers: headers(options), ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    res = await fetch(`${BASE}${path}`, { method, headers: headers(options, body !== undefined), ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
   } catch {
     throw { code: "NETWORK" };
   }

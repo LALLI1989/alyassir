@@ -26,6 +26,7 @@ pnpm + Turborepo monorepo. Desktop: Tauri 2 + React + TypeScript strict + Tailwi
 - Code and comments in English.
 
 ## Where we are
-Phases 0 to 4 approved and merged (Phase 4 on 28/10/2026). Phase 5 in progress on branch `phase-5`.
-Do not start Phase 6 before the owner approves Phase 5. Owner decisions: `docs/SPEC.md` section 30.
+Phases 0 to 5 approved and merged (Phase 5 on 28/10/2026). Phase 6 is split in two (owner decision 28/10/2026):
+6A (dashboard and reports) in progress on branch `phase-6`; 6B (backups, restore, restore as server) after 6A is approved.
+Do not start 6B before the owner approves 6A. Owner decisions: `docs/SPEC.md` section 30.
 All testing happens on GitHub (CI), never on the owner's computer.

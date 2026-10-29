@@ -11,7 +11,7 @@ import {
   type LoginResponse,
   type RefreshResponse,
 } from "@alyassir/shared";
-import { asClientError, userIsActive, type Adapter, type LinkState, type LoginResult } from "./types";
+import { asClientError, base64Bytes, userIsActive, type Adapter, type LinkState, type LoginResult } from "./types";
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://127.0.0.1:4199";
 const VERSION = "0.1.0";
@@ -96,6 +96,19 @@ export const webAdapter: Adapter = {
 
   async openWhatsapp(url: string): Promise<void> {
     window.open(url, "_blank", "noopener");
+  },
+
+  async saveFile(fileName: string, dataBase64: string): Promise<string | null> {
+    const blob = new Blob([base64Bytes(dataBase64)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    return null;
   },
 
   async request<T>(method: string, path: string, body?: unknown): Promise<T> {

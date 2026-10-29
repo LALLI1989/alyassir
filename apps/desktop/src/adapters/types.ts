@@ -52,6 +52,8 @@ export interface Adapter {
   request<T>(method: string, path: string, body?: unknown): Promise<T>;
   /** Opens a wa.me link in the browser of the computer (SPEC 18.4). */
   openWhatsapp(url: string): Promise<void>;
+  /** Saves a report file (Excel); returns where it was saved (desktop: the Downloads folder). */
+  saveFile(fileName: string, dataBase64: string): Promise<string | null>;
 
   onChange(listener: (topic: ChangeTopic) => void): () => void;
   onLink(listener: (state: LinkState) => void): () => void;
@@ -75,4 +77,11 @@ export function asClientError(error: unknown): ClientError {
     return error as ClientError;
   }
   return { code: "NETWORK" };
+}
+
+export function base64Bytes(data: string): Uint8Array<ArrayBuffer> {
+  const bin = atob(data);
+  const out = new Uint8Array(new ArrayBuffer(bin.length));
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }

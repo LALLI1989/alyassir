@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { ChangeTopic } from "@alyassir/shared";
-import { asClientError, userIsActive, type Adapter, type Health, type LinkError, type LinkState, type LoginResult, type Probe, type SavedServer } from "./types";
+import { asClientError, base64Bytes, userIsActive, type Adapter, type Health, type LinkError, type LinkState, type LoginResult, type Probe, type SavedServer } from "./types";
 
 function asLinkError(error: unknown): LinkError {
   if (typeof error === "object" && error !== null && "code" in error) return error as LinkError;
@@ -52,6 +52,7 @@ export const tauriAdapter: Adapter = {
   openWhatsapp: async (url: string) => {
     await invoke("open_whatsapp", { url });
   },
+  saveFile: (fileName: string, dataBase64: string) => invoke<string>("save_download", { fileName, data: Array.from(base64Bytes(dataBase64)) }),
 
   onChange: (listener) => subscribe<{ topic: ChangeTopic }>("alyassir://changed", (p) => listener(p.topic)),
   onLink: (listener) => subscribe<{ state: LinkState }>("alyassir://link", (p) => listener(p.state)),

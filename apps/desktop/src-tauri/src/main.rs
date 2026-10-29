@@ -113,6 +113,31 @@ fn open_whatsapp(url: String) -> Result<(), String> {
     result.map(|_| ()).map_err(|e| e.to_string())
 }
 
+/// Saves a report file (Excel) in the Downloads folder of the computer and returns its full path.
+/// Only plain file names ending in .xlsx; an existing file is never replaced (a number is added).
+#[tauri::command]
+fn save_download(app: AppHandle, file_name: String, data: Vec<u8>) -> Result<String, String> {
+    let safe = !file_name.is_empty()
+        && file_name.len() <= 100
+        && file_name.ends_with(".xlsx")
+        && file_name.chars().all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
+        && !file_name.starts_with('.');
+    if !safe {
+        return Err("invalid file name".into());
+    }
+    let dir = app.path().download_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let stem = file_name.trim_end_matches(".xlsx");
+    let mut path = dir.join(&file_name);
+    let mut n = 1;
+    while path.exists() {
+        path = dir.join(format!("{stem} ({n}).xlsx"));
+        n += 1;
+    }
+    fs::write(&path, data).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 async fn probe_server(address: String) -> Result<Probe, LinkError> {
     server_link::probe(&address).await
@@ -307,7 +332,8 @@ fn main() {
             api_login,
             api_logout,
             api_request,
-            open_whatsapp
+            open_whatsapp,
+            save_download
         ])
         .run(tauri::generate_context!())
         .expect("error while running Alyassir");

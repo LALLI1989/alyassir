@@ -25,6 +25,9 @@
   --border: oklch(0.9 0.008 230);
   --input: oklch(0.88 0.01 230);
   --ring: oklch(0.55 0.09 220);
+  /* Chart series (checked for colour-blind separation and contrast). */
+  --chart-1: #1f6fa8;
+  --chart-2: #c46a12;
 }
 
 .dark {
@@ -43,6 +46,8 @@
   --border: oklch(0.32 0.012 240);
   --input: oklch(0.36 0.012 240);
   --ring: oklch(0.72 0.11 220);
+  --chart-1: #3d8fd1;
+  --chart-2: #c96f17;
 }
 
 @theme inline {
@@ -113,5 +118,36 @@
   .print-root .receipt-sheet .border-b,
   .print-root .receipt-sheet .border-t {
     border-color: #000;
+  }
+}
+
+/* Reports (SPEC 19): printed on A4 landscape, so a wide table fits; "Save as PDF" in the print window. */
+@page report {
+  size: A4 landscape;
+  margin: 10mm;
+}
+@media print {
+  .print-root.report-print {
+    page: report;
+  }
+  .report-print table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+  }
+  .report-print th,
+  .report-print td {
+    border: 1px solid #999;
+    padding: 2px 4px;
+    text-align: start;
+  }
+  .report-print .overflow-auto {
+    overflow: visible !important;
+  }
+  .report-print thead {
+    display: table-header-group;
+  }
+  .report-print tr {
+    break-inside: avoid;
   }
 }

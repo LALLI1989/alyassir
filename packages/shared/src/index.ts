@@ -12,3 +12,4 @@ export * from "./cash";
 export * from "./followup";
 export * from "./reports";
 export * from "./backups";
+export * from "./historical";

@@ -39,7 +39,12 @@ export type PaymentLineInput = z.infer<typeof paymentLineSchema>;
 /** How a new period is paid: now (one or more payments), in instalments, the rest as a direct debt. */
 export const financeSetupSchema = z.object({
   instalments: z
-    .object({ count: z.union([z.literal(2), z.literal(3), z.literal(4)]), dates: z.array(isoDate.nullable()).max(4).default([]) })
+    .object({
+      count: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+      dates: z.array(isoDate.nullable()).max(4).default([]),
+      /** Historical entry only: the old instalments as they were (due date, part of the premium, fee). */
+      custom: z.array(z.object({ dueDate: isoDate, baseCents: amount, feeCents: z.number().int().min(0).max(100_000_000) })).max(4).optional(),
+    })
     .nullable()
     .default(null),
   payments: z.array(paymentLineSchema).max(10).default([]),

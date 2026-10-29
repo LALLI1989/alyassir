@@ -277,7 +277,7 @@ try {
   $token = (Login "gerant" $ManagerPass).body.accessToken
   $before = Api "POST" "/api/clients" @{ kind = "individual"; fullName = "Karim AVANT"; idType = "cin"; idNumber = "K123456"; phone = "0661111111" } $token
   Check ($before.status -eq 201) "a client is saved before the backup"
-  $taken = Api "POST" "/api/backups" $null $token 120
+  $taken = Api "POST" "/api/backups" @{} $token 120
   $manual = @($taken.body.files | Where-Object { $_.kind -eq "manual" })[0]
   Check ($taken.status -eq 200 -and $manual -and $manual.checked -eq $true) "a backup is taken now with the server's own PostgreSQL tools (checked)"
   $dump = Get-ChildItem "$BackupDir\manual\*.dump" | Select-Object -First 1

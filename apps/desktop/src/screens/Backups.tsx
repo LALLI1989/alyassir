@@ -168,7 +168,7 @@ function DeleteDialog({ file, onClose }: { file: BackupFileDto; onClose: () => v
   const { t } = useTranslation();
   const client = useQueryClient();
   const remove = useMutation({
-    mutationFn: () => api<BackupsDto>("DELETE", `/api/backups/${file.id}`),
+    mutationFn: () => api<BackupsDto>("DELETE", `/api/backups/${file.id}`, {}),
     onSuccess: (dto) => {
       client.setQueryData(["backups"], dto);
       onClose();
@@ -199,7 +199,7 @@ export function Backups() {
   const [restoring, setRestoring] = useState<BackupFileDto | null>(null);
   const [deleting, setDeleting] = useState<BackupFileDto | null>(null);
   const take = useMutation({
-    mutationFn: () => api<BackupsDto>("POST", "/api/backups"),
+    mutationFn: () => api<BackupsDto>("POST", "/api/backups", {}),
     onSuccess: (dto) => client.setQueryData(["backups"], dto),
   });
   const data = list.data;

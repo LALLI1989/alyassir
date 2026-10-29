@@ -29,6 +29,7 @@ import { INSURANCE_CONTROLLERS } from "./controllers-insurance";
 import { PAYMENT_CONTROLLERS } from "./controllers-payments";
 import { CASH_CONTROLLERS } from "./controllers-cash";
 import { FOLLOWUP_CONTROLLERS } from "./controllers-followup";
+import { REPORT_CONTROLLERS } from "./controllers-reports";
 import { AuthService } from "./auth/auth.service";
 import { LoginThrottle } from "./auth/login-throttle";
 import { Authenticated, ManagerOnly, Public } from "./common/access";
@@ -356,4 +357,5 @@ export const CONTROLLERS = [
   ...PAYMENT_CONTROLLERS,
   ...CASH_CONTROLLERS,
   ...FOLLOWUP_CONTROLLERS,
+  ...REPORT_CONTROLLERS,
 ];

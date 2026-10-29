@@ -3,6 +3,7 @@ import {
   Building2,
   Banknote,
   Car,
+  ChartColumn,
   HandCoins,
   Landmark,
   Lock,
@@ -50,6 +51,7 @@ import { Home } from "./Home";
 import { Messages } from "./Messages";
 import { ServerStatusPage } from "./ServerSetup";
 import { Settings } from "./Settings";
+import { Reports } from "./Reports";
 import { Users } from "./Users";
 
 export type Page =
@@ -75,6 +77,7 @@ export type Page =
   | { kind: "accounts" }
   | { kind: "claims" }
   | { kind: "reminders" }
+  | { kind: "reports" }
   | { kind: "module"; module: Module };
 
 /** Modules that have their screens already (Phases 2 and 3); the others are announced. */
@@ -87,6 +90,7 @@ const BUILT: Partial<Record<Module, { page: Page; icon: ReactNode; pages: Page["
   expenses: { page: { kind: "expenses" }, icon: <Receipt />, pages: ["expenses"] },
   closing: { page: { kind: "closing" }, icon: <Lock />, pages: ["closing"] },
   claims: { page: { kind: "claims" }, icon: <Siren />, pages: ["claims"] },
+  reports: { page: { kind: "reports" }, icon: <ChartColumn />, pages: ["reports"] },
 };
 
 const THEME_KEY = "alyassir.theme";
@@ -221,6 +225,9 @@ export function Shell() {
       break;
     case "accounts":
       content = me.canSeeSafeAndBank ? <Accounts /> : null;
+      break;
+    case "reports":
+      content = <Reports />;
       break;
     case "module":
       content = <ComingSoon title={t(`modules.${page.module}`)} />;

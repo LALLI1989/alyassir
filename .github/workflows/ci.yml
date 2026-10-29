@@ -164,14 +164,14 @@ jobs:
           name: Alyassir-Setup
           path: installer/output/*.exe
           retention-days: 30
-      # The Phase 4 installer, to test updating a server installed by the previous phase.
-      - name: Download the previous installer (Phase 4)
+      # The Phase 5 installer, to test updating a server installed by the previous phase.
+      - name: Download the previous installer (Phase 5)
         id: previous
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: Alyassir-Setup
-          run-id: 40751107505
+          run-id: 40774558484
           github-token: ${{ github.token }}
           path: installer/previous
       - name: Test installer end to end
@@ -179,7 +179,7 @@ jobs:
         run: |
           $setup = (Get-ChildItem installer/output/*.exe | Select-Object -First 1).FullName
           $previous = (Get-ChildItem installer/previous/*.exe -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-          if (-not $previous) { Write-Host "::warning title=Update test::Phase 4 installer not available; update-from-Phase-4 scenario skipped" }
+          if (-not $previous) { Write-Host "::warning title=Update test::Phase 5 installer not available; update-from-Phase-5 scenario skipped" }
           ./installer/tests/e2e.ps1 -Setup $setup -PreviousSetup "$previous"
       - uses: actions/upload-artifact@v4
         if: always()

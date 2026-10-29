@@ -26,6 +26,8 @@ import { ExpensesService } from "./cash/expenses.service";
 import { ClaimsService } from "./followup/claims.service";
 import { ContactsService } from "./followup/contacts.service";
 import { RemindersService } from "./followup/reminders.service";
+import { DashboardService } from "./reports/dashboard.service";
+import { ReportsService } from "./reports/reports.service";
 import { ErrorFilter } from "./common/error.filter";
 import type { ServerConfig } from "./config";
 import { CONTROLLERS } from "./controllers";
@@ -74,6 +76,8 @@ export class AppModule {
         ClaimsService,
         ContactsService,
         RemindersService,
+        ReportsService,
+        DashboardService,
       ],
     };
   }

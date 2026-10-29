@@ -16,6 +16,7 @@
   "dependencies": {
     "@alyassir/db": "workspace:*",
     "@alyassir/domain": "workspace:*",
+    "@alyassir/i18n": "workspace:*",
     "@alyassir/shared": "workspace:*",
     "@fastify/helmet": "^13.0.1",
     "@fastify/rate-limit": "^10.3.0",

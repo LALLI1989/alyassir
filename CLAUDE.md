@@ -26,7 +26,7 @@ pnpm + Turborepo monorepo. Desktop: Tauri 2 + React + TypeScript strict + Tailwi
 - Code and comments in English.
 
 ## Where we are
-Phases 0 to 5 and 6A (dashboard and reports) approved and merged (6A on 29/10/2026).
-6B (backups, monthly USB copy, restore, restore as server) in progress on branch `phase-6b`, plan approved 29/10/2026.
+Phases 0 to 6 approved and merged (6A dashboard/reports and 6B backups/restore on 29/10/2026).
+Next: Phase 7 (historical entry mode, SPEC 22) — plan to be approved by the owner first.
 Owner decisions: `docs/SPEC.md` section 30.
 All testing happens on GitHub (CI), never on the owner's computer.

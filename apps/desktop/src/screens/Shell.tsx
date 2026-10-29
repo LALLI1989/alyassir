@@ -155,7 +155,8 @@ export function Shell() {
   if (!me) return null;
 
   const agencyName = settings ? (i18n.language === "fr" ? settings.nameFr : settings.nameAr) : t("app.short");
-  const visibleModules = MODULES.filter((m) => can(`${m}.view` as PermissionCode));
+  // "Financial dashboard" is a permission for the money cards of the home page, not a screen of its own.
+  const visibleModules = MODULES.filter((m) => m !== "finance_dashboard" && can(`${m}.view` as PermissionCode));
   const roleBadge = isManager ? t("shell.managerBadge") : me.isSupervisor ? t("shell.supervisorBadge") : t("shell.employeeBadge");
 
   let content: ReactNode;

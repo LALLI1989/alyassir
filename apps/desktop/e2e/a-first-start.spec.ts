@@ -67,7 +67,7 @@ test("quick entry of a policy of 01/05/2026, saved with Ctrl+Enter", async ({ pa
   await expect(page.getByLabel(ar.policies.pickClient)).toHaveValue("");
 });
 
-test("all old entries are done: checklist, password and sentence, then live work", async ({ page }) => {
+test("all old entries are done: checklist, password and sentence, then live work", async ({ page, request }) => {
   await signIn(page);
   await page.getByRole("button", { name: ar.shell.historical }).click();
   await expect(page.getByTestId("balances")).toBeVisible();
@@ -85,5 +85,13 @@ test("all old entries are done: checklist, password and sentence, then live work
   await page.getByRole("button", { name: new RegExp(ar.messages.events.historical_finished.subject) }).click();
   await expect(page.getByText(ar.messages.events.historical_finished.intro)).toBeVisible();
   await expect(page.getByText(ar.messages.events.historical_finished.policies)).toBeVisible();
-  await expect(page.getByRole("button", { name: new RegExp(ar.shell.messages) }).first()).not.toContainText(/\d/);
+  // Nothing else unread for the manager (the later tests count the employee's message).
+  const headers = { "x-alyassir-client-version": "0.1.0" };
+  const token = (await (await request.post(`${API}/api/auth/login`, { data: { username: "manager", password: "manager-pass" }, headers })).json()).accessToken as string;
+  await expect
+    .poll(async () => {
+      const threads = (await (await request.get(`${API}/api/messages/threads`, { headers: { ...headers, authorization: `Bearer ${token}` } })).json()) as { subject: string; unread: number }[];
+      return threads.filter((x) => x.unread > 0).map((x) => x.subject);
+    })
+    .toEqual([]);
 });

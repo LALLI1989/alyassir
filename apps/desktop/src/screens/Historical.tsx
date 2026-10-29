@@ -86,8 +86,9 @@ function Finish({ list }: { list: HistoricalChecklistDto }) {
   const [phrase, setPhrase] = useState("");
   const finish = useMutation({
     mutationFn: () => api<FinishHistoricalDto>("POST", "/api/historical/finish", { password, phrase }),
-    onSuccess: () => {
+    onSuccess: (done) => {
       // Live work now: no more operation date on the requests.
+      client.setQueryData<HistoricalStateDto>(["historical"], (s) => (s ? { ...s, mode: "locked", goLiveAt: done.goLiveAt, opening: null } : s));
       setOperationDay(null);
       void client.invalidateQueries();
     },

@@ -172,6 +172,10 @@ export const agencySettings = pgTable("agency_settings", {
   remindInstalmentDays: integer("remind_instalment_days").notNull().default(3),
   remindChequeDays: integer("remind_cheque_days").notNull().default(3),
   remindClaimDays: integer("remind_claim_days").notNull().default(7),
+  workDays: smallint("work_days").array().notNull(),
+  workStart: text("work_start").notNull(),
+  workEnd: text("work_end").notNull(),
+  usbTime: text("usb_time").notNull(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
   updatedBy: uuid("updated_by"),
   version: integer("version").notNull(),
@@ -742,6 +746,37 @@ export const whatsappTemplates = pgTable("whatsapp_templates", {
   version: integer("version").notNull().default(1),
 });
 
+// ---------------------------------------------------------------- Phase 6B
+export type BackupKind = "hourly" | "daily" | "usb" | "manual" | "safety";
+
+export const backupRuns = pgTable("backup_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind").$type<BackupKind>().notNull(),
+  slot: text("slot").notNull(),
+  status: text("status").$type<"running" | "ok" | "failed">().notNull().default("running"),
+  fileName: text("file_name"),
+  sizeBytes: bigint("size_bytes", { mode: "number" }),
+  sha256: text("sha256"),
+  error: text("error"),
+  requestedBy: uuid("requested_by"),
+  startedAt: ts("started_at").notNull().defaultNow(),
+  finishedAt: ts("finished_at"),
+});
+
+export const usbBackupGates = pgTable("usb_backup_gates", {
+  month: text("month").primaryKey(),
+  dueOn: day("due_on").notNull(),
+  remindFrom: ts("remind_from").notNull(),
+  blockFrom: ts("block_from").notNull(),
+  doneAt: ts("done_at"),
+  doneBy: uuid("done_by"),
+  doneFile: text("done_file"),
+  skippedAt: ts("skipped_at"),
+  skippedBy: uuid("skipped_by"),
+  skipReason: text("skip_reason"),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
+
 export const allTables = {
   systemInfo,
   sequences,
@@ -794,4 +829,6 @@ export const allTables = {
   claims,
   contactLogs,
   whatsappTemplates,
+  backupRuns,
+  usbBackupGates,
 };

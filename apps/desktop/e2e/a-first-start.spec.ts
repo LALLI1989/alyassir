@@ -34,7 +34,7 @@ async function prepare(request: APIRequestContext) {
   const rma = catalog.insurers.find((i: { name: string }) => i.name === "RMA").id as string;
   expect((await request.post(`${API}/api/insurance/types`, { headers: auth, data: { insurerId: rma, name: "Assurance moto", requiresVehicle: true, supportsFleet: false } })).ok()).toBe(true);
   const client = await (await request.post(`${API}/api/clients`, { headers: auth, data: { kind: "individual", fullName: "Hamid OLD", idType: "cin", idNumber: "HD123456", phone: "0660000001" } })).json();
-  expect((await request.post(`${API}/api/vehicles`, { headers: auth, data: { clientId: client.id, plateType: "ww", plate: "WW778899", fiscalPower: 6, fuel: "petrol", brand: "Peugeot" } })).ok()).toBe(true);
+  expect((await request.post(`${API}/api/vehicles`, { headers: auth, data: { clientId: client.id, plateType: "ww", plate: "WW990011", fiscalPower: 6, fuel: "petrol", brand: "Peugeot" } })).ok()).toBe(true);
 }
 
 test("first start: the manager says there are old policies; the yellow bar appears", async ({ page }) => {
@@ -55,8 +55,8 @@ test("quick entry of a policy of 01/05/2026, saved with Ctrl+Enter", async ({ pa
   await page.getByLabel(ar.policies.pickClient).fill("Hamid");
   await page.getByRole("button", { name: /Hamid OLD/ }).click();
   await page.getByLabel(ar.policies.type, { exact: true }).selectOption({ label: "RMA — Assurance moto" });
-  await page.getByRole("checkbox", { name: "WW778899" }).check();
-  await page.getByLabel(`${ar.policies.certificate} WW778899`).fill("ATT-OLD-001");
+  await page.getByRole("checkbox", { name: "WW990011" }).check();
+  await page.getByLabel(`${ar.policies.certificate} WW990011`).fill("ATT-OLD-001");
   await page.getByLabel(ar.policies.number, { exact: true }).fill("POL-OLD-001");
   await page.getByLabel(ar.policies.amount, { exact: true }).fill("2000");
   await expect(page.getByText("01/05/2026").first()).toBeVisible();
@@ -85,4 +85,5 @@ test("all old entries are done: checklist, password and sentence, then live work
   await page.getByRole("button", { name: new RegExp(ar.messages.events.historical_finished.subject) }).click();
   await expect(page.getByText(ar.messages.events.historical_finished.intro)).toBeVisible();
   await expect(page.getByText(ar.messages.events.historical_finished.policies)).toBeVisible();
+  await expect(page.getByRole("button", { name: new RegExp(ar.shell.messages) }).first()).not.toContainText(/\d/);
 });

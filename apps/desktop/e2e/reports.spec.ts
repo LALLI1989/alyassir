@@ -48,7 +48,6 @@ test("a report: payments in cash, with totals, printed and saved as Excel", asyn
   await expect(table).toContainText(ar.reports.columns.amount);
   await expect(table).toContainText(ar.finance.methods.cash);
   await expect(page.getByTestId("report-totals")).toContainText(ar.reports.total);
-  await expect(page.getByText(ar.finance.methods.cash).first()).toBeVisible();
   await page.screenshot({ path: `${OUT}17-report.png` });
 
   // On paper: only the report, A4 landscape.

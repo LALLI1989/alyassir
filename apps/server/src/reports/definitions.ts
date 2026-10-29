@@ -50,8 +50,8 @@ const DAY = (col: string) => sql.raw(`to_char(${col}, 'YYYY-MM-DD')`);
 const AT = (col: string) => sql.raw(`to_char(${col} AT TIME ZONE 'Africa/Casablanca', 'YYYY-MM-DD HH24:MI')`);
 const LOCAL_DAY = (col: string) => sql.raw(`(${col} AT TIME ZONE 'Africa/Casablanca')::date`);
 
-function where(parts: (SQL | false | undefined | null)[]): SQL {
-  const list = parts.filter((p): p is SQL => !!p);
+function where(parts: (SQL | false | "" | undefined | null)[]): SQL {
+  const list = parts.filter((p): p is SQL => p instanceof Object);
   return list.length ? sql.join(list, sql` AND `) : sql`true`;
 }
 

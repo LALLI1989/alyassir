@@ -51,7 +51,9 @@ export function useOperationDay(state: HistoricalStateDto | undefined): [string 
 /** The yellow bar, always visible during the historical entry (SPEC 22). */
 export function HistoricalBar({ state, day, onDay }: { state: HistoricalStateDto; day: string | null; onDay: (d: string) => void }) {
   const { t } = useTranslation();
-  if (state.mode === "locked") return null;
+  const { isManager } = useSession();
+  // Locked: live work. Pending, for the manager: the first-start question fills the screen.
+  if (state.mode === "locked" || (state.mode === "pending" && isManager)) return null;
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-warning/40 bg-warning/20 px-5 py-2 text-sm" data-testid="historical-bar" role="status">
       <span className="font-medium">{day ? t("historical.barManager") : t("historical.barEmployee")}</span>

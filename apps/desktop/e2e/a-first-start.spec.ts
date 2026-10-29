@@ -41,6 +41,8 @@ test("first start: the manager says there are old policies; the yellow bar appea
   await signIn(page);
   const first = page.getByTestId("first-start");
   await expect(first).toContainText(ar.historical.question);
+  // The question alone: no yellow bar yet for the manager.
+  await expect(page.getByTestId("historical-bar")).toBeHidden();
   await page.screenshot({ path: `${OUT}22-first-start.png` });
   await first.getByRole("button", { name: ar.historical.yes }).click();
   await expect(page.getByTestId("historical-bar")).toContainText(ar.historical.barManager);

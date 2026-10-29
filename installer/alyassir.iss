@@ -47,6 +47,19 @@ ar.ModeDesc=هل هذا حاسوب خادم أم حاسوب مستخدم؟
 ar.ModeSub=اختر «حاسوب خادم» لجهاز واحد فقط في الوكالة. هو الذي يحفظ البيانات ويجب أن يبقى مشغّلًا طوال الدوام.
 ar.ModeServer=حاسوب خادم (يحفظ البيانات، ويمكن العمل عليه أيضًا)
 ar.ModeUser=حاسوب مستخدم (يتصل بالخادم فقط)
+ar.ModeRestore=استعادة كخادم: خادم جديد من نسخة احتياطية (بعد تعطل الخادم القديم)
+ar.RestoreTitle=ملف النسخة الاحتياطية
+ar.RestoreDesc=النسخة التي تعود منها بيانات الوكالة
+ar.RestoreSub=اختر ملف النسخة (.dump) من Google Drive أو من مفتاح USB. يدخل المدير بعد ذلك بكلمة مروره القديمة. أبقِ الخادم القديم مطفأً.
+ar.RestoreFile=ملف النسخة:
+ar.ErrRestoreFile=اختر ملف نسخة موجودًا.
+ar.Restoring=جارٍ إعداد الخادم واستعادة بيانات الوكالة من النسخة… قد يستغرق ذلك بضع دقائق.
+ar.RestoreDoneTitle=تمت استعادة الخادم
+ar.RestoreDoneNote=على كل حاسوب مستخدم: افتح «الاتصال بالخادم» واكتب العنوان الجديد وقارن البصمة الجديدة.
+ar.Err_E_RESTORE_FILE=ملف النسخة غير موجود.
+ar.Err_E_RESTORE_CORRUPT=ملف النسخة تالف أو غير كامل. اختر نسخة أخرى.
+ar.Err_E_RESTORE_NEWER=هذه النسخة من إصدار أحدث من البرنامج. ثبّت الإصدار الأحدث ثم أعد المحاولة.
+ar.Err_E_RESTORE=تعذّرت استعادة البيانات من النسخة.
 ar.ServerTitle=إعدادات الخادم
 ar.ServerDesc=المنفذ الذي تتصل عبره الأجهزة الأخرى
 ar.ServerSub=اترك القيمة 4100 إلا إذا طُلب منك غيرها.
@@ -86,8 +99,8 @@ ar.ErrUser=اسم المستخدم: من 3 إلى 32 حرفًا لاتينيًا
 ar.ErrPass=كلمة المرور قصيرة: 6 أحرف على الأقل.
 ar.ErrPass2=كلمتا المرور غير متطابقتين.
 ar.BackupTitle=مجلد النسخ الاحتياطي
-ar.BackupDesc=مجلد Google Drive المتزامن على هذا الحاسوب
-ar.BackupSub=اختر مجلدًا داخل Google Drive، تُحفظ فيه النسخ الاحتياطية اليومية لاحقًا.
+ar.BackupDesc=مجلد على هذا الحاسوب يرفعه تطبيق Google Drive
+ar.BackupSub=تُحفظ فيه النسخ (كل ساعة واليومية). يُنشأ إن لم يكن موجودًا. بعد التثبيت أضفه مرة واحدة في تطبيق Google Drive («مجلدات من حاسوبي»).
 ar.ErrBackupDir=المجلد غير موجود. اختر مجلدًا موجودًا.
 ar.Updating=جارٍ تحديث الخادم: نسخة احتياطية، ثم تحديث قاعدة البيانات، ثم إعادة التشغيل…
 ar.UpdateDoneTitle=اكتمل تحديث الخادم
@@ -105,6 +118,19 @@ fr.ModeDesc=Cet ordinateur est-il le serveur ou un poste utilisateur ?
 fr.ModeSub=Choisissez « Ordinateur serveur » pour un seul appareil de l'agence. Il conserve les données et doit rester allumé pendant les heures de travail.
 fr.ModeServer=Ordinateur serveur (conserve les données, utilisable aussi comme poste)
 fr.ModeUser=Poste utilisateur (se connecte uniquement au serveur)
+fr.ModeRestore=Restaurer comme serveur : nouveau serveur à partir d'une sauvegarde (après une panne de l'ancien)
+fr.RestoreTitle=Fichier de sauvegarde
+fr.RestoreDesc=La sauvegarde d'où reviennent les données de l'agence
+fr.RestoreSub=Choisissez le fichier (.dump) dans Google Drive ou sur la clé USB. Le gérant se connecte ensuite avec son ancien mot de passe. Laissez l'ancien serveur éteint.
+fr.RestoreFile=Fichier de sauvegarde :
+fr.ErrRestoreFile=Choisissez un fichier de sauvegarde existant.
+fr.Restoring=Configuration du serveur et restauration des données de l'agence… Cela peut prendre quelques minutes.
+fr.RestoreDoneTitle=Serveur restauré
+fr.RestoreDoneNote=Sur chaque poste utilisateur : ouvrez « Connexion au serveur », saisissez la nouvelle adresse et comparez la nouvelle empreinte.
+fr.Err_E_RESTORE_FILE=Le fichier de sauvegarde est introuvable.
+fr.Err_E_RESTORE_CORRUPT=Le fichier de sauvegarde est abîmé ou incomplet. Choisissez-en un autre.
+fr.Err_E_RESTORE_NEWER=Cette sauvegarde vient d'une version plus récente. Installez cette version puis réessayez.
+fr.Err_E_RESTORE=La restauration des données a échoué.
 fr.ServerTitle=Paramètres du serveur
 fr.ServerDesc=Port par lequel les autres postes se connectent
 fr.ServerSub=Laissez 4100 sauf indication contraire.
@@ -144,8 +170,8 @@ fr.ErrUser=Nom d'utilisateur : de 3 à 32 lettres latines, chiffres ou . _ - san
 fr.ErrPass=Mot de passe trop court : 6 caractères au minimum.
 fr.ErrPass2=Les deux mots de passe ne correspondent pas.
 fr.BackupTitle=Dossier de sauvegarde
-fr.BackupDesc=Dossier Google Drive synchronisé sur cet ordinateur
-fr.BackupSub=Choisissez un dossier dans Google Drive ; les sauvegardes quotidiennes y seront enregistrées plus tard.
+fr.BackupDesc=Dossier de cet ordinateur envoyé par l'application Google Drive
+fr.BackupSub=Les sauvegardes (horaires et quotidiennes) y sont enregistrées. Il est créé s'il n'existe pas. Après l'installation, ajoutez-le une fois dans l'application Google Drive (« Dossiers de mon ordinateur »).
 fr.ErrBackupDir=Ce dossier n'existe pas. Choisissez un dossier existant.
 fr.Updating=Mise à jour du serveur : sauvegarde, puis mise à jour de la base de données, puis redémarrage…
 fr.UpdateDoneTitle=Serveur mis à jour
@@ -187,6 +213,7 @@ var
   DataPage: TInputDirWizardPage;
   AgencyPage: TInputQueryWizardPage;
   BackupPage: TInputDirWizardPage;
+  RestorePage: TInputFileWizardPage;
   ResultPage: TOutputMsgMemoWizardPage;
   ProvisionRan: Boolean;
   ProvisionFailed: Boolean;
@@ -220,7 +247,13 @@ end;
 
 function IsServerMode: Boolean;
 begin
-  Result := IsUpgrade or ModePage.Values[0];
+  Result := IsUpgrade or ModePage.Values[0] or ModePage.Values[2];
+end;
+
+{ "Restore as server" (SPEC 20.1): a new server whose data comes from a backup file. }
+function IsRestoreMode: Boolean;
+begin
+  Result := (not IsUpgrade) and ModePage.Values[2];
 end;
 
 function NeedsBootstrap: Boolean;
@@ -307,9 +340,11 @@ begin
     CustomMessage('ModeSub'), True, False);
   ModePage.Add(CustomMessage('ModeServer'));
   ModePage.Add(CustomMessage('ModeUser'));
+  ModePage.Add(CustomMessage('ModeRestore'));
   Mode := Lowercase(ExpandConstant('{param:MODE|server}'));
-  ModePage.Values[0] := (Mode <> 'user');
+  ModePage.Values[0] := (Mode <> 'user') and (Mode <> 'restore');
   ModePage.Values[1] := (Mode = 'user');
+  ModePage.Values[2] := (Mode = 'restore');
 
   PortPage := CreateInputQueryPage(ModePage.ID, CustomMessage('ServerTitle'), CustomMessage('ServerDesc'),
     CustomMessage('ServerSub'));
@@ -345,6 +380,13 @@ begin
     CustomMessage('BackupSub'), False, '');
   BackupPage.Add('');
   BackupPage.Values[0] := ExpandConstant('{param:BACKUPDIR|}');
+  if BackupPage.Values[0] = '' then
+    BackupPage.Values[0] := ExpandConstant('{sd}\Alyassir-Sauvegardes');
+
+  RestorePage := CreateInputFilePage(DataPage.ID, CustomMessage('RestoreTitle'), CustomMessage('RestoreDesc'),
+    CustomMessage('RestoreSub'));
+  RestorePage.Add(CustomMessage('RestoreFile'), 'Alyassir (*.dump)|*.dump', '.dump');
+  RestorePage.Values[0] := ExpandConstant('{param:BACKUPFILE|}');
 
   ResultPage := CreateOutputMsgMemoPage(wpInstalling, CustomMessage('DoneTitle'), CustomMessage('DoneDesc'),
     CustomMessage('DoneSub'), '');
@@ -357,8 +399,12 @@ begin
     Result := IsUpgrade;
   if (PageID = PortPage.ID) or (PageID = DataPage.ID) then
     Result := IsUpgrade or (not IsServerMode);
-  if (PageID = AgencyPage.ID) or (PageID = BackupPage.ID) then
+  if PageID = AgencyPage.ID then
+    Result := (not NeedsBootstrap) or IsRestoreMode;
+  if PageID = BackupPage.ID then
     Result := not NeedsBootstrap;
+  if PageID = RestorePage.ID then
+    Result := not IsRestoreMode;
   if PageID = ResultPage.ID then
     Result := not ProvisionRan;
 end;
@@ -415,9 +461,20 @@ begin
     ManagerName := Trim(AgencyPage.Values[1]);
     ManagerPassword := AgencyPage.Values[2];
   end;
+  if CurPageID = RestorePage.ID then
+  begin
+    if not FileExists(RestorePage.Values[0]) then
+    begin
+      SuppressibleMsgBox(CustomMessage('ErrRestoreFile'), mbError, MB_OK, IDOK);
+      Result := False;
+    end;
+  end;
   if CurPageID = BackupPage.ID then
   begin
     BackupFolder := BackupPage.Values[0];
+    { The folder is created when missing (Google Drive uploads it once added in its app). }
+    if not DirExists(BackupFolder) then
+      ForceDirectories(BackupFolder);
     if not DirExists(BackupFolder) then
     begin
       SuppressibleMsgBox(CustomMessage('ErrBackupDir'), mbError, MB_OK, IDOK);
@@ -446,7 +503,8 @@ begin
   if (Code = 'E_ALREADY_INSTALLED') or (Code = 'E_DATA_EXISTS') or (Code = 'E_API_PORT_IN_USE') or
      (Code = 'E_PG_PORT_IN_USE') or (Code = 'E_HEALTH') or (Code = 'E_BOOTSTRAP_USERNAME') or
      (Code = 'E_BOOTSTRAP_PASSWORD') or (Code = 'E_BOOTSTRAP_BACKUP_DIR') or (Code = 'E_BACKUP') or
-     (Code = 'E_MIGRATION') then
+     (Code = 'E_MIGRATION') or (Code = 'E_RESTORE_FILE') or (Code = 'E_RESTORE_CORRUPT') or
+     (Code = 'E_RESTORE_NEWER') or (Code = 'E_RESTORE') then
     Result := CustomMessage('Err_' + Code)
   else
     Result := CustomMessage('Err_Generic');
@@ -468,6 +526,15 @@ begin
   end;
   if BackupFolder = '' then
     BackupFolder := BackupPage.Values[0];
+  if not DirExists(BackupFolder) then
+    ForceDirectories(BackupFolder);
+  { Restore as server: the agency and its manager come from the backup. }
+  if IsRestoreMode then
+  begin
+    AgencyName := '';
+    ManagerName := '';
+    ManagerPassword := '';
+  end;
   SetArrayLength(Lines, 5);
   Lines[0] := 'agencyName=' + AgencyName;
   Lines[1] := 'managerUsername=' + ManagerName;
@@ -485,6 +552,8 @@ begin
   ProvisionRan := True;
   if IsUpgrade then
     WizardForm.StatusLabel.Caption := CustomMessage('Updating')
+  else if IsRestoreMode then
+    WizardForm.StatusLabel.Caption := CustomMessage('Restoring')
   else
     WizardForm.StatusLabel.Caption := CustomMessage('Configuring');
   Ini := ResultIni;
@@ -495,6 +564,8 @@ begin
   else
     Params := Params + ' provision --app-dir "' + ExpandConstant('{app}') + '"' +
       ' --data-dir "' + DataDir + '"' + ' --port ' + Trim(PortPage.Values[0]);
+  if IsRestoreMode then
+    Params := Params + ' --restore-file "' + RestorePage.Values[0] + '"';
   Params := Params + ' --result "' + AddBackslash(DataDir) + 'setup-result.json"';
   if ExpandConstant('{param:SIMULATEFAIL|}') <> '' then
     Params := Params + ' --simulate-failure-at ' + ExpandConstant('{param:SIMULATEFAIL|}');
@@ -519,6 +590,8 @@ begin
   begin
     if IsUpgrade then
       ResultPage.Caption := CustomMessage('UpdateDoneTitle');
+    if IsRestoreMode then
+      ResultPage.Caption := CustomMessage('RestoreDoneTitle');
     Urls := '';
     UrlCount := StrToIntDef(GetIniString('result', 'urlCount', '0', Ini), 0);
     for I := 0 to UrlCount - 1 do
@@ -526,6 +599,8 @@ begin
     ResultText := CustomMessage('DoneAddress') + #13#10 + Urls + #13#10 +
       CustomMessage('DoneFingerprint') + #13#10 + '    ' + GetIniString('result', 'fingerprint', '', Ini) + #13#10#13#10 +
       AddBackslash(DataDir) + 'setup-result.json';
+    if IsRestoreMode then
+      ResultText := CustomMessage('RestoreDoneNote') + #13#10#13#10 + ResultText;
     Log('Setup OK. ' + ResultText);
   end
   else

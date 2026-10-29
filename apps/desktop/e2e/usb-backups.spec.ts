@@ -30,6 +30,9 @@ test("the backups screen: a backup now, then on the dashboard", async ({ page })
   await expect(page.getByTestId("backup-last")).toHaveText(ar.backups.never);
   await page.getByRole("button", { name: ar.backups.takeNow }).click();
   const files = page.getByTestId("backup-files");
+  // Either the list of files, or an error whose text then shows in the test report.
+  await expect(files.or(page.getByRole("alert")).first()).toBeVisible({ timeout: 30_000 });
+  expect(await page.getByRole("alert").allTextContents()).toEqual([]);
   await expect(files).toContainText(ar.backups.kinds.manual);
   await expect(files).toContainText(ar.backups.check.ok);
   await expect(page.getByTestId("backup-last")).not.toHaveText(ar.backups.never);

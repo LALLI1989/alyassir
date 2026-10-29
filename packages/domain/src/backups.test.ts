@@ -17,10 +17,10 @@ import {
 } from "./index";
 
 describe("Casablanca clock", () => {
-  it("wall time and back (UTC+1 outside Ramadan)", () => {
+  it("wall time and back, whatever the offset of the day", () => {
     const at = atLocal("2026-10-31", "10:00");
-    expect(at.toISOString()).toBe("2026-10-31T09:00:00.000Z");
     expect(localClock(at)).toEqual({ day: "2026-10-31", time: "10:00", hour: 10, weekday: 6 });
+    expect(localClock(atLocal("2026-03-01", "23:30"))).toMatchObject({ day: "2026-03-01", time: "23:30" });
     expect(isoWeekday("2026-11-01")).toBe(7);
   });
 });

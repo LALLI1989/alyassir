@@ -212,6 +212,7 @@ describe("monthly USB copy (owner decision 29/10/2026)", () => {
   });
 
   it("when overdue the application stops; the copy at the server computer unblocks it", async () => {
+    const emp = await employee("usbcopier", ["clients.view"]);
     await block();
     expect((await t.call("GET", "/api/clients", { token: manager })).body.code).toBe("USB_BACKUP_REQUIRED");
     const state = (await t.call("GET", "/api/backups/usb", { token: manager })).body as UsbStateDto;
@@ -220,7 +221,6 @@ describe("monthly USB copy (owner decision 29/10/2026)", () => {
     // From another computer: refused (the key is in the server).
     expect((await t.call("POST", "/api/backups/usb/copy", { token: manager, body: { drive: "test" }, remoteAddress: "10.9.8.7" })).body.code).toBe("USB_NOT_AT_SERVER");
 
-    const emp = await employee("usbcopier", ["clients.view"]);
     const done = await t.call("POST", "/api/backups/usb/copy", { token: emp, body: { drive: "test" } });
     expect(done.status).toBe(200);
     expect(done.body.state).toBe("none");
@@ -232,10 +232,10 @@ describe("monthly USB copy (owner decision 29/10/2026)", () => {
   });
 
   it("skipping needs the manager or a supervisor with the power, and a reason", async () => {
-    await block();
     const emp = await employee("usbplain", ["clients.view"]);
-    expect((await t.call("POST", "/api/backups/usb/skip", { token: emp, body: { reason: "Pas de clé" } })).status).toBe(403);
     const sup = await employee("usbsup", ["clients.view", "sup.skip_usb_backup"], true);
+    await block();
+    expect((await t.call("POST", "/api/backups/usb/skip", { token: emp, body: { reason: "Pas de clé" } })).status).toBe(403);
     expect((await t.call("POST", "/api/backups/usb/skip", { token: sup, body: { reason: "" } })).status).toBe(400);
     const res = await t.call("POST", "/api/backups/usb/skip", { token: sup, body: { reason: "Clé oubliée à la maison" } });
     expect(res.status).toBe(200);

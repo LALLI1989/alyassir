@@ -187,6 +187,19 @@ async fn api_login(app: AppHandle, state: State<'_, Shared>, username: String, p
     Ok(body)
 }
 
+/// Phase 8A: "I forgot the manager's password" on the sign-in screen (no session yet).
+/// Only this one public route; the new recovery code is returned to be shown once.
+#[tauri::command]
+async fn api_recover(app: AppHandle, username: String, code: String, new_password: String) -> Result<Value, Value> {
+    let server = server_for(&app)?;
+    let body = json!({ "username": username, "code": code, "newPassword": new_password });
+    let reply = server.send("POST", "/api/auth/recover", Some(&body), &headers(None, true)).await.map_err(link_error)?;
+    if reply.status != 200 {
+        return Err(reply.body);
+    }
+    Ok(reply.body)
+}
+
 async fn end_session(app: &AppHandle, shared: &Shared, code: &str) {
     let mut session = shared.lock().await;
     session.tokens = None;
@@ -350,6 +363,7 @@ fn main() {
             load_server,
             save_server,
             api_login,
+            api_recover,
             api_logout,
             api_request,
             open_whatsapp,

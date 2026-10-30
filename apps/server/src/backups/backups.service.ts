@@ -11,6 +11,7 @@ import type { AuthUser, RequestContext } from "../common/context";
 import { ApiException } from "../common/errors";
 import type { BackupConfig } from "../config";
 import { DatabaseService } from "../database.service";
+import { DriveService } from "./drive.service";
 import { MessagesService } from "../messages/messages.service";
 import { messageManager } from "../money/payments.service";
 import { RealtimeService } from "../realtime/realtime.service";
@@ -46,6 +47,7 @@ export class BackupsService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(MessagesService) private readonly messages: MessagesService,
     @Inject(RealtimeService) private readonly realtime: RealtimeService,
+    @Inject(DriveService) private readonly drive: DriveService,
   ) {}
 
   get enabled(): boolean {
@@ -125,7 +127,8 @@ export class BackupsService {
   async list(): Promise<BackupsDto> {
     const s = await this.settings();
     const { dir, ...settings } = s;
-    if (!this.config) return { enabled: false, dir, dirProblem: null, lastOkAt: null, lastError: null, running: false, settings, files: [] };
+    const drive = await this.drive.state();
+    if (!this.config) return { enabled: false, dir, dirProblem: null, lastOkAt: null, lastError: null, running: false, settings, files: [], drive };
     const [ok] = await this.database.db
       .select({ at: schema.backupRuns.finishedAt })
       .from(schema.backupRuns)
@@ -143,12 +146,14 @@ export class BackupsService {
       running: this.busy,
       settings,
       files: files.map(({ path: _p, day: _d, ...f }) => f),
+      drive,
     };
   }
 
   /** For the manager's dashboard: late when the folder is unusable or no good backup for 2 hours of work. */
   async status(now = new Date()): Promise<BackupStatusDto> {
-    if (!this.config) return { enabled: false, lastOkAt: null, late: false, dirProblem: null };
+    const drive = await this.drive.state(now);
+    if (!this.config) return { enabled: false, drive, lastOkAt: null, late: false, dirProblem: null };
     const s = await this.settings();
     const problem = folderProblem(s.dir);
     const [ok] = await this.database.db
@@ -160,7 +165,7 @@ export class BackupsService {
     const wh = { days: s.workDays, start: s.workStart, end: s.workEnd };
     const working = hourlySlot(now, wh) !== null && isWorkingDay(localClock(now).day, wh);
     const old = !ok?.at || now.getTime() - ok.at.getTime() > 2 * 3_600_000;
-    return { enabled: true, lastOkAt: ok?.at ? ok.at.toISOString() : null, late: problem !== null || (working && old), dirProblem: problem };
+    return { enabled: true, drive, lastOkAt: ok?.at ? ok.at.toISOString() : null, late: problem !== null || (working && old), dirProblem: problem };
   }
 
   /**

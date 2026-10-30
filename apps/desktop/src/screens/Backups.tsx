@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import type { BackupFileDto, BackupSettings, BackupsDto } from "@alyassir/shared";
+import type { BackupFileDto, BackupSettings, BackupsDto, DriveStateDto } from "@alyassir/shared";
 import {
   Alert,
   Badge,
@@ -190,6 +190,36 @@ function DeleteDialog({ file, onClose }: { file: BackupFileDto; onClose: () => v
 }
 
 /** Backups (SPEC 20): the manager only. Folder, last backup, files, restore, delete, working hours, USB copy. */
+/** Phase 8A: Google Drive on the server computer, and the weekly look at drive.google.com. */
+export function DriveCheck({ drive }: { drive: DriveStateDto }) {
+  const { t } = useTranslation();
+  const client = useQueryClient();
+  const confirm = useMutation({
+    mutationFn: () => api<DriveStateDto>("POST", "/api/backups/drive-checked", {}),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["backups"] });
+      void client.invalidateQueries({ queryKey: ["reminders"] });
+      void client.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+  return (
+    <div className="grid gap-3" data-testid="drive-check">
+      {drive.running === false && <Alert variant="error">{t("backups.drive.notRunning")}</Alert>}
+      {drive.confirmDue ? (
+        <Alert variant="warning">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>{t("backups.drive.weekly")}</span>
+            <Button size="sm" onClick={() => confirm.mutate()} disabled={confirm.isPending}>{t("backups.drive.checked")}</Button>
+          </div>
+        </Alert>
+      ) : (
+        drive.confirmedAt && <p className="text-sm text-muted-foreground">{t("backups.drive.lastChecked", { time: formatDateTime(drive.confirmedAt) })}</p>
+      )}
+      {confirm.error && <ErrorMessage error={asClientError(confirm.error)} />}
+    </div>
+  );
+}
+
 export function Backups() {
   const { t } = useTranslation();
   const client = useQueryClient();
@@ -226,6 +256,7 @@ export function Backups() {
               </div>
               {data.dirProblem && <Alert variant="error">{t(`backups.folderProblem.${data.dirProblem}`)}</Alert>}
               <Alert>{t("backups.driveHelp")}</Alert>
+              <DriveCheck drive={data.drive} />
               <p className="text-sm" data-testid="backup-last">{data.lastOkAt ? t("backups.lastOk", { time: formatDateTime(data.lastOkAt) }) : t("backups.never")}</p>
               {data.lastError && <Alert variant="warning">{t("backups.lastError", { error: data.lastError })}</Alert>}
               {(take.isPending || data.running) && <Alert>{t("backups.running")}</Alert>}

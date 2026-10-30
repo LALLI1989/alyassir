@@ -170,14 +170,14 @@ jobs:
           name: Alyassir-Setup
           path: installer/output/*.exe
           retention-days: 30
-      # The Phase 6B installer, to test updating a server installed by the previous phase.
-      - name: Download the previous installer (Phase 6B)
+      # The Phase 7 installer, to test updating a server installed by the previous phase.
+      - name: Download the previous installer (Phase 7)
         id: previous
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: Alyassir-Setup
-          run-id: 40889129798
+          run-id: 40921552257
           github-token: ${{ github.token }}
           path: installer/previous
       - name: Test installer end to end
@@ -185,7 +185,7 @@ jobs:
         run: |
           $setup = (Get-ChildItem installer/output/*.exe | Select-Object -First 1).FullName
           $previous = (Get-ChildItem installer/previous/*.exe -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-          if (-not $previous) { Write-Host "::warning title=Update test::Phase 6B installer not available; update-from-Phase-6B scenario skipped" }
+          if (-not $previous) { Write-Host "::warning title=Update test::Phase 7 installer not available; update-from-Phase-7 scenario skipped" }
           ./installer/tests/e2e.ps1 -Setup $setup -PreviousSetup "$previous"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -193,3 +193,29 @@ jobs:
           name: installer-test-logs
           path: ${{ runner.temp }}/alyassir-logs
           retention-days: 14
+
+  # Phase 8A: a permanent download link for the owner (no sign-in, no expiry), after every
+  # successful merge into main: https://github.com/<repo>/releases/latest/download/Alyassir-Setup.exe
+  release:
+    name: Publish the installer (GitHub Releases)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [tests, windows-installer]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Alyassir-Setup
+          path: dist
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          exe=$(ls dist/*.exe | head -n 1)
+          cp "$exe" Alyassir-Setup.exe
+          tag="v0.1.0-${GITHUB_SHA::7}"
+          gh release create "$tag" Alyassir-Setup.exe --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "Alyassir ${tag}" \
+            --notes "المثبّت الكامل (الخادم وحواسيب المستخدمين والتحديث والاستعادة). Installateur complet (serveur, postes, mise à jour, restauration). Commit ${GITHUB_SHA::7}."

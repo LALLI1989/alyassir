@@ -142,19 +142,22 @@ try {
   Wipe-Everything
 
   if ($PreviousSetup) {
-    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 6B) ==="
+    Write-Host "`n=== 3. Update of a server installed by the previous phase (Phase 7) ==="
     $code = Install (@("/MODE=server", "/PORT=$Port") + $Bootstrap) $PreviousSetup
-    Check ($code -eq 0) "Phase 6B server installed"
+    Check ($code -eq 0) "Phase 7 server installed"
     $old = Login "gerant" $ManagerPass
-    Check ($old.status -eq 200) "the manager signs in on the Phase 6B server"
+    Check ($old.status -eq 200) "the manager signs in on the Phase 7 server"
     $oldToken = $old.body.accessToken
+    # A new Phase 7 server asks "do you have old policies?" first: no, live work at once.
+    $answer = Api "POST" "/api/historical/answer" @{ hasOldPolicies = $false } $oldToken
+    Check ($answer.status -eq 200 -and $answer.body.mode -eq "locked") "the manager answers no on the Phase 7 server: live work"
     $emp = Api "POST" "/api/users" @{ username = "nadia"; displayName = "Nadia"; password = "nadia-pass" } $oldToken
     Check ($emp.status -eq 201) "an employee is created before the update"
     $msg = Api "POST" "/api/messages/threads" @{ subject = "قبل التحديث"; body = "رسالة محفوظة"; to = @($emp.body.id) } $oldToken
     Check ($msg.status -eq 201) "a message is sent before the update"
-    # A policy saved in Phase 6B: the manager receives the empty drawer, then 1 000 MAD in cash at issue.
+    # A policy saved in Phase 7: the manager receives the empty drawer, then 1 000 MAD in cash at issue.
     $recv = Api "POST" "/api/drawer/receive" @{ shownCents = 0; countedCents = 0; reason = "" } $oldToken
-    Check ($recv.status -eq 200) "the manager receives the drawer on the Phase 6B server"
+    Check ($recv.status -eq 200) "the manager receives the drawer on the Phase 7 server"
     $cat = Api "GET" "/api/insurance/catalog" $null $oldToken
     $rma = @($cat.body.insurers | Where-Object { $_.name -eq "RMA" })[0].id
     $cat = Api "POST" "/api/insurance/types" @{ insurerId = $rma; name = "Assurance automobile"; requiresVehicle = $true; supportsFleet = $false } $oldToken
@@ -167,10 +170,10 @@ try {
     $today = (Get-Date).ToString("yyyy-MM-dd")
     $claim = Api "POST" "/api/claims" @{ policyId = $policy.body.id; accidentDate = $today; place = "Casablanca"; description = "Choc"; requestedCents = 500000 } $oldToken
     Check ($claim.status -eq 201) "a claim is declared before the update"
-    Check ((Api "GET" "/api/historical" $null $oldToken).status -eq 404) "the Phase 6B server has no historical entry yet"
+    Check ((Api "GET" "/api/me/recovery-code" $null $oldToken).status -eq 404) "the Phase 7 server has no recovery code yet"
 
     $code = Install @()
-    Check ($code -eq 0) "update to Phase 7 succeeded"
+    Check ($code -eq 0) "update to Phase 8A succeeded"
     Check ((Get-ChildItem "$Data\backups\pre-update-*.dump").Count -ge 1) "automatic backup taken before updating the database"
     $new = Login "gerant" $ManagerPass
     Check ($new.status -eq 200 -and $new.body.me.role -eq "manager") "the manager still signs in after the update"
@@ -196,7 +199,11 @@ try {
     $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
     $bk = Api "GET" "/api/backups" $null $newToken
     Check ($bk.status -eq 200 -and $bk.body.enabled -eq $true -and $bk.body.dir -eq $BackupDir) "after the update the server takes backups into the same folder"
-    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "7") "the seven database steps applied (Phases 1 to 7)"
+    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "8") "the eight database steps applied (Phases 1 to 8A)"
+    $rc = Api "GET" "/api/me/recovery-code" $null $newToken
+    Check ($rc.status -eq 200 -and $rc.body.exists -eq $false) "an updated server has no recovery code until the manager makes one"
+    $made = Api "POST" "/api/me/recovery-code" @{ password = $ManagerPass } $newToken
+    Check ($made.status -eq 200 -and $made.body.recoveryCode -match "^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$") "the manager makes his recovery code from My account"
     $hist = Api "GET" "/api/historical" $null $newToken
     Check ($hist.status -eq 200 -and $hist.body.mode -eq "locked") "a server that already worked live stays live after the update (no first-start question)"
     $empToken = (Login "nadia" "nadia-pass").body.accessToken
@@ -271,6 +278,38 @@ try {
   Check ($bad.status -eq 401 -and $bad.body.code -eq "INVALID_CREDENTIALS") "wrong password refused"
   $es = Login "salma" "salma-pass"
   Check ((Api "GET" "/api/users" $null $es.body.accessToken).body.code -eq "FORBIDDEN") "an employee cannot manage users"
+
+  Write-Host "`n=== 5b. The manager forgot his password (Phase 8A) ==="
+  $code = IniValue "recovery"
+  Check ($code -match "^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$") "the installer showed a recovery code for the manager"
+  Check (-not (Select-String -Path "$Logs\*.log" -SimpleMatch $code -Quiet)) "the recovery code is not written in the setup logs"
+  $bad = Api "POST" "/api/auth/recover" @{ username = "gerant"; code = "AAAA-AAAA-AAAA-AAAA"; newPassword = "Nouveau-2026" }
+  Check ($bad.body.code -eq "RECOVERY_INVALID") "a wrong recovery code is refused"
+  $rec = Api "POST" "/api/auth/recover" @{ username = "gerant"; code = $code; newPassword = "Nouveau-2026" }
+  Check ($rec.status -eq 200 -and $rec.body.recoveryCode -ne $code) "the printed code sets a new password and gives a new code"
+  Check ((Login "gerant" "Nouveau-2026").status -eq 200) "the manager signs in with the new password"
+  Check ((Api "POST" "/api/auth/recover" @{ username = "gerant"; code = $code; newPassword = "Autre-2026" }).body.code -eq "RECOVERY_INVALID") "the used code does not work twice"
+  # The shortcut's name is in Arabic (installed with /LANG=ar), which WScript.Shell cannot open:
+  # the arguments are read from the .lnk file itself (stored as UTF-16).
+  $links = @(Get-ChildItem "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" -Filter *.lnk -Recurse | Where-Object {
+    $b = [System.IO.File]::ReadAllBytes($_.FullName)
+    $u = [System.Text.Encoding]::Unicode
+    $u.GetString($b).Contains("reset-manager.ps1") -or $u.GetString($b, 1, $b.Length - 1).Contains("reset-manager.ps1")
+  })
+  Check (Test-Path "$App\server\tools\reset-manager.ps1") "the tool to reset the manager's password is installed on the server"
+  Check ($links.Count -eq 1) "the Start menu has the shortcut to that tool ($($links.Name -join ', '))"
+  # The tool's window calls the setup helper as administrator; the same call here, without the window.
+  $pwFile = Join-Path $env:RUNNER_TEMP "reset-pw.txt"
+  $resetOut = Join-Path $env:RUNNER_TEMP "reset-result.json"
+  [System.IO.File]::WriteAllText($pwFile, $ManagerPass, [System.Text.UTF8Encoding]::new($false))
+  & "$App\server\node.exe" "$App\server\dist\setup\cli.js" reset-manager --app-dir $App --password-file $pwFile --result $resetOut
+  $reset = Get-Content $resetOut -Raw | ConvertFrom-Json
+  Check ($LASTEXITCODE -eq 0 -and $reset.ok -and $reset.username -eq "gerant" -and $reset.recoveryCode -match "^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$") "the server tool sets the manager's password again and makes a new code"
+  Check (-not (Test-Path $pwFile)) "the tool deletes the password file"
+  Check ((Login "gerant" $ManagerPass).status -eq 200 -and (Login "gerant" "Nouveau-2026").status -eq 401) "the manager signs in with the password set on the server"
+  $token = (Login "gerant" $ManagerPass).body.accessToken
+  $audit = (Psql "alyassir" $secrets.dbPassword "SELECT count(*) FROM audit_log WHERE action = 'auth.recovered'").Trim()
+  Check ($audit -eq "2") "both recoveries are in the audit log"
 
   Write-Host "`n=== 6. Desktop app connection logic (fingerprint check, realtime link) ==="
   $env:ALYASSIR_TEST_URL = $url

@@ -92,6 +92,7 @@ export async function provision(o: ProvisionOptions): Promise<SetupResult> {
   let bootstrap: Bootstrap | null = null;
   const createdDirs: string[] = [];
   let fingerprint = "";
+  let recoveryCode = "";
 
   const steps: Step[] = [
     {
@@ -240,7 +241,10 @@ export async function provision(o: ProvisionOptions): Promise<SetupResult> {
       run: async () => {
         if (!bootstrap) throw new SetupError("E_BOOTSTRAP", "No agency information");
         if (o.restoreFile) await restoredAgency(ownerUrl, bootstrap.backupDir, o.restoreFile);
-        else await bootstrapData(ownerUrl, bootstrap);
+        else {
+          recoveryCode = await bootstrapData(ownerUrl, bootstrap);
+          log.addSecret(recoveryCode);
+        }
         // The application account must work before going further.
         await withClient(dbUrl(APP_ROLE, appPassword), (c) => c.query("SELECT count(*) FROM users"));
       },
@@ -333,7 +337,7 @@ try {
 
   const outcome = await runSteps(steps, log, o.simulateFailureAt);
   const result: SetupResult = outcome.ok
-    ? { ok: true, port: o.port, urls: lanUrls(o.port), fingerprint, dataDir: o.dataDir }
+    ? { ok: true, port: o.port, urls: lanUrls(o.port), fingerprint, dataDir: o.dataDir, ...(recoveryCode ? { recoveryCode } : {}) }
     : { ok: false, errorCode: outcome.errorCode, failedStep: outcome.failedStep, message: outcome.message };
   writeResult(log, o.resultFile, result);
   return result;

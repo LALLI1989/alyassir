@@ -54,6 +54,7 @@ function ReminderTable({ items, onOpen }: { items: ReminderItemDto[]; onOpen: (p
   const [contact, setContact] = useState<ReminderItemDto | null>(null);
   const kind = items[0]?.kind;
   const go = (i: ReminderItemDto) => {
+    if (i.kind === "drive_check") return onOpen({ kind: "backups" });
     if (i.kind === "unread_messages") return onOpen({ kind: "messages" });
     if (i.kind === "edit_requests") return onOpen({ kind: "editRequests" });
     if (i.kind === "expense_pending") return onOpen({ kind: "expenses" });
@@ -63,6 +64,7 @@ function ReminderTable({ items, onOpen }: { items: ReminderItemDto[]; onOpen: (p
     if (i.clientId) return onOpen({ kind: "client", id: i.clientId });
   };
   const detail = (i: ReminderItemDto): string => {
+    if (i.kind === "drive_check") return t("backups.drive.weekly");
     if (!i.detail) return "";
     if (i.kind === "instalment_due") return t("finance.instalmentN", { n: i.detail });
     if (i.kind === "debt_open") return t(`finance.debtSources.${i.detail}`, { defaultValue: i.detail });

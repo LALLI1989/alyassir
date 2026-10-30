@@ -109,6 +109,11 @@ function MessageBody({ body, system }: { body: string; system: boolean }) {
       [t("messages.events.historical_finished.cheques"), text(p.chequesInCollection)],
       [t("messages.events.historical_finished.backup"), text(p.backup)],
     ];
+  } else if (parsed.event === "manager_recovered") {
+    lines = [
+      [t("messages.events.manager_recovered.way"), t(`messages.events.manager_recovered.ways.${text(p.way)}`, { defaultValue: text(p.way) })],
+      [t("messages.events.manager_recovered.device"), text(p.device)],
+    ];
   } else if (parsed.event === "backup_failed") {
     lines = [
       [t("backups.columns.kind"), t(`backups.kinds.${text(p.kind)}`, { defaultValue: text(p.kind) })],

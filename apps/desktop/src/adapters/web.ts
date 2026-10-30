@@ -93,6 +93,12 @@ export const webAdapter: Adapter = {
     return rest;
   },
 
+  async recover(username, code, newPassword) {
+    const r = await raw("POST", "/api/auth/recover", { username, code, newPassword });
+    if (r.status !== 200) throw asClientError(r.data);
+    return r.data as { recoveryCode: string };
+  },
+
   async logout() {
     if (tokens) await raw("POST", "/api/auth/logout").catch(() => undefined);
     tokens = null;

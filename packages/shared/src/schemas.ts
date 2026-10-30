@@ -124,3 +124,24 @@ export const auditQuerySchema = z.object({
   to: z.string().datetime().optional(),
 });
 export type AuditQuery = z.infer<typeof auditQuerySchema>;
+
+/** Phase 8A: "I forgot the manager's password" on the sign-in screen, with the printed recovery code. */
+export const recoverManagerSchema = z.object({
+  username: z.string().trim().min(1, "required").max(64),
+  code: z.string().trim().min(1, "required").max(40),
+  newPassword: passwordSchema,
+});
+export type RecoverManagerInput = z.infer<typeof recoverManagerSchema>;
+
+/** Phase 8A: a new recovery code from "My account" (the current password is asked again). */
+export const newRecoveryCodeSchema = z.object({ password: z.string().min(1, "required").max(PASSWORD_MAX_LENGTH) });
+
+export interface RecoveryCodeDto {
+  /** Shown once: print it and keep it with the agency papers. */
+  recoveryCode: string;
+}
+
+export interface RecoveryStateDto {
+  exists: boolean;
+  createdAt: string | null;
+}

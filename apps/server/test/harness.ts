@@ -47,6 +47,8 @@ export interface TestDb {
   name: string;
   ownerUrl: string;
   appUrl: string;
+  /** The manager's recovery code printed at installation (Phase 8A); null without bootstrap. */
+  recoveryCode: string | null;
   drop: () => Promise<void>;
 }
 
@@ -63,8 +65,9 @@ export async function createTestDb(options: { bootstrap?: boolean; historical?: 
   const ownerUrl = urlFor(OWNER_ROLE, OWNER_PASSWORD, name);
   const appUrl = urlFor(APP_ROLE, APP_PASSWORD, name);
   await migrate(ownerUrl);
+  let recoveryCode: string | null = null;
   if (options.bootstrap !== false) {
-    await bootstrapData(ownerUrl, {
+    recoveryCode = await bootstrapData(ownerUrl, {
       agencyName: "وكالة الاختبار",
       managerUsername: MANAGER.username,
       managerPassword: MANAGER.password,
@@ -76,12 +79,15 @@ export async function createTestDb(options: { bootstrap?: boolean; historical?: 
     const c = new Client({ connectionString: ownerUrl });
     await c.connect();
     await c.query("UPDATE system_info SET historical_mode = 'locked', go_live_at = now()");
+    // The weekly Google Drive check (Phase 8A) is done for this week, so reminders stay as before.
+    await c.query("UPDATE drive_watch SET confirmed_week = date_trunc('week', now() AT TIME ZONE 'Africa/Casablanca')::date");
     await c.end();
   }
   return {
     name,
     ownerUrl,
     appUrl,
+    recoveryCode,
     drop: () => admin(async (c) => void (await c.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`))),
   };
 }

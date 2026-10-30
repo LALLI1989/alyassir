@@ -76,6 +76,8 @@ ar.DoneDesc=احتفظ بهذه المعلومات: ستحتاجها على كل
 ar.DoneSub=المعلومات محفوظة أيضًا في الملف:
 ar.DoneAddress=عنوان الاتصال (استعمل عنوان شبكة الوكالة):
 ar.DoneFingerprint=بصمة الخادم (قارنها على كل حاسوب مستخدم):
+ar.DoneRecovery=رمز استعادة حساب المدير (اطبعه الآن واحفظه مع أوراق الوكالة؛ لا يظهر مرة أخرى):
+ar.ResetShortcut=اليسير - إعادة تعيين كلمة مرور المدير
 ar.FailTitle=تعذّر إعداد الخادم
 ar.FailDesc=تم التراجع عن كل التغييرات ولم يتغير شيء في هذا الحاسوب.
 ar.FailCode=رمز الخطأ للدعم: %1 (الخطوة: %2)
@@ -147,6 +149,8 @@ fr.DoneDesc=Conservez ces informations : elles seront demandées sur chaque post
 fr.DoneSub=Ces informations sont aussi enregistrées dans le fichier :
 fr.DoneAddress=Adresse de connexion (utilisez l'adresse du réseau de l'agence) :
 fr.DoneFingerprint=Empreinte du serveur (à comparer sur chaque poste) :
+fr.DoneRecovery=Code de récupération du compte gérant (imprimez-le maintenant et gardez-le avec les papiers de l'agence ; il ne sera plus affiché) :
+fr.ResetShortcut=Alyassir - réinitialiser le mot de passe du gérant
 fr.FailTitle=La configuration du serveur a échoué
 fr.FailDesc=Toutes les modifications ont été annulées ; rien n'a changé sur cet ordinateur.
 fr.FailCode=Code d'erreur pour le support : %1 (étape : %2)
@@ -198,6 +202,8 @@ Source: "{#StageDir}\service\WinSW-x64.exe"; DestDir: "{app}\service"; Flags: ig
 [Icons]
 Name: "{autoprograms}\Alyassir"; Filename: "{app}\desktop\Alyassir.exe"
 Name: "{autodesktop}\Alyassir"; Filename: "{app}\desktop\Alyassir.exe"; Tasks: desktopicon
+; Phase 8A: new password for the manager, on the server computer only (asks for administrator rights).
+Name: "{autoprograms}\{cm:ResetShortcut}"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\server\tools\reset-manager.ps1"""; IconFilename: "{app}\desktop\Alyassir.exe"; Check: IsServerMode
 
 [Run]
 Filename: "{app}\desktop\Alyassir.exe"; Description: "{cm:LaunchProgram,Alyassir}"; Flags: nowait postinstall skipifsilent; Check: not ProvisionFailedCheck
@@ -602,6 +608,9 @@ begin
     if IsRestoreMode then
       ResultText := CustomMessage('RestoreDoneNote') + #13#10#13#10 + ResultText;
     Log('Setup OK. ' + ResultText);
+    { Phase 8A: the manager's recovery code, shown once (new server only; never written to the log). }
+    if GetIniString('result', 'recovery', '', Ini) <> '' then
+      ResultText := CustomMessage('DoneRecovery') + #13#10 + '    ' + GetIniString('result', 'recovery', '', Ini) + #13#10#13#10 + ResultText;
   end
   else
   begin

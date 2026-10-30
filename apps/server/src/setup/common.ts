@@ -8,7 +8,7 @@ import type { TLSSocket } from "node:tls";
 import { Client } from "pg";
 import { APP_ROLE, readMigrations } from "@alyassir/db";
 import { PASSWORD_MIN_LENGTH, USERNAME_PATTERN, type Language } from "@alyassir/shared";
-import { hashPassword } from "../auth/passwords";
+import { hashPassword, newRecoveryCode } from "../auth/passwords";
 import type { SetupLog } from "./log";
 import { SetupError } from "./steps";
 import { powershell, restrictAcl, run, waitFor } from "./windows";
@@ -58,6 +58,8 @@ export interface SetupResult {
   urls?: string[];
   fingerprint?: string;
   dataDir?: string;
+  /** Phase 8A: the manager's recovery code, shown once at the end of a new installation. */
+  recoveryCode?: string;
 }
 
 /** Agency and first manager, typed in the installer (SPEC 6.1). */
@@ -355,8 +357,10 @@ export async function ensureAppRole(superUrl: string, appPassword: string): Prom
 }
 
 /** Creates the agency settings and the only manager, if there is no manager yet. */
-export async function bootstrapData(ownerUrl: string, b: Bootstrap): Promise<void> {
+/** Agency and first manager; returns the manager's recovery code (Phase 8A), to show once. */
+export async function bootstrapData(ownerUrl: string, b: Bootstrap): Promise<string> {
   const passwordHash = await hashPassword(b.managerPassword);
+  const recovery = await newRecoveryCode();
   await withClient(ownerUrl, async (c) => {
     await c.query("BEGIN");
     try {
@@ -368,8 +372,9 @@ export async function bootstrapData(ownerUrl: string, b: Bootstrap): Promise<voi
         [b.agencyName, b.backupDir],
       );
       const user = await c.query<{ id: string }>(
-        `INSERT INTO users (username, display_name, password_hash, role, language) VALUES ($1, $1, $2, 'manager', $3) RETURNING id`,
-        [b.managerUsername, passwordHash, b.language],
+        `INSERT INTO users (username, display_name, password_hash, role, language, recovery_code_hash, recovery_created_at)
+         VALUES ($1, $1, $2, 'manager', $3, $4, now()) RETURNING id`,
+        [b.managerUsername, passwordHash, b.language, recovery.hash],
       );
       await c.query(
         `INSERT INTO audit_log (user_id, action, entity_type, entity_id, after, device)
@@ -382,6 +387,7 @@ export async function bootstrapData(ownerUrl: string, b: Bootstrap): Promise<voi
       throw error;
     }
   });
+  return recovery.code;
 }
 
 export async function hasManager(ownerUrl: string): Promise<boolean> {
@@ -397,6 +403,7 @@ export function resultIni(r: SetupResult): string {
   if (r.failedStep) lines.push(`step=${r.failedStep}`);
   if (r.fingerprint) lines.push(`fingerprint=${r.fingerprint}`);
   if (r.port) lines.push(`port=${r.port}`);
+  if (r.recoveryCode) lines.push(`recovery=${r.recoveryCode}`);
   (r.urls ?? []).forEach((url, i) => lines.push(`url${i}=${url}`));
   lines.push(`urlCount=${(r.urls ?? []).length}`);
   return lines.join("\r\n") + "\r\n";

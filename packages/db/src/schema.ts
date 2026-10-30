@@ -49,6 +49,11 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").notNull().default(true),
   failedAttempts: integer("failed_attempts").notNull().default(0),
   lockedUntil: ts("locked_until"),
+  // Manager recovery code (Phase 8A): hashed, shown once.
+  recoveryCodeHash: text("recovery_code_hash"),
+  recoveryCreatedAt: ts("recovery_created_at"),
+  recoveryFailed: integer("recovery_failed").notNull().default(0),
+  recoveryLockedUntil: ts("recovery_locked_until"),
   passwordChangedAt: ts("password_changed_at").notNull().defaultNow(),
   createdAt: ts("created_at").notNull().defaultNow(),
   createdBy: uuid("created_by"),
@@ -840,3 +845,14 @@ export const allTables = {
   backupRuns,
   usbBackupGates,
 };
+
+/** Google Drive watch on the server computer and the weekly confirmation (Phase 8A). One row. */
+export const driveWatch = pgTable("drive_watch", {
+  id: smallint("id").primaryKey(),
+  checkedAt: ts("checked_at"),
+  running: boolean("running"),
+  lastAlertDay: day("last_alert_day"),
+  confirmedWeek: day("confirmed_week"),
+  confirmedBy: uuid("confirmed_by"),
+  confirmedAt: ts("confirmed_at"),
+});

@@ -8,3 +8,4 @@ export * from "./followup";
 export * from "./periods";
 export * from "./backups";
 export * from "./historical";
+export * from "./recovery";

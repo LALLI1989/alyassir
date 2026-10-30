@@ -8,6 +8,8 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import type { Server as HttpServer } from "node:http";
 import { AuditService } from "./audit/audit.service";
 import { AuthService } from "./auth/auth.service";
+import { RecoveryService } from "./auth/recovery.service";
+import { DriveService } from "./backups/drive.service";
 import { LOGIN_RATE_LIMIT, LoginThrottle } from "./auth/login-throttle";
 import { AccessGuard } from "./common/access.guard";
 import { AccessService } from "./common/access.service";
@@ -65,6 +67,7 @@ export class AppModule {
         { provide: APP_FILTER, useClass: ErrorFilter },
         AuditService,
         AuthService,
+        RecoveryService,
         LoginThrottle,
         RealtimeService,
         SettingsService,
@@ -91,6 +94,7 @@ export class AppModule {
         ReportsService,
         DashboardService,
         BackupsService,
+        DriveService,
         UsbService,
         BackupJobs,
         HistoricalService,

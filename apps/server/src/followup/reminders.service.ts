@@ -1,13 +1,14 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { eq, sql } from "drizzle-orm";
 import { schema } from "@alyassir/db";
-import { addDays, businessDay } from "@alyassir/domain";
+import { addDays, businessDay, weekMonday } from "@alyassir/domain";
 import type { PermissionCode, ReminderItemDto, ReminderKind, ReminderSettings, RemindersDto } from "@alyassir/shared";
 import { AuditService } from "../audit/audit.service";
 import { AccessService } from "../common/access.service";
 import type { AuthUser, RequestContext } from "../common/context";
 import { ApiException } from "../common/errors";
 import { DatabaseService } from "../database.service";
+import { DriveService } from "../backups/drive.service";
 
 const LIMIT = 100;
 const CLIENT_NAME = sql.raw(`CASE WHEN c.kind = 'company' AND c.company_name IS NOT NULL THEN c.company_name ELSE c.full_name END`);
@@ -45,6 +46,7 @@ export class RemindersService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(AccessService) private readonly access: AccessService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(DriveService) private readonly drive: DriveService,
   ) {}
 
   async settings(): Promise<ReminderSettings> {
@@ -188,6 +190,14 @@ export class RemindersService {
             ORDER BY cl.updated_at`,
         null,
       );
+    }
+    // Phase 8A: once a week the manager looks at drive.google.com and presses "I checked".
+    if (user.role === "manager") {
+      const drive = await this.drive.state();
+      if (drive.confirmDue) {
+        const week = weekMonday(today);
+        groups.unshift({ kind: "drive_check", count: 1, items: [item("drive_check", { key: week, day: week }, null)] });
+      }
     }
     return { settings: s, groups, total: groups.reduce((n, g) => n + g.count, 0) };
   }

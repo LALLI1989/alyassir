@@ -290,8 +290,11 @@ try {
   Check ((Login "gerant" "Nouveau-2026").status -eq 200) "the manager signs in with the new password"
   Check ((Api "POST" "/api/auth/recover" @{ username = "gerant"; code = $code; newPassword = "Autre-2026" }).body.code -eq "RECOVERY_INVALID") "the used code does not work twice"
   $shell = New-Object -ComObject WScript.Shell
-  $links = @(Get-ChildItem "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" -Filter *.lnk -Recurse | Where-Object { $shell.CreateShortcut($_.FullName).Arguments -like "*reset-manager.ps1*" })
-  Check ($links.Count -eq 1 -and (Test-Path "$App\server\tools\reset-manager.ps1")) "the server has the Start menu tool to reset the manager's password"
+  $all = @(Get-ChildItem "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" -Filter *.lnk -Recurse)
+  foreach ($l in $all) { $sc = $shell.CreateShortcut($l.FullName); Write-Host "  shortcut: $($l.Name) -> $($sc.TargetPath) $($sc.Arguments)" }
+  $links = @($all | Where-Object { $shell.CreateShortcut($_.FullName).Arguments -like "*reset-manager.ps1*" })
+  Check (Test-Path "$App\server\tools\reset-manager.ps1") "the tool to reset the manager's password is installed on the server"
+  Check ($links.Count -eq 1) "the Start menu has the shortcut to that tool"
   # The tool's window calls the setup helper as administrator; the same call here, without the window.
   $pwFile = Join-Path $env:RUNNER_TEMP "reset-pw.txt"
   $resetOut = Join-Path $env:RUNNER_TEMP "reset-result.json"

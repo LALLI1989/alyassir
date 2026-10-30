@@ -294,7 +294,8 @@ try {
   foreach ($l in $all) { $sc = $shell.CreateShortcut($l.FullName); Write-Host "  shortcut: $($l.Name) -> $($sc.TargetPath) $($sc.Arguments)" }
   $links = @($all | Where-Object { $shell.CreateShortcut($_.FullName).Arguments -like "*reset-manager.ps1*" })
   Check (Test-Path "$App\server\tools\reset-manager.ps1") "the tool to reset the manager's password is installed on the server"
-  Check ($links.Count -eq 1) "the Start menu has the shortcut to that tool"
+  $found = ($all | ForEach-Object { $sc = $shell.CreateShortcut($_.FullName); "$($_.FullName) => $($sc.TargetPath) $($sc.Arguments)" }) -join " | "
+  Check ($links.Count -eq 1) "the Start menu has the shortcut to that tool (found: $found)"
   # The tool's window calls the setup helper as administrator; the same call here, without the window.
   $pwFile = Join-Path $env:RUNNER_TEMP "reset-pw.txt"
   $resetOut = Join-Path $env:RUNNER_TEMP "reset-result.json"

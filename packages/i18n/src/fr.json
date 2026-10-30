@@ -1626,7 +1626,7 @@
     "lateHint": "L'argent entre dans le tiroir du jour. Inscrit au journal d'audit.",
     "manualInstalments": "Saisir les échéances à la main, avec leurs anciennes valeurs",
     "manualHint": "Pour chaque échéance : la date, la part de la prime, puis les frais. La somme des parts égale le montant de la police. Chaque échéance est marquée « saisie à la main ».",
-    "negativeBar": "{{n}} jour(s) en solde négatif, le premier le {{day}}"
+    "negativeBar": "Jours en solde négatif : {{n}}, le premier le {{day}}"
   },
   "recovery": {
     "title": "Récupérer le compte gérant",

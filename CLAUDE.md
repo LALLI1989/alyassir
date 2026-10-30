@@ -27,6 +27,6 @@ pnpm + Turborepo monorepo. Desktop: Tauri 2 + React + TypeScript strict + Tailwi
 
 ## Where we are
 Phases 0 to 7 approved and merged (6A dashboard/reports, 6B backups/restore and 7 historical entry mode on 29/10/2026).
-Phases 0-7 of `docs/SPEC.md` section 21 are done. Phase 8 (improvements after the review, SPEC 30, 29/10/2026) in two parts: 8A (manager recovery, Google Drive watch, GitHub Releases) in progress on branch `phase-8a`, then 8B. The repository is public (free CI minutes).
+Phases 0-7 of `docs/SPEC.md` section 21 are done. Phase 8 (improvements after the review, SPEC 30, 29/10/2026): 8A merged 30/10/2026; 8B (late renewal screen, negative days in the yellow bar, speed test, parallel trial week guide) in progress on branch `phase-8b`. The repository is public (free CI minutes).
 Owner decisions: `docs/SPEC.md` section 30.
 All testing happens on GitHub (CI), never on the owner's computer.

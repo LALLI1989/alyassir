@@ -35,7 +35,8 @@ import {
   THead,
   Tr,
 } from "@alyassir/ui";
-import { asClientError, type ClientError } from "../adapters";
+import { asClientError, type ClientError, type RequestOptions } from "../adapters";
+import { useHistorical } from "../components/historical";
 import { Field, PageHeader } from "../components/common";
 import { FinanceSetupFields, RefundAccountField, emptyFinance, toFinance, type FinanceDraft } from "../components/finance";
 import { Code, Money, MoneyInput, ValidityBadge, formatDay, useCatalog, useLocalName, useOperationKey } from "../components/insurance";
@@ -47,7 +48,7 @@ import { PolicyFinanceSection, useFinance } from "./PolicyFinance";
 import type { Page } from "./Shell";
 import { VehicleDialog } from "./Vehicles";
 
-type OperationKind = "renew" | "change" | "edit" | "vehicleChange" | "plateChange" | "duplicate" | "fleetAdd" | "fleetRemove" | "annul" | "cancel" | "custom";
+type OperationKind = "renew" | "lateRenew" | "change" | "edit" | "vehicleChange" | "plateChange" | "duplicate" | "fleetAdd" | "fleetRemove" | "annul" | "cancel" | "custom";
 
 interface DialogProps {
   policy: PolicyDto;
@@ -64,6 +65,8 @@ function OperationFrame({
   summary,
   destructive,
   onClose,
+  options,
+  ready = true,
 }: {
   title: string;
   description?: string;
@@ -74,6 +77,10 @@ function OperationFrame({
   summary: (() => Promise<[string, ReactNode][]>) | null;
   destructive?: boolean;
   onClose: () => void;
+  /** Phase 8B: a late renewal sends its old date and the manager's reason with the request. */
+  options?: () => RequestOptions | undefined;
+  /** False while something the request needs is missing (the late date or reason). */
+  ready?: boolean;
 }) {
   const { t } = useTranslation();
   const fieldError = useFieldError();
@@ -81,7 +88,7 @@ function OperationFrame({
   const [lines, setLines] = useState<[string, ReactNode][] | null>(null);
   const [previewError, setPreviewError] = useState<ClientError | null>(null);
   const run = useMutation({
-    mutationFn: () => api<PolicyDto>(path.startsWith("PATCH ") ? "PATCH" : "POST", path.replace(/^PATCH /, ""), body()),
+    mutationFn: () => api<PolicyDto>(path.startsWith("PATCH ") ? "PATCH" : "POST", path.replace(/^PATCH /, ""), body(), options?.()),
     onSuccess: async (p) => {
       queries.setQueryData(["policy", p.id], p);
       await queries.invalidateQueries({ queryKey: ["policy"] });
@@ -125,7 +132,7 @@ function OperationFrame({
       {error && error.code !== "VALIDATION" && <ErrorMessage error={error} />}
       <DialogFooter>
         <Button type="button" variant="outline" onClick={lines ? () => setLines(null) : onClose}>{lines ? t("common.back") : t("common.cancel")}</Button>
-        <Button type="submit" variant={destructive ? "destructive" : "default"} disabled={run.isPending}>
+        <Button type="submit" variant={destructive ? "destructive" : "default"} disabled={run.isPending || !ready}>
           {lines || !summary ? t("common.confirm") : t("common.continue")}
         </Button>
       </DialogFooter>
@@ -248,9 +255,14 @@ function PeriodFinance({ policy, durationId, amount, start, value, onChange, err
 
 // ---------------------------------------------------------------- renewal and policy change (SPEC 12)
 
-function RenewDialog({ policy, onClose }: DialogProps) {
+function RenewDialog({ policy, onClose, late }: DialogProps & { late?: boolean }) {
   const { t } = useTranslation();
   const key = useOperationKey();
+  const historical = useHistorical().data;
+  // Phase 8B: a renewal made on paper on an old date, entered late by the manager (owner decision 29/10/2026).
+  const [lateDay, setLateDay] = useState("");
+  const [lateReason, setLateReason] = useState("");
+  const lateReady = !late || (lateDay !== "" && lateReason.trim().length >= 3);
   const durations = useCatalog().data?.durations ?? [];
   const [start, setStart] = useState(policy.actions.nextStartDate);
   const [durationId, setDurationId] = useState(() => currentDurationId(policy, durations));
@@ -260,20 +272,38 @@ function RenewDialog({ policy, onClose }: DialogProps) {
   const [finance, setFinance] = useState<FinanceDraft>(emptyFinance);
   return (
     <OperationFrame
-      title={t("policies.renewTitle", { number: policy.policyNumber })}
-      description={t("policies.renewInfo", { last: formatDay(policy.actions.renewalLastDay), start: formatDay(policy.actions.nextStartDate) })}
+      title={t(late ? "policies.lateRenewTitle" : "policies.renewTitle", { number: policy.policyNumber })}
+      description={late ? t("policies.lateRenewInfo", { start: formatDay(policy.actions.nextStartDate) }) : t("policies.renewInfo", { last: formatDay(policy.actions.renewalLastDay), start: formatDay(policy.actions.nextStartDate) })}
       path={`/api/policies/${policy.id}/renew`}
+      options={() => (late ? { asOf: lateDay, lateReason: lateReason.trim() } : undefined)}
+      ready={lateReady}
       body={() => ({ idempotencyKey: key, startDate: start, coverageDurationId: durationId, endDate: typedEnd, totalAmountCents: amount, certificates: policy.vehicles.length ? certificatesBody(policy, certs) : undefined, finance: toFinance(finance) })}
       summary={null}
       onClose={onClose}
       form={(err) => (
         <>
+          {late && (
+            <div className="grid gap-3 rounded-md border border-warning/50 bg-warning/10 p-3 sm:grid-cols-2" data-testid="late-renew">
+              <Field id="lateRenewDay" label={t("policies.lateRenewDay")} hint={t("historical.lateHint")}>
+                <Input id="lateRenewDay" type="date" dir="ltr" min={policy.endDate} max={historical?.today} value={lateDay} onChange={(e) => setLateDay(e.target.value)} />
+              </Field>
+              <Field id="lateRenewReason" label={t("historical.lateReason")}>
+                <Input id="lateRenewReason" dir="auto" value={lateReason} onChange={(e) => setLateReason(e.target.value)} />
+              </Field>
+            </div>
+          )}
+          {late ? (
+            <Field id="renewStart" label={t("policies.renewStart")}>
+              <Input id="renewStart" dir="ltr" readOnly value={formatDay(policy.actions.nextStartDate)} />
+            </Field>
+          ) : (
           <Field id="renewStart" label={t("policies.renewStart")} hint={t("policies.renewStartHint", { earliest: formatDay(policy.actions.earliestStartDate) })} error={err("startDate")}>
             <NativeSelect id="renewStart" value={start} onChange={(e) => setStart(e.target.value)}>
               <option value={policy.actions.nextStartDate}>{formatDay(policy.actions.nextStartDate)}</option>
               <option value={policy.actions.earliestStartDate}>{formatDay(policy.actions.earliestStartDate)}</option>
             </NativeSelect>
           </Field>
+          )}
           <DurationAndEnd durationId={durationId} setDurationId={setDurationId} start={start} typedEnd={typedEnd} setTypedEnd={setTypedEnd} endError={err("endDate")} />
           <Field id="renewAmount" label={t("policies.amount")} hint={t("policies.amountHint")} error={err("totalAmountCents")}>
             <MoneyInput id="renewAmount" cents={amount} onChange={setAmount} />
@@ -793,6 +823,8 @@ export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) =>
   const { isManager, can } = useSession();
   const name = useLocalName();
   const catalog = useCatalog().data;
+  const historical = useHistorical().data;
+  const lateRenewAllowed = isManager && historical?.mode === "locked";
   const [open, setOpen] = useState<OperationKind | null>(null);
   const query = useQuery({ queryKey: ["policy", id], queryFn: () => api<PolicyDto>("GET", `/api/policies/${id}`) });
   const finance = useFinance(id).data;
@@ -806,6 +838,7 @@ export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) =>
   const close = () => setOpen(null);
   const dialogs: Record<OperationKind, ReactNode> = {
     renew: <RenewDialog policy={p} onClose={close} />,
+    lateRenew: <RenewDialog policy={p} onClose={close} late />,
     change: <ChangeDialog policy={p} onClose={close} />,
     edit: <EditDialog policy={p} onClose={close} />,
     vehicleChange: <VehicleChangeDialog policy={p} onClose={close} />,
@@ -864,6 +897,8 @@ export function PolicyPage({ id, onOpen }: { id: string; onOpen: (page: Page) =>
       <div className="flex flex-wrap gap-2" role="toolbar" aria-label={t("common.actions")}>
         {a.renewalMode === "renewal" && button("renew", t("policies.renew"), "default")}
         {a.renewalMode === "policy_change" && button("change", t("policies.change"), "default")}
+        {/* Phase 8B: renewed on paper in time, entered late: the manager only, after going live. */}
+        {lateRenewAllowed && a.renewalMode === "policy_change" && button("lateRenew", t("policies.lateRenew"))}
         {a.renewalMode !== "none" && button("edit", t("policies.edit"))}
         {vehicleOps && !a.hasFuturePeriod && button("vehicleChange", t("policies.vehicleChange"))}
         {vehicleOps && !a.hasFuturePeriod && button("plateChange", t("policies.plateChange"))}

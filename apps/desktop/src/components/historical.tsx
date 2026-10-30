@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AGENCY_FIRST_DAY, type HistoricalStateDto } from "@alyassir/shared";
+import { AGENCY_FIRST_DAY, type HistoricalChecklistDto, type HistoricalStateDto } from "@alyassir/shared";
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from "@alyassir/ui";
 import { asClientError, currentOperationDay, setOperationDay } from "../adapters";
 import { ErrorMessage } from "../lib/errors";
@@ -49,9 +49,17 @@ export function useOperationDay(state: HistoricalStateDto | undefined): [string 
 }
 
 /** The yellow bar, always visible during the historical entry (SPEC 22). */
-export function HistoricalBar({ state, day, onDay }: { state: HistoricalStateDto; day: string | null; onDay: (d: string) => void }) {
+export function HistoricalBar({ state, day, onDay, onChecklist }: { state: HistoricalStateDto; day: string | null; onDay: (d: string) => void; onChecklist: () => void }) {
   const { t } = useTranslation();
   const { isManager } = useSession();
+  // Phase 8B: days ending below zero, shown at once (they block the end of the old entries).
+  const list = useQuery({
+    queryKey: ["historicalChecklist"],
+    queryFn: () => api<HistoricalChecklistDto>("GET", "/api/historical/checklist"),
+    enabled: isManager && state.mode === "open",
+  }).data;
+  const negative = list?.negativeDays ?? [];
+  const firstNegative = negative.reduce<string | null>((m, d) => (m === null || d.day < m ? d.day : m), null);
   // Locked: live work. Pending, for the manager: the first-start question fills the screen.
   if (state.mode === "locked" || (state.mode === "pending" && isManager)) return null;
   return (
@@ -72,6 +80,11 @@ export function HistoricalBar({ state, day, onDay }: { state: HistoricalStateDto
           />
           <span className="font-bold" data-testid="operation-day">{formatDay(day)}</span>
         </span>
+      )}
+      {day && firstNegative && (
+        <Button size="sm" variant="destructive" onClick={onChecklist} data-testid="negative-warning">
+          {t("historical.negativeBar", { n: new Set(negative.map((d) => d.day)).size, day: formatDay(firstNegative) })}
+        </Button>
       )}
     </div>
   );

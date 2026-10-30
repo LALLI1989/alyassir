@@ -190,4 +190,28 @@ describe("all old entries are done: live work starts", () => {
     // Other old-dated operations are refused.
     expect((await t.call("POST", `/api/policies/${ok.policy.id}/payments`, { token: manager, headers: late, body: { idempotencyKey: randomUUID(), method: "cash", amountCents: 1_000 } })).body.code).toBe("LATE_ENTRY_NOT_ALLOWED");
   });
+
+  it("Phase 8B: a renewal made on paper in time, entered late by the manager (E+1), money in today's drawer", async () => {
+    const lateAt = (day: string) => ({ ...at(day), [HEADER_LATE_REASON]: encodeURIComponent("Renouvelée sur papier") });
+    const { policy, vehicle } = await insured("2026-06-15", {}, lateAt("2026-06-15"));
+    expect(policy.periods[0]).toMatchObject({ startDate: "2026-06-15", endDate: "2026-07-14" });
+    const body = () => ({
+      idempotencyKey: randomUUID(),
+      coverageDurationId: s.months1,
+      totalAmountCents: 200_000,
+      certificates: [{ vehicleId: vehicle, certificateNumber: cert() }],
+      finance: { payments: [{ method: "cash", amountCents: 30_000 }] },
+    });
+    const renew = (headers: Record<string, string>, token = manager) => t.call("POST", `/api/policies/${policy.id}/renew`, { token, headers, body: body() });
+    // Today it is far past E+1: only a policy change; on the real day (E+1) it was a renewal.
+    expect((await renew({})).body.code).toBe("RENEWAL_TOO_LATE");
+    expect((await renew(at("2026-07-15"))).body.code).toBe("LATE_REASON_REQUIRED");
+    expect((await renew(lateAt("2026-07-15"), clerk)).body.code).toBe("LATE_ENTRY_NOT_ALLOWED");
+    expect((await renew(lateAt("2026-07-16"))).body.code).toBe("RENEWAL_TOO_LATE");
+    const ok = await renew(lateAt("2026-07-15"));
+    expect(ok.status).toBe(200);
+    expect(ok.body.periods.at(-1)).toMatchObject({ startDate: "2026-07-15" });
+    const money = await ownerQuery(t.db, "SELECT to_char(business_date, 'YYYY-MM-DD') AS d FROM financial_transactions WHERE amount_cents = 30000 AND kind = 'payment_cash'");
+    expect(money.rows).toEqual([{ d: today() }]);
+  });
 });

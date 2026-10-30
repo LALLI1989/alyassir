@@ -865,7 +865,11 @@
     "notActiveToday": "La police n'est pas en vigueur aujourd'hui : opérations sur véhicule indisponibles.",
     "today": "Aujourd'hui : {{date}}",
     "createdBy": "par {{name}}",
-    "back": "Retour aux polices"
+    "back": "Retour aux polices",
+    "lateRenew": "Renouvellement à une date passée",
+    "lateRenewTitle": "Renouvellement tardif de la police {{number}}",
+    "lateRenewInfo": "Renouvelée sur papier à temps mais pas saisie. La nouvelle période commence le {{start}}. Indiquez la vraie date du renouvellement et le motif.",
+    "lateRenewDay": "Vraie date du renouvellement"
   },
   "insurance": {
     "title": "Paramètres d'assurance",
@@ -1621,7 +1625,8 @@
     "lateReason": "Motif",
     "lateHint": "L'argent entre dans le tiroir du jour. Inscrit au journal d'audit.",
     "manualInstalments": "Saisir les échéances à la main, avec leurs anciennes valeurs",
-    "manualHint": "Pour chaque échéance : la date, la part de la prime, puis les frais. La somme des parts égale le montant de la police. Chaque échéance est marquée « saisie à la main »."
+    "manualHint": "Pour chaque échéance : la date, la part de la prime, puis les frais. La somme des parts égale le montant de la police. Chaque échéance est marquée « saisie à la main ».",
+    "negativeBar": "{{n}} jour(s) en solde négatif, le premier le {{day}}"
   },
   "recovery": {
     "title": "Récupérer le compte gérant",

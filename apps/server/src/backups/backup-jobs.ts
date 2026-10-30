@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from "@nestjs/common";
 import { dailySlot, hourlySlot } from "@alyassir/domain";
 import { BackupsService } from "./backups.service";
+import { DriveService } from "./drive.service";
 import { UsbService } from "./usb.service";
 
 /**
@@ -19,6 +20,7 @@ export class BackupJobs implements OnApplicationBootstrap, OnApplicationShutdown
   constructor(
     @Inject(BackupsService) private readonly backups: BackupsService,
     @Inject(UsbService) private readonly usb: UsbService,
+    @Inject(DriveService) private readonly drive: DriveService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -44,6 +46,8 @@ export class BackupJobs implements OnApplicationBootstrap, OnApplicationShutdown
   async run(now: Date): Promise<void> {
     if (this.backups.restoring) return;
     await this.usb.refresh(now);
+    // Phase 8A: is the Google Drive app running on this computer (once per working hour).
+    await this.drive.check(now).catch((e: unknown) => this.logger.warn(`drive: ${e instanceof Error ? e.message : String(e)}`));
     const wh = await this.backups.workHours();
     const hour = hourlySlot(now, wh);
     const due: ["hourly" | "daily", string][] = [];

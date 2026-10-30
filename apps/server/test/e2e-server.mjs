@@ -36,7 +36,7 @@ await admin.end();
 
 const ownerUrl = url(OWNER, "owner-test-password");
 await migrate(ownerUrl);
-await bootstrapData(ownerUrl, {
+const recoveryCode = await bootstrapData(ownerUrl, {
   agencyName: "وكالة الاختبار",
   managerUsername: "manager",
   managerPassword: "manager-pass",
@@ -71,6 +71,13 @@ const gate = async (overdue) => {
   }
 };
 await gate(false);
+// The weekly Google Drive check (Phase 8A) starts done for this week; the backups test undoes it.
+{
+  const owner = new Client({ connectionString: ownerUrl });
+  await owner.connect();
+  await owner.query("UPDATE drive_watch SET confirmed_week = date_trunc('week', now() AT TIME ZONE 'Africa/Casablanca')::date");
+  await owner.end();
+}
 
 const app = await createApp({
   host: "127.0.0.1",
@@ -94,6 +101,25 @@ await app.listen(4199, "127.0.0.1");
 // Test control only (never in production): make this month's USB copy overdue, for the blocking screen.
 http
   .createServer((req, res) => {
+    // The manager's recovery code "printed" at installation (Phase 8A), for the sign-in screen test.
+    if (req.url === "/recovery-code") return void res.writeHead(200).end(recoveryCode);
+    // Google Drive watch (Phase 8A): /drive?running=0&due=1 sets what the hourly check would have found.
+    if (req.url?.startsWith("/drive?")) {
+      const q = new URL(req.url, "http://x").searchParams;
+      const owner = new Client({ connectionString: ownerUrl });
+      owner
+        .connect()
+        .then(() =>
+          owner.query(
+            `UPDATE drive_watch SET running = $1, checked_at = now(),
+               confirmed_week = CASE WHEN $2 THEN NULL ELSE date_trunc('week', now() AT TIME ZONE 'Africa/Casablanca')::date END`,
+            [q.get("running") === "1", q.get("due") === "1"],
+          ),
+        )
+        .finally(() => owner.end())
+        .then(() => res.writeHead(200).end("ok"), (e) => res.writeHead(500).end(String(e)));
+      return;
+    }
     if (req.url !== "/usb-overdue") return void res.writeHead(404).end();
     gate(true)
       .then(() => app.get(UsbService).refresh())

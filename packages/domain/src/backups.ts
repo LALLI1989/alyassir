@@ -167,3 +167,21 @@ export function parseBackupFileName(name: string): { kind: "hourly" | "daily" | 
   if (!m) return null;
   return { kind: m[1] as "hourly", day: m[2] as string };
 }
+
+/** Monday of the week of a business day. */
+export function weekMonday(day: string): string {
+  return addDays(day, 1 - isoWeekday(day));
+}
+
+/**
+ * Weekly "check your backups in Google Drive" (Phase 8A): shown to the manager from the first
+ * working day of the week (Monday, or the next working day) until he confirms that week.
+ */
+export function driveCheckDue(today: string, workDays: readonly number[], confirmedWeek: string | null): boolean {
+  const monday = weekMonday(today);
+  if (confirmedWeek === monday) return false;
+  for (let d = monday; d <= today; d = addDays(d, 1)) {
+    if (workDays.includes(isoWeekday(d))) return true;
+  }
+  return false;
+}

@@ -144,7 +144,9 @@ export type ReminderKind =
   | "expense_pending"
   | "unread_messages"
   | "edit_requests"
-  | "claim_stale";
+  | "claim_stale"
+  // Phase 8A: the manager's weekly look at drive.google.com.
+  | "drive_check";
 
 /** One line of the reminders screen. Amounts and dates come from the server. */
 export interface ReminderItemDto {

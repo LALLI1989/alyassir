@@ -5,6 +5,8 @@ import {
   agencySettingsSchema,
   auditQuerySchema,
   changePasswordSchema,
+  newRecoveryCodeSchema,
+  recoverManagerSchema,
   createEditRequestSchema,
   createThreadSchema,
   createUserSchema,
@@ -35,6 +37,7 @@ import { HISTORICAL_CONTROLLERS } from "./controllers-historical";
 import { AllowedDuringUsbBlock } from "./backups/maintenance.guard";
 import { AllowedBeforeGoLive } from "./historical/historical.guard";
 import { AuthService } from "./auth/auth.service";
+import { RecoveryService } from "./auth/recovery.service";
 import { LoginThrottle } from "./auth/login-throttle";
 import { Authenticated, ManagerOnly, Public } from "./common/access";
 import { Ctx, CurrentUser, type AuthUser, type RequestContext } from "./common/context";
@@ -87,7 +90,18 @@ export class AuthController {
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(LoginThrottle) private readonly throttle: LoginThrottle,
     @Inject(SystemService) private readonly system: SystemService,
+    @Inject(RecoveryService) private readonly recovery: RecoveryService,
   ) {}
+
+  /** Phase 8A: "I forgot the manager's password", with the printed recovery code. */
+  @Public()
+  @Post("recover")
+  @HttpCode(200)
+  async recover(@Body() body: unknown, @Ctx() ctx: RequestContext, @Req() req: FastifyRequest) {
+    this.throttle.check(`recover:${ctx.ip ?? "unknown"}`);
+    await this.system.assertClientVersion(req, true);
+    return this.recovery.recover(ctx, parse(recoverManagerSchema, body));
+  }
 
   @Public()
   @Post("login")
@@ -122,7 +136,23 @@ export class MeController {
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(UsersService) private readonly users: UsersService,
     @Inject(DatabaseService) private readonly db: DatabaseService,
+    @Inject(RecoveryService) private readonly recovery: RecoveryService,
   ) {}
+
+  /** Phase 8A: does the manager have a printed recovery code, and since when. */
+  @ManagerOnly()
+  @Get("recovery-code")
+  recoveryState(@CurrentUser() user: AuthUser) {
+    return this.recovery.state(user);
+  }
+
+  /** Phase 8A: a new recovery code (shown once); the old one stops working. */
+  @ManagerOnly()
+  @Post("recovery-code")
+  @HttpCode(200)
+  newRecoveryCode(@Body() body: unknown, @Ctx() ctx: RequestContext, @CurrentUser() user: AuthUser) {
+    return this.recovery.create(ctx, user, parse(newRecoveryCodeSchema, body).password);
+  }
 
   @Authenticated()
   @Get()

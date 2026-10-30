@@ -113,6 +113,9 @@ export const ERROR_CODES = [
   "LATE_REASON_REQUIRED",
   "DRAWER_NOT_IN_HISTORICAL",
   "INSTALMENTS_CUSTOM_INVALID",
+  // Phase 8A: the manager's recovery code.
+  "RECOVERY_INVALID",
+  "RECOVERY_LOCKED",
   "INTERNAL",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

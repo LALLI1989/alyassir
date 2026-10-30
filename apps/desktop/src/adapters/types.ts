@@ -48,6 +48,8 @@ export interface Adapter {
   saveServer(server: SavedServer): Promise<void>;
 
   login(username: string, password: string): Promise<LoginResult>;
+  /** Phase 8A: new manager password with the printed recovery code; returns the new code (shown once). */
+  recover(username: string, code: string, newPassword: string): Promise<{ recoveryCode: string }>;
   logout(): Promise<void>;
   request<T>(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<T>;
   /** Opens a wa.me link in the browser of the computer (SPEC 18.4). */

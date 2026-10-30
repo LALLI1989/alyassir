@@ -4,6 +4,7 @@ import { backupDirSchema, backupSettingsSchema, restoreSchema, usbCopySchema, us
 import { AllowedDuringUsbBlock } from "./backups/maintenance.guard";
 import { AllowedBeforeGoLive } from "./historical/historical.guard";
 import { BackupsService } from "./backups/backups.service";
+import { DriveService } from "./backups/drive.service";
 import { UsbService } from "./backups/usb.service";
 import { Authenticated, ManagerOnly } from "./common/access";
 import { Ctx, CurrentUser, type AuthUser, type RequestContext } from "./common/context";
@@ -18,7 +19,18 @@ const fileId = (id: string) => {
 /** Only the manager sees, takes, restores or deletes backups (SPEC 20). */
 @Controller("backups")
 class BackupsController {
-  constructor(@Inject(BackupsService) private readonly backups: BackupsService) {}
+  constructor(
+    @Inject(BackupsService) private readonly backups: BackupsService,
+    @Inject(DriveService) private readonly drive: DriveService,
+  ) {}
+
+  /** Phase 8A: the manager looked at drive.google.com this week ("I checked"). */
+  @ManagerOnly()
+  @HttpCode(200)
+  @Post("drive-checked")
+  driveChecked(@Ctx() ctx: RequestContext, @CurrentUser() user: AuthUser) {
+    return this.drive.confirm(ctx, user);
+  }
 
   @ManagerOnly()
   @Get()

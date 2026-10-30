@@ -88,9 +88,9 @@ export function Home({ onOpen }: { onOpen: (page: Page) => void }) {
         {dash?.openClaims !== null && dash?.openClaims !== undefined && <Tile value={dash.openClaims} label={t("dashboard.openClaims")} onClick={() => onOpen({ kind: "claims" })} />}
         {dash?.backup?.enabled && (
           <Tile
-            value={<span className={dash.backup.late ? "text-destructive" : undefined}>{dash.backup.lastOkAt ? formatDateTime(dash.backup.lastOkAt) : t("dashboard.backupNever")}</span>}
+            value={<span className={dash.backup.late || dash.backup.drive.running === false ? "text-destructive" : undefined}>{dash.backup.lastOkAt ? formatDateTime(dash.backup.lastOkAt) : t("dashboard.backupNever")}</span>}
             label={t("dashboard.backup")}
-            hint={dash.backup.late ? t("dashboard.backupLate") : undefined}
+            hint={dash.backup.drive.running === false ? t("dashboard.driveNotRunning") : dash.backup.late ? t("dashboard.backupLate") : undefined}
             onClick={() => onOpen({ kind: "backups" })}
             testId="dash-backup"
           />

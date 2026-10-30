@@ -269,6 +269,20 @@
         "debts": "Échéances devenues des dettes",
         "cheques": "Moyens de paiement en cours d'encaissement",
         "backup": "Sauvegarde"
+      },
+      "manager_recovered": {
+        "subject": "Le mot de passe du gérant a changé",
+        "intro": "Le mot de passe du gérant a été changé par récupération ; toutes ses sessions ont été fermées et un nouveau code de récupération a été créé. Si ce n'est pas vous, contactez le support immédiatement.",
+        "way": "Moyen",
+        "device": "Poste",
+        "ways": {
+          "code": "Code de récupération à l'écran de connexion",
+          "server_tool": "Outil de l'ordinateur serveur"
+        }
+      },
+      "drive_not_running": {
+        "subject": "Google Drive ne fonctionne pas sur le serveur",
+        "intro": "L'application Google Drive n'est pas lancée sur l'ordinateur serveur : les sauvegardes ne sont pas envoyées sur Internet. Ouvrez Google Drive et connectez-vous avec le compte de l'agence."
       }
     }
   },
@@ -586,7 +600,9 @@
       "LATE_ENTRY_NOT_ALLOWED": "Après le début du travail réel, une date ancienne n'est permise qu'au gérant pour une nouvelle police ou un renouvellement.",
       "LATE_REASON_REQUIRED": "Écrivez le motif de la police en retard.",
       "DRAWER_NOT_IN_HISTORICAL": "Pas de prise ni de clôture du tiroir pendant la saisie de l'historique.",
-      "INSTALMENTS_CUSTOM_INVALID": "Échéances saisies à la main incorrectes : dates dans l'ordre et parts égales au montant de la police."
+      "INSTALMENTS_CUSTOM_INVALID": "Échéances saisies à la main incorrectes : dates dans l'ordre et parts égales au montant de la police.",
+      "RECOVERY_INVALID": "Nom d'utilisateur ou code de récupération incorrect.",
+      "RECOVERY_LOCKED": "Récupération bloquée temporairement après 5 essais erronés. Réessayez dans 15 minutes."
     },
     "fields": {
       "required": "Ce champ est obligatoire.",
@@ -1260,7 +1276,8 @@
       "expense_pending": "Dépenses en attente de validation",
       "unread_messages": "Messages non lus",
       "edit_requests": "Demandes de modification en attente",
-      "claim_stale": "Sinistres sans mise à jour depuis {{days}} jours"
+      "claim_stale": "Sinistres sans mise à jour depuis {{days}} jours",
+      "drive_check": "Vérification hebdomadaire des sauvegardes dans Google Drive"
     },
     "contactsTitle": "Journal des contacts",
     "addContact": "Noter un contact",
@@ -1321,7 +1338,8 @@
     "actionsToday": "Opérations aujourd'hui",
     "backup": "Dernière sauvegarde",
     "backupNever": "Aucune",
-    "backupLate": "En retard : voir l'écran des sauvegardes"
+    "backupLate": "En retard : voir l'écran des sauvegardes",
+    "driveNotRunning": "Google Drive ne fonctionne pas sur le serveur"
   },
   "reports": {
     "title": "Rapports",
@@ -1550,6 +1568,12 @@
       "skipTitle": "Passer la copie USB de ce mois",
       "skipReason": "Motif",
       "skipHint": "Inscrit au journal d'audit ; le gérant est averti."
+    },
+    "drive": {
+      "notRunning": "L'application Google Drive ne fonctionne pas sur l'ordinateur serveur : les sauvegardes ne sont pas envoyées sur Internet. Ouvrez-la et connectez-vous avec le compte de l'agence.",
+      "weekly": "Une fois par semaine : ouvrez drive.google.com et vérifiez que la sauvegarde du jour est dans le dossier des sauvegardes.",
+      "checked": "J'ai vérifié",
+      "lastChecked": "Dernière vérification de Google Drive : {{time}}"
     }
   },
   "historical": {
@@ -1598,5 +1622,23 @@
     "lateHint": "L'argent entre dans le tiroir du jour. Inscrit au journal d'audit.",
     "manualInstalments": "Saisir les échéances à la main, avec leurs anciennes valeurs",
     "manualHint": "Pour chaque échéance : la date, la part de la prime, puis les frais. La somme des parts égale le montant de la police. Chaque échéance est marquée « saisie à la main »."
+  },
+  "recovery": {
+    "title": "Récupérer le compte gérant",
+    "link": "Mot de passe du gérant oublié ?",
+    "intro": "Saisissez le nom d'utilisateur du gérant, le code de récupération imprimé, puis un nouveau mot de passe.",
+    "code": "Code de récupération",
+    "newPassword": "Nouveau mot de passe",
+    "again": "Répétez le mot de passe",
+    "mismatch": "Les deux mots de passe ne correspondent pas.",
+    "submit": "Changer le mot de passe",
+    "done": "Le mot de passe du gérant a été changé. Connectez-vous avec le nouveau.",
+    "printNew": "L'ancien code de récupération ne fonctionne plus. Voici votre nouveau code : imprimez-le et gardez-le avec les papiers de l'agence, il ne sera plus affiché.",
+    "backToLogin": "Retour à la connexion",
+    "cardTitle": "Code de récupération du compte gérant",
+    "cardIntro": "Si vous oubliez votre mot de passe, ce code imprimé permet d'en choisir un nouveau depuis l'écran de connexion. Il peut aussi être changé sur l'ordinateur serveur avec un compte administrateur Windows.",
+    "exists": "Vous avez un code de récupération depuis le {{time}}.",
+    "none": "Vous n'avez pas encore de code de récupération. Créez-le maintenant et imprimez-le.",
+    "create": "Créer un nouveau code"
   }
 }

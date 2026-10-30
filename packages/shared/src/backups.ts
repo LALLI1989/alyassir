@@ -53,6 +53,8 @@ export interface BackupsDto {
   running: boolean;
   settings: BackupSettings;
   files: BackupFileDto[];
+  /** Google Drive on the server computer (Phase 8A). */
+  drive: DriveStateDto;
 }
 
 export interface UsbStateDto {
@@ -68,8 +70,21 @@ export interface UsbStateDto {
 }
 
 /** For the manager's dashboard card. */
+/**
+ * Google Drive watch (Phase 8A): is the Drive app running on the server computer (null: not checked
+ * yet, or not Windows), and is the weekly "check your backups in drive.google.com" still to confirm.
+ */
+export interface DriveStateDto {
+  running: boolean | null;
+  checkedAt: string | null;
+  confirmDue: boolean;
+  confirmedAt: string | null;
+}
+
 export interface BackupStatusDto {
   enabled: boolean;
+  /** Google Drive on the server computer (Phase 8A). */
+  drive: DriveStateDto;
   lastOkAt: string | null;
   /** More than two working hours without a good backup, or the folder cannot be used. */
   late: boolean;

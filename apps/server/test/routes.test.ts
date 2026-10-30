@@ -38,9 +38,9 @@ describe("route permissions", () => {
     expect(missing, `Routes without @Public/@Authenticated/@ManagerOnly/@RequirePermission: ${missing.join(", ")}`).toEqual([]);
   });
 
-  it("only health, system info, login and refresh are public", () => {
+  it("only health, system info, login, refresh and the manager's recovery code (Phase 8A) are public", () => {
     const pub = routes().filter((r) => r.access?.kind === "public").map((r) => r.name).sort();
-    expect(pub).toEqual(["AuthController.login", "AuthController.refresh", "SystemController.health", "SystemController.info"]);
+    expect(pub).toEqual(["AuthController.login", "AuthController.recover", "AuthController.refresh", "SystemController.health", "SystemController.info"]);
   });
 
   it("only operations on one existing record accept a one-time edit-request grant", () => {

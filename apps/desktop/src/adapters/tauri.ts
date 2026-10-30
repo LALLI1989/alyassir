@@ -46,6 +46,7 @@ export const tauriAdapter: Adapter = {
   saveServer: (server) => link<void>("save_server", { ...server }),
 
   login: (username, password) => api<LoginResult>("api_login", { username, password }),
+  recover: (username, code, newPassword) => api<{ recoveryCode: string }>("api_recover", { username, code, newPassword }),
   logout: () => api<void>("api_logout"),
   request: <T>(method: string, path: string, body?: unknown, options?: RequestOptions) =>
     api<T>("api_request", { method, path, body: body ?? null, userActive: userIsActive(), ...operationHeaders(options) }),

@@ -19,6 +19,9 @@ pnpm --filter "@alyassir/server" --config.node-linker=hoisted deploy --prod --le
 if ($LASTEXITCODE -ne 0) { throw "pnpm deploy failed" }
 Pop-Location
 Copy-Item "$vendor\node.exe" "$stage\server\node.exe"
+# Phase 8A: the server-only tool behind the "reset the manager's password" shortcut.
+New-Item -ItemType Directory -Force -Path "$stage\server\tools" | Out-Null
+Copy-Item (Join-Path $root "tools\reset-manager.ps1") "$stage\server\tools\reset-manager.ps1"
 if (-not (Test-Path "$stage\server\dist\main.js")) { throw "Server build missing from stage" }
 # Smoke test: the setup helper and all its modules load with the bundled Node.js.
 $smoke = & "$stage\server\node.exe" "$stage\server\dist\setup\cli.js" check-port --port 4999 2>&1

@@ -1,17 +1,69 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { changePasswordSchema, type Language } from "@alyassir/shared";
+import { changePasswordSchema, type Language, type RecoveryCodeDto, type RecoveryStateDto } from "@alyassir/shared";
 import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Input, NativeSelect } from "@alyassir/ui";
 import { asClientError } from "../adapters";
 import { Field, PageHeader } from "../components/common";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
 import i18n from "../lib/i18n";
+import { formatDateTime } from "../lib/format";
 import { api, useSession } from "../lib/session";
+
+/** Phase 8A: the manager's printed recovery code: is there one, and make a new one (shown once). */
+function RecoveryCode() {
+  const { t } = useTranslation();
+  const client = useQueryClient();
+  const state = useQuery({ queryKey: ["recoveryCode"], queryFn: () => api<RecoveryStateDto>("GET", "/api/me/recovery-code") });
+  const [password, setPassword] = useState("");
+  const create = useMutation({
+    mutationFn: () => api<RecoveryCodeDto>("POST", "/api/me/recovery-code", { password }),
+    onSuccess: () => {
+      setPassword("");
+      void client.invalidateQueries({ queryKey: ["recoveryCode"] });
+    },
+  });
+  const s = state.data;
+  return (
+    <Card data-testid="recovery-card">
+      <CardHeader>
+        <CardTitle>{t("recovery.cardTitle")}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <p className="text-sm">{t("recovery.cardIntro")}</p>
+        {s && (s.exists && s.createdAt ? <Alert variant="success">{t("recovery.exists", { time: formatDateTime(s.createdAt) })}</Alert> : <Alert variant="warning">{t("recovery.none")}</Alert>)}
+        {create.data ? (
+          <div className="grid gap-2">
+            <p className="text-sm font-medium">{t("recovery.printNew")}</p>
+            <p className="rounded-md border bg-muted p-3 text-center font-mono text-xl font-bold tracking-wider" dir="ltr" data-testid="new-recovery-code">
+              {create.data.recoveryCode}
+            </p>
+          </div>
+        ) : (
+          <form
+            className="grid gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              create.mutate();
+            }}
+          >
+            <Field id="recoveryPassword" label={t("account.currentPassword")}>
+              <Input id="recoveryPassword" type="password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </Field>
+            {create.error && <ErrorMessage error={asClientError(create.error)} />}
+            <div>
+              <Button type="submit" variant="outline" disabled={create.isPending || !password}>{t("recovery.create")}</Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function Account() {
   const { t } = useTranslation();
-  const { me } = useSession();
+  const { me, isManager } = useSession();
   const client = useQueryClient();
   const fieldError = useFieldError();
   const [current, setCurrent] = useState("");
@@ -90,6 +142,7 @@ export function Account() {
           </form>
         </CardContent>
       </Card>
+      {isManager && <RecoveryCode />}
     </div>
   );
 }

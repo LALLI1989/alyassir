@@ -6,10 +6,12 @@
  *   provision    --app-dir D --data-dir D --port N --result FILE --bootstrap FILE [--restore-file DUMP] [--simulate-failure-at STEP]
  *   upgrade      --app-dir D --result FILE [--bootstrap FILE] [--simulate-failure-at STEP]
  *   unprovision  --app-dir D
+ *   reset-manager --app-dir D --password-file FILE --result FILE   (Phase 8A, server computer, as administrator)
  */
 import { writeFileSync } from "node:fs";
 import { isPortFree, suggestPort } from "./ports";
 import { PG_PORT, provision, unprovision } from "./provision";
+import { resetManager } from "./reset-manager";
 import { upgrade } from "./upgrade";
 
 export function parseArgs(argv: string[]): { command: string; flags: Record<string, string> } {
@@ -71,6 +73,10 @@ async function main(): Promise<number> {
         bootstrapFile: flags.bootstrap,
         simulateFailureAt: flags["simulate-failure-at"],
       });
+      return result.ok ? 0 : 1;
+    }
+    case "reset-manager": {
+      const result = await resetManager({ appDir: need(flags, "app-dir"), passwordFile: need(flags, "password-file"), resultFile: need(flags, "result") });
       return result.ok ? 0 : 1;
     }
     case "unprovision":

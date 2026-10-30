@@ -330,7 +330,7 @@ export function Shell() {
             </Button>
           </div>
         </header>
-        {historical && <HistoricalBar state={historical} day={operationDay} onDay={setOperationDay} />}
+        {historical && <HistoricalBar state={historical} day={operationDay} onDay={setOperationDay} onChecklist={() => setPage({ kind: "historical" })} />}
         {usb?.state === "remind" && <UsbBanner state={usb} />}
         <main className="flex-1 overflow-auto p-5">
           {mainContent}

@@ -69,6 +69,28 @@ test("quick entry of a policy of 01/05/2026, saved with Ctrl+Enter", async ({ pa
   await expect(page.getByLabel(ar.policies.pickClient)).toHaveValue("");
 });
 
+test("Phase 8B: a day below zero shows at once in the yellow bar, until the opening balance is set", async ({ page, request }) => {
+  const headers = { "x-alyassir-client-version": "0.1.0", "x-alyassir-as-of": "2026-05-02" };
+  const login = await request.post(`${API}/api/auth/login`, { data: { username: "manager", password: "manager-pass" }, headers });
+  const auth = { ...headers, authorization: `Bearer ${(await login.json()).accessToken as string}` };
+  const cats = (await (await request.get(`${API}/api/expenses/categories`, { headers: auth })).json()) as { id: string }[];
+  const exp = await (await request.post(`${API}/api/expenses`, { headers: auth, data: { idempotencyKey: crypto.randomUUID(), categoryId: cats[0]?.id, amountCents: 50_000, note: "Loyer" } })).json();
+  if (exp.status === "pending") {
+    expect((await request.post(`${API}/api/expenses/${exp.id}/approve`, { headers: auth, data: { version: exp.version, account: "drawer" } })).ok()).toBe(true);
+  }
+  await signIn(page);
+  const warning = page.getByTestId("negative-warning");
+  await expect(warning).toContainText("02/05/2026");
+  await page.screenshot({ path: `${OUT}28-negative-day.png` });
+  await warning.click();
+  await expect(page.getByTestId("negative-days")).toContainText("02/05/2026");
+  // The real opening balance of the drawer was 500 MAD: no more negative day.
+  expect((await request.put(`${API}/api/historical/opening`, { headers: auth, data: { drawerCents: 50_000, safeCents: 0, bankCents: 0 } })).ok()).toBe(true);
+  // The screens hear about it (realtime) and the warning goes away.
+  await expect(page.getByTestId("negative-warning")).toHaveCount(0);
+  await expect(page.getByText(ar.historical.noNegative)).toBeVisible();
+});
+
 test("all old entries are done: checklist, password and sentence, then live work", async ({ page, request }) => {
   await signIn(page);
   await page.getByRole("button", { name: ar.shell.historical }).click();

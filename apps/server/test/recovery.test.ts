@@ -56,6 +56,7 @@ describe("manager recovery code", () => {
   });
 
   it("five wrong codes lock it for a while, even with the right code", async () => {
+    await ownerQuery(t.db, "UPDATE users SET recovery_failed = 0 WHERE role = 'manager'");
     for (let i = 0; i < 4; i++) expect((await recover(MANAGER.username, "AAAA-AAAA-AAAA-AAAA", "new-pass-3")).body.code).toBe("RECOVERY_INVALID");
     expect((await recover(MANAGER.username, "AAAA-AAAA-AAAA-AAAA", "new-pass-3")).body.code).toBe("RECOVERY_LOCKED");
     expect((await recover(MANAGER.username, printed, "new-pass-3")).body.code).toBe("RECOVERY_LOCKED");

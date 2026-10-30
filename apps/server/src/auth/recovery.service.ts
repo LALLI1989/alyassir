@@ -63,7 +63,8 @@ export class RecoveryService {
     const u = schema.users;
     const now = new Date();
     const typed = normalizeRecoveryCode(input.code);
-    const outcome = await this.database.db.transaction(async (tx) => {
+    type Outcome = { error: "RECOVERY_INVALID" | "RECOVERY_LOCKED"; lockedUntil?: Date | null } | { error?: undefined; code: string; userId: string };
+    const outcome = await this.database.db.transaction(async (tx): Promise<Outcome> => {
       const [user] = await tx
         .select()
         .from(u)
@@ -101,9 +102,8 @@ export class RecoveryService {
       await messageManager(this.messages, tx, "manager_recovered", { way: "code", device: ctx.device });
       return { code, userId: user.id };
     });
-    if ("error" in outcome) {
-      const until = "lockedUntil" in outcome ? outcome.lockedUntil : null;
-      const extra = until ? { lockedUntil: until.toISOString() } : {};
+    if (outcome.error !== undefined) {
+      const extra = outcome.lockedUntil ? { lockedUntil: outcome.lockedUntil.toISOString() } : {};
       throw new ApiException(outcome.error, extra);
     }
     this.messages.notify([outcome.userId]);

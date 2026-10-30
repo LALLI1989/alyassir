@@ -289,13 +289,15 @@ try {
   Check ($rec.status -eq 200 -and $rec.body.recoveryCode -ne $code) "the printed code sets a new password and gives a new code"
   Check ((Login "gerant" "Nouveau-2026").status -eq 200) "the manager signs in with the new password"
   Check ((Api "POST" "/api/auth/recover" @{ username = "gerant"; code = $code; newPassword = "Autre-2026" }).body.code -eq "RECOVERY_INVALID") "the used code does not work twice"
-  $shell = New-Object -ComObject WScript.Shell
-  $all = @(Get-ChildItem "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" -Filter *.lnk -Recurse)
-  foreach ($l in $all) { $sc = $shell.CreateShortcut($l.FullName); Write-Host "  shortcut: $($l.Name) -> $($sc.TargetPath) $($sc.Arguments)" }
-  $links = @($all | Where-Object { $shell.CreateShortcut($_.FullName).Arguments -like "*reset-manager.ps1*" })
+  # The shortcut's name is in Arabic (installed with /LANG=ar), which WScript.Shell cannot open:
+  # the arguments are read from the .lnk file itself (stored as UTF-16).
+  $links = @(Get-ChildItem "$env:ProgramData\Microsoft\Windows\Start Menu\Programs" -Filter *.lnk -Recurse | Where-Object {
+    $b = [System.IO.File]::ReadAllBytes($_.FullName)
+    $u = [System.Text.Encoding]::Unicode
+    $u.GetString($b).Contains("reset-manager.ps1") -or $u.GetString($b, 1, $b.Length - 1).Contains("reset-manager.ps1")
+  })
   Check (Test-Path "$App\server\tools\reset-manager.ps1") "the tool to reset the manager's password is installed on the server"
-  $found = ($all | ForEach-Object { $sc = $shell.CreateShortcut($_.FullName); "$($_.FullName) => $($sc.TargetPath) $($sc.Arguments)" }) -join " | "
-  Check ($links.Count -eq 1) "the Start menu has the shortcut to that tool (found: $found)"
+  Check ($links.Count -eq 1) "the Start menu has the shortcut to that tool ($($links.Name -join ', '))"
   # The tool's window calls the setup helper as administrator; the same call here, without the window.
   $pwFile = Join-Path $env:RUNNER_TEMP "reset-pw.txt"
   $resetOut = Join-Path $env:RUNNER_TEMP "reset-result.json"

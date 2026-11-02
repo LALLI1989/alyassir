@@ -230,8 +230,8 @@ try {
   Write-Host "  fingerprint: $fingerprint"
   Check ($fingerprint -match "^([0-9A-F]{2}:){31}[0-9A-F]{2}$") "fingerprint shown in the expected format"
   # Review 02/11/2026: the computer's name first (it survives a new number from the router), then the number.
-  $name = [System.Net.Dns]::GetHostName()
-  Check ($url -eq "https://$($name):$Port") "the first address uses the computer's name ($name)"
+  $serverName = [System.Net.Dns]::GetHostName()
+  Check ($url -eq "https://$($serverName):$Port") "the first address uses the computer's name ($serverName)"
   Check ((IniValue "url1") -match "^https://\d+\.\d+\.\d+\.\d+:$Port$") "the numeric network address is shown as well"
   Check ((IniValue "localUrl") -eq "https://127.0.0.1:$Port") "the address for the server computer itself is shown"
 
@@ -253,8 +253,8 @@ try {
 
   $h = Health
   Check ($h -and $h.status -eq "ok" -and $h.database -eq "ok") "health check over HTTPS: server OK, database OK"
-  $byName = HealthAt $name
-  Check ($byName -and $byName.status -eq "ok") "the server answers by the computer's name ($name), not only by its number"
+  $byName = HealthAt $serverName
+  Check ($byName -and $byName.status -eq "ok") "the server answers by the computer's name ($serverName), not only by its number"
   foreach ($dir in @("$Data\pgdata", "$Data\secrets", "$Data\certs", "$Data\service", "$Data\backups")) { Assert-Private $dir }
 
   $secrets = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json

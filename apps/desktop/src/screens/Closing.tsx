@@ -64,10 +64,16 @@ export function Closing() {
                 <Money cents={st.balanceCents} className="text-lg font-bold" />
               </div>
               {st.pendingExpensesCents > 0 && (
-                <div className="grid gap-0.5 rounded-md border border-warning/40 p-3">
-                  <span className="text-xs text-muted-foreground">{t("drawer.pendingExpenses")}</span>
-                  <Money cents={st.pendingExpensesCents} className="text-lg font-bold" />
-                </div>
+                <>
+                  <div className="grid gap-0.5 rounded-md border border-warning/40 p-3">
+                    <span className="text-xs text-muted-foreground">{t("drawer.pendingExpenses")}</span>
+                    <Money cents={st.pendingExpensesCents} className="text-lg font-bold" />
+                  </div>
+                  <div className="grid gap-0.5 rounded-md border p-3" data-testid="expected-cash">
+                    <span className="text-xs text-muted-foreground">{t("drawer.expectedCash")}</span>
+                    <Money cents={st.expectedCashCents} className="text-lg font-bold" />
+                  </div>
+                </>
               )}
             </div>
             {st.session && (
@@ -217,9 +223,15 @@ function CloseDialog({ st, onClose }: { st: DrawerStateDto; onClose: () => void 
         <Money cents={st.balanceCents} className="text-lg font-bold" />
       </div>
       {st.pendingExpensesCents > 0 && (
-        <Alert variant="warning">
-          <span className="inline-flex flex-wrap gap-1">{t("drawer.pendingExpenses")}: <Money cents={st.pendingExpensesCents} /></span>
-        </Alert>
+        <>
+          <Alert variant="warning">
+            <span className="inline-flex flex-wrap gap-1">{t("drawer.pendingExpenses")}: <Money cents={st.pendingExpensesCents} /></span>
+          </Alert>
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <span className="text-sm text-muted-foreground">{t("drawer.expectedCash")}</span>
+            <Money cents={st.expectedCashCents} className="text-lg font-bold" />
+          </div>
+        </>
       )}
       <Field id="closeCounted" label={t("drawer.counted")} hint={t("drawer.countedHint")} error={fieldError(fields.countedCents)}>
         <MoneyInput id="closeCounted" cents={counted} onChange={setCounted} />

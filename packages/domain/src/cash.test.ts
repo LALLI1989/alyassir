@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closingDifference, dayStatus, expenseCancelGivesBack, expenseNext, transferProblem } from "./index";
+import { closingDifference, dayStatus, expectedCash, expenseCancelGivesBack, expenseNext, transferProblem } from "./index";
 
 describe("closing (SPEC 17.3)", () => {
   it("expected 3500, counted 3300: −200 and a reason is needed", () => {
@@ -14,6 +14,23 @@ describe("closing (SPEC 17.3)", () => {
   it("refuses negative or non-integer amounts", () => {
     expect(() => closingDifference(100, -1)).toThrow();
     expect(() => closingDifference(100.5, 1)).toThrow();
+  });
+});
+
+describe("expected cash with pending expenses (owner decision 02/11/2026)", () => {
+  it("balance 1000, an expense of 200 waiting: 800 should be in the drawer", () => {
+    expect(expectedCash(100_000, 20_000)).toBe(80_000);
+    expect(closingDifference(expectedCash(100_000, 20_000), 80_000)).toEqual({ differenceCents: 0, reasonRequired: false });
+  });
+  it("nothing waiting: the balance itself", () => {
+    expect(expectedCash(66_700, 0)).toBe(66_700);
+  });
+  it("approving or rejecting changes the balance and the pending sum together: what is expected stays", () => {
+    expect(expectedCash(100_000 - 20_000, 0)).toBe(expectedCash(100_000, 20_000));
+  });
+  it("refuses a negative or non-integer pending sum", () => {
+    expect(() => expectedCash(100, -1)).toThrow();
+    expect(() => expectedCash(100.5, 0)).toThrow();
   });
 });
 

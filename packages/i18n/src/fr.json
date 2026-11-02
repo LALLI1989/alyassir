@@ -253,6 +253,10 @@
         "subject": "Dépense en attente de validation",
         "intro": "Un employé a ajouté une dépense de caisse qui attend votre validation :"
       },
+      "expense_rejected": {
+        "subject": "Dépense refusée : manquant en caisse",
+        "intro": "Cette dépense a été refusée. Son argent était sorti de la caisse : il est compté comme manquant de la personne qui l'a saisie, et le solde de la caisse baisse de ce montant :"
+      },
       "backup_failed": {
         "subject": "Échec de sauvegarde",
         "intro": "Une sauvegarde n'a pas pu être faite. Voir l'écran « Sauvegardes ».",
@@ -1100,10 +1104,11 @@
     "receiveOpen": "Aucune séance ouverte. En prenant la caisse, vous ouvrez la séance.",
     "receiveJoin": "Séance ouverte par {{name}}. En prenant la caisse, vous rejoignez cette séance.",
     "expected": "Solde selon le programme",
+    "expectedCash": "Attendu en caisse",
     "counted": "Montant réellement présent",
     "countedHint": "Comptez l'argent de la caisse et saisissez le montant.",
     "reason": "Motif",
-    "reasonHint": "Obligatoire si le montant présent diffère du solde du programme.",
+    "reasonHint": "Obligatoire si le montant présent diffère du montant attendu en caisse.",
     "responsibility": "Le solde de la caisse est ajusté à ce que vous avez trouvé. En cas d'écart, un message de demande d'explication vous est envoyé, ainsi qu'à la personne qui vous a remis la caisse, avec copie au gérant.",
     "receivedRetry": "Caisse prise en charge. Cliquez à nouveau sur « Confirmer ».",
     "held": "Caisse prise",
@@ -1115,7 +1120,7 @@
     "closeOnBehalfInfo": "Vous n'êtes pas dans cette séance : clôturer pour eux demande un motif, et le gérant est averti.",
     "closedTitle": "Clôture enregistrée",
     "pendingExpenses": "Dépenses en attente de validation",
-    "pendingExpensesHint": "L'argent est sorti de la caisse mais n'est pas déduit du solde avant validation ; elles peuvent expliquer un écart.",
+    "pendingExpensesHint": "L'argent est déjà sorti de la caisse : il n'est pas compté dans l'attendu en caisse. Il est déduit du solde une seule fois : à la validation, ou au refus comme manquant de la personne qui l'a saisie.",
     "members": "Qui a pris la caisse dans cette séance",
     "byUser": "Mouvements par employé",
     "byUserHint": "À titre d'information, sans comptabilisation automatique.",
@@ -1217,7 +1222,8 @@
       "reversal": "Mouvement inverse",
       "count_adjustment": "Ajustement après comptage",
       "opening_balance": "Solde d'ouverture",
-      "balance_correction": "Correction de solde"
+      "balance_correction": "Correction de solde",
+      "expense_rejected": "Dépense refusée (manquant)"
     },
     "reverse": "Mouvement inverse",
     "reversed": "Annulé",

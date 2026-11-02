@@ -93,13 +93,14 @@ function MessageBody({ body, system }: { body: string; system: boolean }) {
       [t("drawer.difference"), money(p.differenceCents)],
       [t("common.reason"), text(p.reason)],
     ];
-  } else if (parsed.event === "expense_pending") {
+  } else if (parsed.event === "expense_pending" || parsed.event === "expense_rejected") {
     const cat = text(p.category);
     lines = [
       [t("messages.events.common.employee"), text(p.employee)],
       [t("cash.category"), t(`cash.categories.${cat}`, { defaultValue: cat })],
       [t("finance.amount"), money(p.amountCents)],
       [t("cash.note"), text(p.note)],
+      ...(parsed.event === "expense_rejected" ? ([[t("common.reason"), text(p.reason)]] as [string, string][]) : []),
     ];
   } else if (parsed.event === "historical_finished") {
     lines = [

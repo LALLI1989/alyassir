@@ -212,7 +212,7 @@ try {
     $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
     $bk = Api "GET" "/api/backups" $null $newToken
     Check ($bk.status -eq 200 -and $bk.body.enabled -eq $true -and $bk.body.dir -eq $BackupDir) "after the update the server takes backups into the same folder"
-    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "8") "the eight database steps applied (Phases 1 to 8A)"
+    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "9") "the nine database steps applied (Phases 1 to 8A and the review fixes of 02/11/2026)"
     $rc = Api "GET" "/api/me/recovery-code" $null $newToken
     Check ($rc.status -eq 200 -and $rc.body.exists -eq $false) "an updated server has no recovery code until the manager makes one"
     $made = Api "POST" "/api/me/recovery-code" @{ password = $ManagerPass } $newToken

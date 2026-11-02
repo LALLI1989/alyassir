@@ -174,6 +174,8 @@ export interface PolicyDto extends PolicySummaryDto {
   replaces: { id: string; policyNumber: string } | null;
   replacedBy: { id: string; policyNumber: string } | null;
   currentPeriodId: string;
+  /** Latest period's price after its vehicle changes: the old price of the next vehicle change (02/11/2026). */
+  currentPriceCents: number;
   /** Vehicles covered by the latest period, with their certificate. */
   vehicles: CoveredVehicleDto[];
   periods: PeriodDto[];

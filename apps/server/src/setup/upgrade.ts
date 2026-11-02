@@ -20,6 +20,7 @@ import {
   ensureAppRole,
   hasManager,
   lanUrls,
+  localUrl,
   logPostgresDiagnostics,
   logServiceTail,
   paths,
@@ -239,7 +240,7 @@ export async function upgrade(o: UpgradeOptions): Promise<SetupResult> {
 
   const outcome = await runSteps(steps, log, o.simulateFailureAt);
   const result: SetupResult = outcome.ok
-    ? { ok: true, port: state.port, urls: lanUrls(state.port), fingerprint, dataDir: state.dataDir }
+    ? { ok: true, port: state.port, urls: lanUrls(state.port), localUrl: localUrl(state.port), fingerprint, dataDir: state.dataDir }
     : { ok: false, errorCode: outcome.errorCode, failedStep: outcome.failedStep, message: outcome.message };
   writeResult(log, o.resultFile, result);
   return result;

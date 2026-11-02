@@ -289,7 +289,8 @@ describe("fees and price changes (SPEC 15, 16)", () => {
 
   it("increase 300 not paid now: + 317 on the nearest unpaid instalment", async () => {
     const { client, vehicle, policy } = await insured({ instalments: { count: 2 }, payments: [cash(201_700)] }, 400_000);
-    const res = await change(policy.id, vehicle, await createVehicle(t, manager, client), 100_000, 130_000, { settlement: "defer" });
+    // The old price is the policy's own 4 000 (owner decision 02/11/2026): 4 000 -> 4 300.
+    const res = await change(policy.id, vehicle, await createVehicle(t, manager, client), 400_000, 430_000, { settlement: "defer" });
     expect(res.status).toBe(200);
     const f = await finance(policy.id);
     expect(f.instalments[1]?.amountCents).toBe(200_000 + 31_700);
@@ -344,6 +345,37 @@ describe("fees and price changes (SPEC 15, 16)", () => {
     await t.call("POST", `/api/policies/${fleet.id}/fleet/remove`, { token: manager, body: { idempotencyKey: randomUUID(), vehicleId: vehicles[0], reason: "بيعت", refundCents: 90_000 } });
     expect((await finance(fleet.id)).totals.remainingCents).toBe(1_060_000);
   });
+
+  // Owner decisions 02/11/2026 (review): the old price comes from the policy; never more back than paid.
+  it("decrease 3 000 -> 2 500: the old price is the policy's own, the client receives 483 whatever is typed", async () => {
+    const p = await insured({ payments: [cash(300_000)] }, 300_000);
+    const preview = await t.call("POST", "/api/policies/vehicle-change-preview", { token: manager, body: { policyId: p.policy.id, oldPriceCents: 3_000_000, newPriceCents: 250_000 } });
+    expect(preview.body).toMatchObject({ differenceCents: -50_000, feeCents: 1700, netCents: -48_300, direction: "decrease" });
+    const before = await drawer();
+    const res = await change(p.policy.id, p.vehicle, await createVehicle(t, manager, p.client), 3_000_000, 250_000);
+    expect(res.status).toBe(200);
+    expect(await drawer()).toBe(before - 48_300);
+    expect(res.body.operations[0].details).toMatchObject({ oldPriceCents: 300_000, newPriceCents: 250_000 });
+    // The next change starts from 2 500.
+    expect(res.body.currentPriceCents).toBe(250_000);
+  });
+
+  it("fleet: never more back than the client paid, less what was already given back", async () => {
+    const c = await createClient(t, manager);
+    const vehicles: string[] = [];
+    for (let i = 0; i < 8; i++) vehicles.push(await createVehicle(t, manager, c));
+    const fleet = await mustCreatePolicy(t, manager, s, c, vehicles.slice(0, 7), { totalAmountCents: 250_000, finance: { payments: [cash(250_000)] } });
+    const remove = (vehicleId: string, refundCents: number) =>
+      t.call("POST", `/api/policies/${fleet.id}/fleet/remove`, { token: manager, body: { idempotencyKey: randomUUID(), vehicleId, reason: "بيعت", refundCents } });
+    // A vehicle change in a fleet: the old price is typed (one price for all), the cap still holds.
+    const typed = await change(fleet.id, vehicles[0] as string, vehicles[7] as string, 400_000, 0);
+    expect(typed.body).toMatchObject({ code: "REFUND_ABOVE_PAID", maxCents: 250_000 });
+    const before = await drawer();
+    expect((await remove(vehicles[0] as string, 800_000)).body.code).toBe("REFUND_ABOVE_PAID");
+    expect((await remove(vehicles[0] as string, 100_000)).status).toBe(200);
+    expect((await remove(vehicles[1] as string, 160_000)).body).toMatchObject({ code: "REFUND_ABOVE_PAID", maxCents: 150_000 });
+    expect(await drawer()).toBe(before - 100_000);
+  });
 });
 
 describe("balances never go below zero (SPEC 17.1, 13.3)", () => {
@@ -351,9 +383,12 @@ describe("balances never go below zero (SPEC 17.1, 13.3)", () => {
     // The employee has to give back more than the drawer holds.
     const token = await employee("refunder", ["clients.view", "vehicles.view", "policies.view", "policies.edit", "payments.view", "payments.create"]);
     const big = await insured({ payments: [cheque(5_000_000)] }, 5_000_000);
+    // The cheque is confirmed: the client really paid (owner decision 02/11/2026: no more back than paid).
+    const paid = (await finance(big.policy.id)).payments[0];
+    expect((await t.call("POST", `/api/payments/${paid?.id}/confirm`, { token: manager, body: { version: paid?.version } })).status).toBe(200);
     const balance = await drawer();
     const { client, vehicle } = big;
-    // A decrease larger than the drawer, nothing owed (the cheque counts as paid).
+    // A decrease larger than the drawer, nothing owed.
     const res = await change(big.policy.id, vehicle, await createVehicle(t, manager, client), 5_000_000, 5_000_000 - balance - 200_000, {}, token);
     expect(res.body.code).toBe("DRAWER_INSUFFICIENT");
     expect(await drawer()).toBe(balance);

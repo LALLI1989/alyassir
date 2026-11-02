@@ -104,6 +104,21 @@ describe("historical entry, as if live since 01/05/2026", () => {
     expect((await renew(b.policy.id, b.vehicle, "2026-06-02")).body.code).toBe("RENEWAL_TOO_LATE");
   });
 
+  it("statuses on the real day (owner decision 02/11/2026): ended 31/05, shown expired whatever the bar date; the buttons follow the bar", async () => {
+    // Not paid: no cash on 01/05, so the drawer days checked below stay as they were.
+    const { policy } = await insured("2026-05-01");
+    expect(policy.periods[0]).toMatchObject({ endDate: "2026-05-31" });
+    const list = (await t.call("GET", `/api/policies?q=${policy.policyNumber}`, { token: manager, headers: at("2026-05-01") })).body;
+    expect(list.items[0]?.validity).toBe("expired");
+    const page = (await t.call("GET", `/api/policies/${policy.id}`, { token: manager, headers: at("2026-05-01") })).body;
+    expect({ policy: page.validity, period: page.periods.at(-1)?.validity }).toEqual({ policy: "expired", period: "expired" });
+    // On 01/05 (the bar date) it may still be renewed with the same number.
+    expect(page.actions.renewalMode).toBe("renewal");
+    const file = (await t.call("GET", `/api/clients/${policy.clientId}`, { token: manager, headers: at("2026-05-01") })).body;
+    expect(file.client.activePolicies).toBe(0);
+    expect(file.policies[0]?.validity).toBe("expired");
+  });
+
   it("inside one policy, oldest first", async () => {
     const { policy } = await insured("2026-05-03");
     const pay = (day: string) => t.call("POST", `/api/policies/${policy.id}/payments`, { token: manager, headers: at(day), body: { idempotencyKey: randomUUID(), method: "cash", amountCents: 10_000 } });

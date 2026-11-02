@@ -60,6 +60,12 @@ export function ReceiveDrawerDialog({ open, onClose, onReceived }: { open: boole
             <span className="text-sm text-muted-foreground">{t("drawer.expected")}</span>
             <Money cents={st?.balanceCents ?? null} className="text-lg font-bold" />
           </div>
+          {st && st.pendingExpensesCents > 0 && (
+            <div className="flex items-center justify-between rounded-md border border-warning/40 p-3">
+              <span className="text-sm text-muted-foreground">{t("drawer.expectedCash")}</span>
+              <Money cents={st.expectedCashCents} className="text-lg font-bold" />
+            </div>
+          )}
           <Field id="drawerCounted" label={t("drawer.counted")} hint={t("drawer.countedHint")} error={fieldError(fields.countedCents)}>
             <MoneyInput id="drawerCounted" cents={counted} onChange={setCounted} />
           </Field>

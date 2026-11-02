@@ -2,7 +2,7 @@
 import { X509Certificate, createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { request } from "node:https";
-import { networkInterfaces } from "node:os";
+import { hostname, networkInterfaces } from "node:os";
 import { join } from "node:path";
 import type { TLSSocket } from "node:tls";
 import { Client } from "pg";
@@ -56,6 +56,8 @@ export interface SetupResult {
   message?: string;
   port?: number;
   urls?: string[];
+  /** The address to use on the server computer itself. */
+  localUrl?: string;
   fingerprint?: string;
   dataDir?: string;
   /** Phase 8A: the manager's recovery code, shown once at the end of a new installation. */
@@ -243,8 +245,15 @@ log_timezone = 'UTC'
 timezone = 'UTC'
 `;
 
-export function lanUrls(port: number): string[] {
+/**
+ * Addresses for the other computers. The computer's name comes first: it does not change when the
+ * router gives the server a new number after a restart (review 02/11/2026). The certificate is
+ * checked by its fingerprint, so the name works with the same certificate.
+ */
+export function lanUrls(port: number, name: string = hostname()): string[] {
   const urls: string[] = [];
+  const host = name.trim();
+  if (/^[A-Za-z0-9][A-Za-z0-9-]{0,62}$/.test(host)) urls.push(`https://${host}:${port}`);
   for (const list of Object.values(networkInterfaces())) {
     for (const ni of list ?? []) {
       if (ni.family !== "IPv4" || ni.internal || ni.address.startsWith("169.254.")) continue;
@@ -252,6 +261,11 @@ export function lanUrls(port: number): string[] {
     }
   }
   return urls;
+}
+
+/** On the server computer itself: always the same address, whatever the network. */
+export function localUrl(port: number): string {
+  return `https://127.0.0.1:${port}`;
 }
 
 export interface HealthProbe {
@@ -404,6 +418,7 @@ export function resultIni(r: SetupResult): string {
   if (r.fingerprint) lines.push(`fingerprint=${r.fingerprint}`);
   if (r.port) lines.push(`port=${r.port}`);
   if (r.recoveryCode) lines.push(`recovery=${r.recoveryCode}`);
+  if (r.localUrl) lines.push(`localUrl=${r.localUrl}`);
   (r.urls ?? []).forEach((url, i) => lines.push(`url${i}=${url}`));
   lines.push(`urlCount=${(r.urls ?? []).length}`);
   return lines.join("\r\n") + "\r\n";

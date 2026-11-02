@@ -74,7 +74,8 @@ ar.Configuring=جارٍ إعداد الخادم وقاعدة البيانات و
 ar.DoneTitle=اكتمل إعداد الخادم
 ar.DoneDesc=احتفظ بهذه المعلومات: ستحتاجها على كل حاسوب مستخدم.
 ar.DoneSub=المعلومات محفوظة أيضًا في الملف:
-ar.DoneAddress=عنوان الاتصال (استعمل عنوان شبكة الوكالة):
+ar.DoneLocal=على هذا الحاسوب (الخادم نفسه):
+ar.DoneAddress=على الحواسيب الأخرى (الأول باسم الحاسوب وهو المستحسن لأنه لا يتغير، أما الأرقام فقد تتغير إذا غيّرها الراوتر):
 ar.DoneFingerprint=بصمة الخادم (قارنها على كل حاسوب مستخدم):
 ar.DoneRecovery=رمز استعادة حساب المدير (اطبعه الآن واحفظه مع أوراق الوكالة؛ لا يظهر مرة أخرى):
 ar.ResetShortcut=اليسير - إعادة تعيين كلمة مرور المدير
@@ -147,7 +148,8 @@ fr.Configuring=Configuration et test du serveur et de la base de données… Cel
 fr.DoneTitle=Serveur configuré
 fr.DoneDesc=Conservez ces informations : elles seront demandées sur chaque poste utilisateur.
 fr.DoneSub=Ces informations sont aussi enregistrées dans le fichier :
-fr.DoneAddress=Adresse de connexion (utilisez l'adresse du réseau de l'agence) :
+fr.DoneLocal=Sur cet ordinateur (le serveur lui-même) :
+fr.DoneAddress=Sur les autres postes (la première, au nom de l'ordinateur, est conseillée car elle ne change pas ; les numéros peuvent changer si la box les modifie) :
 fr.DoneFingerprint=Empreinte du serveur (à comparer sur chaque poste) :
 fr.DoneRecovery=Code de récupération du compte gérant (imprimez-le maintenant et gardez-le avec les papiers de l'agence ; il ne sera plus affiché) :
 fr.ResetShortcut=Alyassir - réinitialiser le mot de passe du gérant
@@ -602,7 +604,8 @@ begin
     UrlCount := StrToIntDef(GetIniString('result', 'urlCount', '0', Ini), 0);
     for I := 0 to UrlCount - 1 do
       Urls := Urls + '    ' + GetIniString('result', 'url' + IntToStr(I), '', Ini) + #13#10;
-    ResultText := CustomMessage('DoneAddress') + #13#10 + Urls + #13#10 +
+    ResultText := CustomMessage('DoneLocal') + #13#10 + '    ' + GetIniString('result', 'localUrl', '', Ini) + #13#10#13#10 +
+      CustomMessage('DoneAddress') + #13#10 + Urls + #13#10 +
       CustomMessage('DoneFingerprint') + #13#10 + '    ' + GetIniString('result', 'fingerprint', '', Ini) + #13#10#13#10 +
       AddBackslash(DataDir) + 'setup-result.json';
     if IsRestoreMode then

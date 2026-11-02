@@ -240,7 +240,7 @@ describe("expenses (SPEC 17.2)", () => {
     expect((await t.call("PATCH", `/api/expenses/${res.body.id}`, { token: cashier, body: { version: 1, categoryId: res.body.category.id, amountCents: 1 } })).status).toBe(403);
   });
 
-  it("approved: the drawer goes down; rejected: no effect; cancelled: the money comes back", async () => {
+  it("approved: the drawer goes down; rejected: a shortage (owner decision 02/11/2026); cancelled: the money comes back", async () => {
     const list = (await t.call("GET", "/api/expenses?status=pending", { token: manager })).body.items as ExpenseDto[];
     const e = list[0] as ExpenseDto;
     const before = (await balances()).drawer ?? 0;
@@ -256,11 +256,12 @@ describe("expenses (SPEC 17.2)", () => {
     expect((await t.call("POST", `/api/expenses/${second.id}/reject`, { token: manager, body: { version: second.version } })).status).toBe(400);
     const rejected = await t.call("POST", `/api/expenses/${second.id}/reject`, { token: manager, body: { version: second.version, reason: "Pas de facture" } });
     expect(rejected.body).toMatchObject({ status: "rejected", rejectReason: "Pas de facture" });
-    expect((await balances()).drawer).toBe(before - 15_000);
+    // Its 90 MAD had left the drawer: the balance goes down by them.
+    expect((await balances()).drawer).toBe(before - 24_000);
 
     const cancelled = await t.call("POST", `/api/expenses/${e.id}/cancel`, { token: manager, body: { version: ok.body.version, reason: "Doublon" } });
     expect(cancelled.body.status).toBe("cancelled");
-    expect((await balances()).drawer).toBe(before);
+    expect((await balances()).drawer).toBe(before - 9_000);
   });
 
   it("a supervisor with 'approve expenses' may approve; the manager adds categories in Latin letters", async () => {
@@ -271,6 +272,40 @@ describe("expenses (SPEC 17.2)", () => {
     const added = await t.call("POST", "/api/expenses/categories", { token: manager, body: { name: "Maintenance" } });
     expect((added.body as ListItemDto[]).some((c) => c.name === "Maintenance")).toBe(true);
     expect((await t.call("POST", "/api/expenses/categories", { token: manager, body: { name: "maintenance" } })).body.code).toBe("NAME_TAKEN");
+  });
+
+  // Owner decision 02/11/2026 (review): a pending expense already left the drawer; it is taken off once.
+  it("200 waiting, the drawer closed with 200 less, then approved: taken from the drawer once", async () => {
+    const clerk = await employee("nightclerk", ["expenses.view", "expenses.create", "closing.view", "closing.create"]);
+    expect((await receiveDrawer(t, clerk)).status).toBe(200);
+    const before = (await balances()).drawer ?? 0;
+    const e = (await addExpense(clerk, 20_000)).body as ExpenseDto;
+    expect((await state(clerk)).expectedCashCents).toBe(before - 20_000);
+    const closed = await close(clerk, before - 20_000);
+    expect(closed.body).toMatchObject({ expectedCents: before - 20_000, countedCents: before - 20_000, differenceCents: 0 });
+    expect((await balances()).drawer).toBe(before);
+    const ok = await t.call("POST", `/api/expenses/${e.id}/approve`, { token: manager, body: { version: e.version } });
+    expect(ok.body.status).toBe("approved");
+    expect((await balances()).drawer).toBe(before - 20_000);
+    // The next person finds exactly what the program expects: no gap.
+    const st = await state(clerk);
+    expect(st.expectedCashCents).toBe(before - 20_000);
+    expect((await t.call("POST", "/api/drawer/receive", { token: clerk, body: { shownCents: st.balanceCents, countedCents: before - 20_000, reason: "" } })).status).toBe(200);
+  });
+
+  it("rejected after the closing: a shortage of the person who recorded it, who is told with the manager in copy", async () => {
+    const clerk = (await t.login("nightclerk", "secret1")).accessToken;
+    expect((await receiveDrawer(t, clerk)).status).toBe(200);
+    const before = (await balances()).drawer ?? 0;
+    const e = (await addExpense(clerk, 5_000)).body as ExpenseDto;
+    expect((await close(clerk, before - 5_000)).body.differenceCents).toBe(0);
+    const rejected = await t.call("POST", `/api/expenses/${e.id}/reject`, { token: manager, body: { version: e.version, reason: "Pas de facture" } });
+    expect(rejected.body.status).toBe("rejected");
+    expect((await balances()).drawer).toBe(before - 5_000);
+    const moves = await ownerQuery(t.db, "SELECT amount_cents, note FROM financial_transactions WHERE kind = 'expense_rejected' AND expense_id = $1", [e.id]);
+    expect(moves.rows).toEqual([{ amount_cents: "-5000", note: "Pas de facture" }]);
+    expect(await recipientsOf("expense_rejected")).toEqual(["cc:manager", "to:nightclerk"]);
+    expect(JSON.parse((await systemMessages("expense_rejected")).at(-1)?.body ?? "{}").params).toMatchObject({ employee: "NIGHTCLERK", amountCents: 5_000, reason: "Pas de facture" });
   });
 });
 

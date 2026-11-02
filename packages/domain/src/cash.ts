@@ -11,6 +11,18 @@ export function closingDifference(expectedCents: number, countedCents: number): 
   return { differenceCents, reasonRequired: differenceCents !== 0 };
 }
 
+/**
+ * Cash that should be in the drawer: the balance minus the expenses waiting for approval, whose cash
+ * already left the drawer (owner decision 02/11/2026). They come off the balance once, when approved
+ * (or rejected), so a count never takes them out a second time.
+ */
+export function expectedCash(balanceCents: number, pendingExpensesCents: number): number {
+  if (!Number.isSafeInteger(balanceCents) || !Number.isSafeInteger(pendingExpensesCents) || pendingExpensesCents < 0) {
+    throw new Error("amounts must be integer cents");
+  }
+  return balanceCents - pendingExpensesCents;
+}
+
 export type DayStatus = "open" | "closed" | "needs_review";
 
 export interface DayFacts {

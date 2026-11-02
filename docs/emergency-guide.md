@@ -17,7 +17,7 @@
    - دع الملف `.sha256` بجانبه.
 5. احتفظ بـ**العنوان** و**البصمة** اللذين يظهران في النهاية.
 6. يدخل المدير **بكلمة مروره القديمة**، وكذلك الموظفون.
-7. **على كل حاسوب مستخدم:** افتح «الاتصال بالخادم»، واكتب العنوان الجديد، وقارن البصمة حرفًا بحرف، ثم احفظ.
+7. **على كل حاسوب مستخدم:** في شاشة الدخول اضغط «إعداد الاتصال بالخادم»، واكتب العنوان الجديد، وقارن البصمة حرفًا بحرف، ثم احفظ.
 8. ضع مفتاح USB الجديد للنسخة الشهرية، وتأكد في شاشة «النسخ الاحتياطية» أن نسخة جديدة أُخذت.
 
 ## 2. استعادة نسخة سابقة (الخادم يعمل)
@@ -29,7 +29,12 @@
 - استعمل **دفتر الوصولات الورقية المرقمة مسبقًا**. اكتب الرقم والتاريخ والعميل والمبلغ، واحتفظ بالنسخة.
 - بعد عودة الخادم أدخل كل عملية، واكتب رقم الوصل في خانة «**رقم الوصل الورقي**».
 
-## 4. إطفاء الخادم إطفاءً صحيحًا
+## 4. «تعذّر الوصول إلى الخادم» بعد إعادة تشغيل الحواسيب
+- السبب الغالب: أعطى الراوتر حاسوب الخادم رقمًا جديدًا.
+- في شاشة الدخول اضغط «إعداد الاتصال بالخادم»، واكتب **اسم حاسوب الخادم** (مثل `PC-SERVEUR:4100`) بدل الرقم، فالاسم لا يتغير. على حاسوب الخادم نفسه اكتب `127.0.0.1`. البصمة تبقى نفسها.
+- للوقاية: اطلب من تقني الشبكة «حجز عنوان ثابت» (DHCP Reservation) لحاسوب الخادم في الراوتر.
+
+## 5. إطفاء الخادم إطفاءً صحيحًا
 - من Windows: «ابدأ»، ثم «الطاقة»، ثم «إيقاف التشغيل». **لا تنزع الكهرباء** والحاسوب يعمل.
 - عند الإقلاع يعود الخادم وقاعدة البيانات وحدهما، وتؤخذ النسخة اليومية الفائتة تلقائيًا.
 
@@ -54,7 +59,7 @@
    - Laissez le fichier `.sha256` à côté.
 5. Notez l'**adresse** et l'**empreinte** affichées à la fin.
 6. Le gérant se connecte avec son **ancien mot de passe**, les employés aussi.
-7. **Sur chaque poste :** ouvrez « Connexion au serveur », saisissez la nouvelle adresse, comparez l'empreinte caractère par caractère, puis enregistrez.
+7. **Sur chaque poste :** sur l'écran de connexion, cliquez sur « Paramètres de connexion au serveur », saisissez la nouvelle adresse, comparez l'empreinte caractère par caractère, puis enregistrez.
 8. Branchez une nouvelle clé USB pour la copie mensuelle et vérifiez dans l'écran « Sauvegardes » qu'une nouvelle sauvegarde a été faite.
 
 ## 2. Revenir à une sauvegarde précédente (le serveur marche)
@@ -66,6 +71,11 @@
 - Utilisez le **carnet de reçus papier pré-numérotés**. Notez le numéro, la date, le client et le montant, et gardez la copie.
 - Au retour du serveur, saisissez chaque opération avec le numéro dans le champ « **N° du reçu papier** ».
 
-## 4. Éteindre correctement le serveur
+## 4. « Impossible de joindre le serveur » après un redémarrage
+- Cause la plus fréquente : la box a donné un nouveau numéro à l'ordinateur serveur.
+- Sur l'écran de connexion, cliquez sur « Paramètres de connexion au serveur » et saisissez le **nom de l'ordinateur serveur** (par exemple `PC-SERVEUR:4100`) au lieu du numéro : le nom ne change pas. Sur le serveur lui-même, saisissez `127.0.0.1`. L'empreinte reste la même.
+- En prévention : demandez au technicien réseau une « réservation d'adresse » (DHCP) pour le serveur dans la box.
+
+## 5. Éteindre correctement le serveur
 - Dans Windows : « Démarrer », puis « Marche/Arrêt », puis « Arrêter ». **Ne coupez jamais le courant** pendant que l'ordinateur tourne.
 - Au démarrage, le serveur et la base reviennent tout seuls ; la sauvegarde quotidienne manquée est faite automatiquement.

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { schema } from "@alyassir/db";
-import { businessDay, closingDifference, dayStatus } from "@alyassir/domain";
+import { businessDay, closingDifference, dayStatus, expectedCash } from "@alyassir/domain";
 import type { ClosingDto, DayDto, DrawerMemberDto, DrawerStateDto, Page, PermissionCode } from "@alyassir/shared";
 import { AuditService } from "../audit/audit.service";
 import { AccessService } from "../common/access.service";
@@ -51,6 +51,12 @@ export class DrawerService {
   private async balance(db: DbOrTx): Promise<number> {
     const [a] = await db.select({ b: schema.accounts.balanceCents }).from(schema.accounts).where(eq(schema.accounts.code, "drawer"));
     return a?.b ?? 0;
+  }
+
+  /** Live expenses waiting for approval: their cash already left the drawer (owner decision 02/11/2026). */
+  private async pendingCashOut(db: DbOrTx): Promise<number> {
+    const res = await db.execute<{ c: string }>(sql`SELECT coalesce(sum(amount_cents), 0) AS c FROM expenses WHERE status = 'pending' AND NOT is_historical`);
+    return Number(res.rows[0]?.c ?? 0);
   }
 
   private async members(db: DbOrTx, sessionIds: string[]): Promise<Map<string, DrawerMemberDto[]>> {
@@ -105,8 +111,9 @@ export class DrawerService {
       .innerJoin(schema.users, eq(schema.users.id, schema.expenses.createdBy))
       .where(eq(schema.expenses.status, "pending"))
       .orderBy(schema.expenses.createdAt);
+    const balanceCents = await this.balance(db);
     return {
-      balanceCents: await this.balance(db),
+      balanceCents,
       session: open
         ? {
             id: open.s.id,
@@ -127,6 +134,7 @@ export class DrawerService {
         createdAt: p.e.createdAt.toISOString(),
       })),
       pendingExpensesCents: pending.reduce((s, p) => s + p.e.amountCents, 0),
+      expectedCashCents: expectedCash(balanceCents, await this.pendingCashOut(db)),
     };
   }
 
@@ -148,13 +156,15 @@ export class DrawerService {
       }
       // The drawer account is read under lock so nothing moves between the check and the record.
       const [acc] = await tx.select().from(schema.accounts).where(eq(schema.accounts.code, "drawer")).for("update");
-      const shown = acc?.balanceCents ?? 0;
-      if (shown !== input.shownCents) throw new ApiException("SESSION_CHANGED", { balanceCents: shown });
+      const balance = acc?.balanceCents ?? 0;
+      if (balance !== input.shownCents) throw new ApiException("SESSION_CHANGED", { balanceCents: balance });
+      // The count is compared with what should be there: pending expenses already left (02/11/2026).
+      const shown = expectedCash(balance, await this.pendingCashOut(tx));
       const d = closingDifference(shown, input.countedCents);
       if (d.reasonRequired && !input.reason) throw new ApiException("DIFFERENCE_REASON_REQUIRED");
       let sessionId = open?.id;
       if (!sessionId) {
-        const [created] = await tx.insert(schema.drawerSessions).values({ status: "open", openedBy: user.id, openingCents: shown }).returning();
+        const [created] = await tx.insert(schema.drawerSessions).values({ status: "open", openedBy: user.id, openingCents: balance }).returning();
         if (!created) throw new ApiException("INTERNAL");
         sessionId = created.id;
       }
@@ -259,7 +269,8 @@ export class DrawerService {
       if (onBehalf && !this.access.has(user, "sup.close_session_on_behalf")) throw new ApiException("FORBIDDEN");
       if (onBehalf && !input.reason) throw new ApiException("REASON_REQUIRED");
       const [acc] = await tx.select().from(schema.accounts).where(eq(schema.accounts.code, "drawer")).for("update");
-      const expected = acc?.balanceCents ?? 0;
+      // Pending expenses already left the drawer: they are not counted as a gap (owner decision 02/11/2026).
+      const expected = expectedCash(acc?.balanceCents ?? 0, await this.pendingCashOut(tx));
       const d = closingDifference(expected, input.countedCents);
       if (d.reasonRequired && !input.reason) throw new ApiException("DIFFERENCE_REASON_REQUIRED");
       // Owner decision 28/10/2026: after the count, the drawer holds what was really found.

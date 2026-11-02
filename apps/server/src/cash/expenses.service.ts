@@ -217,7 +217,13 @@ export class ExpensesService {
     return this.get(this.database.db, id);
   }
 
+  /**
+   * Rejected. Its cash already left the drawer (owner decision 02/11/2026): the drawer goes down by
+   * the amount, a shortage linked to the expense and to the employee who recorded it, who is told
+   * with the manager in copy. An old expense of the historical entry moved no live cash.
+   */
   async reject(ctx: RequestContext, user: AuthUser, id: string, input: { version: number; reason: string }): Promise<ExpenseDto> {
+    let notifyIds: string[] = [];
     await this.database.db.transaction(async (tx) => {
       const row = await this.lock(tx, id, input.version);
       if (expenseNext(row.status, "reject") === null) throw new ApiException("EXPENSE_NOT_PENDING");
@@ -225,9 +231,36 @@ export class ExpensesService {
         .update(schema.expenses)
         .set({ status: "rejected", rejectReason: input.reason, decidedAt: new Date(), decidedBy: user.id, updatedAt: new Date(), version: row.version + 1 })
         .where(eq(schema.expenses.id, id));
-      await this.audit.record(tx, ctx, { action: "expense.reject", entityType: "expense", entityId: id, reason: input.reason });
+      const shortage = !row.isHistorical;
+      if (shortage) {
+        await lockAccounts(tx, ["drawer"]);
+        await post(tx, { groupId: randomUUID(), account: "drawer", amountCents: -row.amountCents, kind: "expense_rejected", businessDate: opDay(), userId: user.id, expenseId: id, note: input.reason });
+        const [by] = await tx.select({ name: schema.users.displayName }).from(schema.users).where(eq(schema.users.id, row.createdBy));
+        const [cat] = await tx.select().from(schema.expenseCategories).where(eq(schema.expenseCategories.id, row.categoryId));
+        const [manager] = await tx.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.role, "manager"));
+        const recipients = [
+          { userId: row.createdBy, kind: "to" as const },
+          ...(manager && manager.id !== row.createdBy ? [{ userId: manager.id, kind: "cc" as const }] : []),
+        ];
+        await this.messages.createThread(
+          tx,
+          null,
+          "system:expense_rejected",
+          JSON.stringify({
+            event: "expense_rejected",
+            params: { employee: by?.name ?? "", category: cat?.code ?? cat?.name ?? "", amountCents: row.amountCents, note: row.note, reason: input.reason },
+          }),
+          recipients,
+          { kind: "system" },
+        );
+        notifyIds = recipients.map((r) => r.userId);
+      }
+      await this.audit.record(tx, ctx, { action: "expense.reject", entityType: "expense", entityId: id, after: { shortageCents: shortage ? row.amountCents : 0 }, reason: input.reason });
     });
+    if (notifyIds.length) this.messages.notify(notifyIds);
     this.changed();
+    this.realtime.notifyAll("accounts");
+    this.realtime.notifyAll("drawer");
     return this.get(this.database.db, id);
   }
 

@@ -49,6 +49,14 @@ export function opDay(): string {
   return clock().day;
 }
 
+/**
+ * The real day, for the statuses people read (active / expired...), even while the manager enters
+ * old work with another date (owner decision 02/11/2026). The rules keep using opDay().
+ */
+export function statusDay(): string {
+  return businessDay(new Date());
+}
+
 /** The money day of an operation dated `day` (today for a late entry, otherwise the same day). */
 export function moneyDayOf(day: string): string {
   const c = clock();

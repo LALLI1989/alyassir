@@ -358,7 +358,7 @@ export class FinanceService {
     user: AuthUser,
     policy: PolicyRef,
     periodId: string,
-    v: { cents: number; account: RefundAccount; today: string; operationId: string; receiptId: string; againstDues: boolean },
+    v: { cents: number; account: RefundAccount; today: string; operationId: string; receiptId: string; againstDues: boolean; capToPaid?: boolean },
   ): Promise<{ reducedCents: number; payoutCents: number }> {
     if (v.cents <= 0) return { reducedCents: 0, payoutCents: 0 };
     let payoutCents = v.cents;
@@ -369,6 +369,12 @@ export class FinanceService {
       for (const r of result.reductions) await this.applyToDue(tx, rows, r.id, 0, -r.cents);
       reducedCents = v.cents - result.payoutCents;
       payoutCents = result.payoutCents;
+    }
+    // Owner decision 02/11/2026: never more cash back than the client really paid on this period
+    // (collected or confirmed), less what was already given back from it. For everyone.
+    if (payoutCents > 0 && v.capToPaid) {
+      const { paidCents } = await this.periodFacts(tx, [periodId]);
+      if (payoutCents > paidCents) throw new ApiException("REFUND_ABOVE_PAID", { maxCents: paidCents });
     }
     if (payoutCents > 0) await this.payout(tx, user, policy, periodId, { ...v, cents: payoutCents });
     return { reducedCents, payoutCents };

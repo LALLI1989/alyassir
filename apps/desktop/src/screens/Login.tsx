@@ -5,6 +5,7 @@ import { adapter, asClientError, type ClientError } from "../adapters";
 import { Field } from "../components/common";
 import { ErrorMessage } from "../lib/errors";
 import { useSession } from "../lib/session";
+import { ServerSetup } from "./ServerSetup";
 
 /** Phase 8A: the manager forgot his password; the printed recovery code lets him choose a new one. */
 function RecoverManager({ onBack }: { onBack: () => void }) {
@@ -78,6 +79,9 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ClientError | null>(null);
+  // Review 02/11/2026: the server's address can change; it is set again from here, before signing in.
+  const [serverSetup, setServerSetup] = useState(false);
+  const unreachable = adapter.needsServerSetup && error?.code === "NETWORK";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -91,6 +95,20 @@ export function Login() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (serverSetup) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <ServerSetup
+          onSaved={() => {
+            setServerSetup(false);
+            setError(null);
+          }}
+          onCancel={() => setServerSetup(false)}
+        />
+      </div>
+    );
   }
 
   return (
@@ -121,12 +139,25 @@ export function Login() {
               <Input id="password" type="password" dir="ltr" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </Field>
             <ErrorMessage error={error} />
+            {unreachable && (
+              <Alert variant="warning">
+                <p>{t("login.networkHint")}</p>
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setServerSetup(true)}>
+                  {t("login.serverSettings")}
+                </Button>
+              </Alert>
+            )}
             <Button type="submit" disabled={busy || !username || !password}>
               {busy ? t("login.submitting") : t("login.submit")}
             </Button>
             <Button type="button" variant="link" size="sm" onClick={() => setForgot(true)}>
               {t("recovery.link")}
             </Button>
+            {adapter.needsServerSetup && !unreachable && (
+              <Button type="button" variant="link" size="sm" onClick={() => setServerSetup(true)}>
+                {t("login.serverSettings")}
+              </Button>
+            )}
           </form>
           )}
         </CardContent>

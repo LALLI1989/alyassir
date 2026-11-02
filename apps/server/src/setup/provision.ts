@@ -22,6 +22,7 @@ import {
   ensureAppRole,
   firewallRuleName,
   lanUrls,
+  localUrl,
   logPostgresDiagnostics,
   logServiceTail,
   paths,
@@ -337,7 +338,7 @@ try {
 
   const outcome = await runSteps(steps, log, o.simulateFailureAt);
   const result: SetupResult = outcome.ok
-    ? { ok: true, port: o.port, urls: lanUrls(o.port), fingerprint, dataDir: o.dataDir, ...(recoveryCode ? { recoveryCode } : {}) }
+    ? { ok: true, port: o.port, urls: lanUrls(o.port), localUrl: localUrl(o.port), fingerprint, dataDir: o.dataDir, ...(recoveryCode ? { recoveryCode } : {}) }
     : { ok: false, errorCode: outcome.errorCode, failedStep: outcome.failedStep, message: outcome.message };
   writeResult(log, o.resultFile, result);
   return result;

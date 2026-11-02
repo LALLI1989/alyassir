@@ -7,7 +7,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { schema } from "@alyassir/db";
 import { normalizeDocumentNumber } from "@alyassir/shared";
 import { ApiException } from "../common/errors";
-import type { Tx } from "../database.service";
+import type { DbOrTx, Tx } from "../database.service";
 import { clock, isHistorical, opDay } from "../common/clock";
 import { businessDay, isInOrder } from "@alyassir/domain";
 
@@ -182,6 +182,17 @@ export async function insertOperation(
 export async function certificateFee(tx: Tx): Promise<number> {
   const [s] = await tx.select({ fee: schema.agencySettings.certificateFeeCents }).from(schema.agencySettings);
   return s?.fee ?? 1700;
+}
+
+/**
+ * Current price of a period (owner decision 02/11/2026): its total amount plus the differences of
+ * the vehicle changes already made on it. It is the old price of the next vehicle change.
+ */
+export async function currentPrice(db: DbOrTx, period: { id: string; totalAmountCents: number }): Promise<number> {
+  const res = await db.execute<{ d: string }>(
+    sql`SELECT coalesce(sum(price_difference_cents), 0) AS d FROM policy_operations WHERE period_id = ${period.id} AND operation_type = 'vehicle_change'`,
+  );
+  return period.totalAmountCents + Number(res.rows[0]?.d ?? 0);
 }
 
 export async function bumpPolicy(tx: Tx, policy: PolicyRow): Promise<void> {

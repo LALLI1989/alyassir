@@ -28,5 +28,6 @@ pnpm + Turborepo monorepo. Desktop: Tauri 2 + React + TypeScript strict + Tailwi
 ## Where we are
 Phases 0 to 7 approved and merged (6A dashboard/reports, 6B backups/restore and 7 historical entry mode on 29/10/2026).
 Phases 0-7 of `docs/SPEC.md` section 21 are done. Phase 8 (improvements after the review, SPEC 30): 8A and 8B approved and merged 30/10/2026; installer signing postponed. The project is complete; any new work needs a plan and the owner's approval first. Installer: GitHub Releases (`releases/latest/download/Alyassir-Setup.exe`). The repository is public (free CI minutes).
+Review of 02/11/2026: problems found are shown by tests on branch `review/probe-tests`. High-severity fixes (statuses on the real day, server address, pending expenses, refund cap and old price) on branch `fix-review-high`, waiting for the owner's approval. Medium and low items need their own plan.
 Owner decisions: `docs/SPEC.md` section 30.
 All testing happens on GitHub (CI), never on the owner's computer.

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseArgs } from "../src/setup/cli";
-import { readBootstrap, readWinswEnv } from "../src/setup/common";
+import { lanUrls, localUrl, readBootstrap, readWinswEnv, resultIni } from "../src/setup/common";
 import { SetupLog } from "../src/setup/log";
 import { isPortFree, suggestPort } from "../src/setup/ports";
 import { POSTGRES_CONF, winswXml } from "../src/setup/provision";
@@ -49,6 +49,22 @@ describe("runSteps rollback", () => {
     const result = await runSteps(steps, new SetupLog(null), "c");
     expect(result).toMatchObject({ ok: false, errorCode: "E_SIMULATED", failedStep: "c" });
     expect(events).toEqual(["run a", "run b", "undo b", "undo a"]);
+  });
+});
+
+describe("connection addresses (review 02/11/2026)", () => {
+  it("the computer's name first (it survives a new number from the router), then the numbers", () => {
+    const urls = lanUrls(4100, "PC-SERVEUR");
+    expect(urls[0]).toBe("https://PC-SERVEUR:4100");
+    expect(urls.slice(1).every((u) => /^https:\/\/\d+\.\d+\.\d+\.\d+:4100$/.test(u))).toBe(true);
+    expect(lanUrls(4100, "bad name!")[0] ?? "").not.toContain("bad");
+  });
+  it("the server computer itself always uses 127.0.0.1; the installer reads both from the result", () => {
+    expect(localUrl(4100)).toBe("https://127.0.0.1:4100");
+    const ini = resultIni({ ok: true, port: 4100, localUrl: localUrl(4100), urls: ["https://PC-SERVEUR:4100", "https://192.168.1.50:4100"] });
+    expect(ini).toContain("localUrl=https://127.0.0.1:4100\r\n");
+    expect(ini).toContain("url0=https://PC-SERVEUR:4100\r\n");
+    expect(ini).toContain("urlCount=2\r\n");
   });
 });
 

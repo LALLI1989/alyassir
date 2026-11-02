@@ -66,6 +66,14 @@ function Wait-FilesRemoved { Wait-Until { -not (Test-Path "$App\unins000.exe") }
 function ResultIni { Get-Content "$Data\setup-result.json.ini" -ErrorAction SilentlyContinue }
 function IniValue($key) { ((ResultIni) | Where-Object { $_ -like "$key=*" } | Select-Object -First 1) -replace "^$key=", "" }
 
+# The server's health answer when reached by this name or number (the same server and certificate on every address).
+function HealthAt([string]$server) {
+  try {
+    $json = & curl.exe -sk --max-time 10 "https://$($server):$Port/api/health"
+    return ($json | ConvertFrom-Json)
+  } catch { return $null }
+}
+
 function Health {
   try {
     $json = & curl.exe -sk --max-time 5 "https://127.0.0.1:$Port/api/health"
@@ -199,7 +207,7 @@ try {
     $secretsOld = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json
     $bk = Api "GET" "/api/backups" $null $newToken
     Check ($bk.status -eq 200 -and $bk.body.enabled -eq $true -and $bk.body.dir -eq $BackupDir) "after the update the server takes backups into the same folder"
-    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "8") "the eight database steps applied (Phases 1 to 8A)"
+    Check ((Psql "alyassir" $secretsOld.dbPassword "SELECT count(*) FROM schema_migrations").Trim() -eq "9") "the nine database steps applied (Phases 1 to 8A and the review fixes of 02/11/2026)"
     $rc = Api "GET" "/api/me/recovery-code" $null $newToken
     Check ($rc.status -eq 200 -and $rc.body.exists -eq $false) "an updated server has no recovery code until the manager makes one"
     $made = Api "POST" "/api/me/recovery-code" @{ password = $ManagerPass } $newToken
@@ -221,7 +229,11 @@ try {
   Write-Host "  address: $url"
   Write-Host "  fingerprint: $fingerprint"
   Check ($fingerprint -match "^([0-9A-F]{2}:){31}[0-9A-F]{2}$") "fingerprint shown in the expected format"
-  Check ($url -match "^https://\d+\.\d+\.\d+\.\d+:$Port$") "network address shown"
+  # Review 02/11/2026: the computer's name first (it survives a new number from the router), then the number.
+  $serverName = [System.Net.Dns]::GetHostName()
+  Check ($url -eq "https://$($serverName):$Port") "the first address uses the computer's name ($serverName)"
+  Check ((IniValue "url1") -match "^https://\d+\.\d+\.\d+\.\d+:$Port$") "the numeric network address is shown as well"
+  Check ((IniValue "localUrl") -eq "https://127.0.0.1:$Port") "the address for the server computer itself is shown"
 
   foreach ($name in @("AlyassirPostgres", "AlyassirServer")) {
     $svc = Get-Service $name
@@ -241,6 +253,8 @@ try {
 
   $h = Health
   Check ($h -and $h.status -eq "ok" -and $h.database -eq "ok") "health check over HTTPS: server OK, database OK"
+  $byName = HealthAt $serverName
+  Check ($byName -and $byName.status -eq "ok") "the server answers by the computer's name ($serverName), not only by its number"
   foreach ($dir in @("$Data\pgdata", "$Data\secrets", "$Data\certs", "$Data\service", "$Data\backups")) { Assert-Private $dir }
 
   $secrets = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json

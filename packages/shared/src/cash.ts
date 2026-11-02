@@ -126,6 +126,8 @@ export interface DrawerStateDto {
   holder: boolean;
   pendingExpenses: PendingExpenseDto[];
   pendingExpensesCents: number;
+  /** What should be in the drawer: the balance minus the pending expenses (their cash already left). */
+  expectedCashCents: number;
 }
 
 export interface ClosingDto {

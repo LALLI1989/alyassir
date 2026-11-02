@@ -532,7 +532,8 @@ export type TransactionKind =
   | "reversal"
   | "count_adjustment"
   | "opening_balance"
-  | "balance_correction";
+  | "balance_correction"
+  | "expense_rejected";
 
 export const financialTransactions = pgTable("financial_transactions", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),

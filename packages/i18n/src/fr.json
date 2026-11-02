@@ -54,7 +54,7 @@
     "title": "Connexion au serveur",
     "intro": "Saisissez l'adresse de l'ordinateur serveur, telle qu'affichée à la fin de l'installation du serveur.",
     "addressLabel": "Adresse du serveur",
-    "addressHint": "Exemple : 192.168.1.50:4100",
+    "addressHint": "Exemple : le nom de l'ordinateur serveur comme PC-SERVEUR:4100, ou son numéro comme 192.168.1.50:4100. Sur le serveur lui-même : 127.0.0.1",
     "test": "Tester la connexion",
     "testing": "Test en cours…",
     "cancel": "Annuler"
@@ -90,7 +90,9 @@
     "submitting": "Connexion…",
     "lockedUntil": "Compte bloqué temporairement après 5 essais erronés. Déblocage automatique à {{time}}, ou par le gérant.",
     "idleEnded": "Session terminée après une période d'inactivité. Reconnectez-vous.",
-    "sessionEnded": "Session terminée. Reconnectez-vous."
+    "sessionEnded": "Session terminée. Reconnectez-vous.",
+    "serverSettings": "Paramètres de connexion au serveur",
+    "networkHint": "Si l'adresse du serveur a changé, cliquez sur « Paramètres de connexion au serveur » et saisissez la nouvelle adresse affichée sur le serveur."
   },
   "language": {
     "title": "Choisissez votre langue",
@@ -250,6 +252,10 @@
       "expense_pending": {
         "subject": "Dépense en attente de validation",
         "intro": "Un employé a ajouté une dépense de caisse qui attend votre validation :"
+      },
+      "expense_rejected": {
+        "subject": "Dépense refusée : manquant en caisse",
+        "intro": "Cette dépense a été refusée. Son argent était sorti de la caisse : il est compté comme manquant de la personne qui l'a saisie, et le solde de la caisse baisse de ce montant :"
       },
       "backup_failed": {
         "subject": "Échec de sauvegarde",
@@ -546,6 +552,7 @@
       "FUTURE_PERIOD_EXISTS": "Un renouvellement n'a pas encore commencé : attendez son début.",
       "ANNULMENT_PERIOD_OVER": "Plus de 15 jours depuis la date d'effet : annulation impossible.",
       "REFUND_TOO_LARGE": "Le remboursement dépasse la prime de la police.",
+      "REFUND_ABOVE_PAID": "Impossible de rendre au client plus que ce qu'il a réellement payé sur cette police, moins ce qui lui a déjà été rendu.",
       "PLATE_CHANGE_NEEDS_OPERATION": "Véhicule assuré : utilisez l'opération « Changement d'immatriculation ».",
       "SAME_VEHICLE": "Choisissez un autre véhicule.",
       "IDEMPOTENCY_MISMATCH": "Cette opération a déjà été envoyée avec d'autres données. Rouvrez la fenêtre.",
@@ -831,6 +838,7 @@
     "oldVehicle": "Véhicule actuel",
     "newVehicle": "Nouveau véhicule",
     "oldPrice": "Ancienne prime",
+    "oldPriceFromPolicy": "Prix actuel de la police, repris automatiquement.",
     "newPrice": "Nouvelle prime",
     "difference": "Différence",
     "fee": "Frais d'attestation",
@@ -1098,10 +1106,11 @@
     "receiveOpen": "Aucune séance ouverte. En prenant la caisse, vous ouvrez la séance.",
     "receiveJoin": "Séance ouverte par {{name}}. En prenant la caisse, vous rejoignez cette séance.",
     "expected": "Solde selon le programme",
+    "expectedCash": "Attendu en caisse",
     "counted": "Montant réellement présent",
     "countedHint": "Comptez l'argent de la caisse et saisissez le montant.",
     "reason": "Motif",
-    "reasonHint": "Obligatoire si le montant présent diffère du solde du programme.",
+    "reasonHint": "Obligatoire si le montant présent diffère du montant attendu en caisse.",
     "responsibility": "Le solde de la caisse est ajusté à ce que vous avez trouvé. En cas d'écart, un message de demande d'explication vous est envoyé, ainsi qu'à la personne qui vous a remis la caisse, avec copie au gérant.",
     "receivedRetry": "Caisse prise en charge. Cliquez à nouveau sur « Confirmer ».",
     "held": "Caisse prise",
@@ -1113,7 +1122,7 @@
     "closeOnBehalfInfo": "Vous n'êtes pas dans cette séance : clôturer pour eux demande un motif, et le gérant est averti.",
     "closedTitle": "Clôture enregistrée",
     "pendingExpenses": "Dépenses en attente de validation",
-    "pendingExpensesHint": "L'argent est sorti de la caisse mais n'est pas déduit du solde avant validation ; elles peuvent expliquer un écart.",
+    "pendingExpensesHint": "L'argent est déjà sorti de la caisse : il n'est pas compté dans l'attendu en caisse. Il est déduit du solde une seule fois : à la validation, ou au refus comme manquant de la personne qui l'a saisie.",
     "members": "Qui a pris la caisse dans cette séance",
     "byUser": "Mouvements par employé",
     "byUserHint": "À titre d'information, sans comptabilisation automatique.",
@@ -1215,7 +1224,8 @@
       "reversal": "Mouvement inverse",
       "count_adjustment": "Ajustement après comptage",
       "opening_balance": "Solde d'ouverture",
-      "balance_correction": "Correction de solde"
+      "balance_correction": "Correction de solde",
+      "expense_rejected": "Dépense refusée (manquant)"
     },
     "reverse": "Mouvement inverse",
     "reversed": "Annulé",

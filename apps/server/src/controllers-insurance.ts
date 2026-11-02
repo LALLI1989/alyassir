@@ -240,7 +240,7 @@ export class PoliciesController {
   @HttpCode(200)
   vehicleChangePreview(@Body() body: unknown) {
     const input = parse(vehicleChangePreviewSchema, body);
-    return this.operations.vehicleChangePreview(input.oldPriceCents, input.newPriceCents);
+    return this.operations.vehicleChangePreview(input);
   }
 
   @RequirePermission("policies.view")

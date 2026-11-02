@@ -54,7 +54,7 @@
     "title": "Connexion au serveur",
     "intro": "Saisissez l'adresse de l'ordinateur serveur, telle qu'affichée à la fin de l'installation du serveur.",
     "addressLabel": "Adresse du serveur",
-    "addressHint": "Exemple : 192.168.1.50:4100",
+    "addressHint": "Exemple : le nom de l'ordinateur serveur comme PC-SERVEUR:4100, ou son numéro comme 192.168.1.50:4100. Sur le serveur lui-même : 127.0.0.1",
     "test": "Tester la connexion",
     "testing": "Test en cours…",
     "cancel": "Annuler"
@@ -90,7 +90,9 @@
     "submitting": "Connexion…",
     "lockedUntil": "Compte bloqué temporairement après 5 essais erronés. Déblocage automatique à {{time}}, ou par le gérant.",
     "idleEnded": "Session terminée après une période d'inactivité. Reconnectez-vous.",
-    "sessionEnded": "Session terminée. Reconnectez-vous."
+    "sessionEnded": "Session terminée. Reconnectez-vous.",
+    "serverSettings": "Paramètres de connexion au serveur",
+    "networkHint": "Si l'adresse du serveur a changé, cliquez sur « Paramètres de connexion au serveur » et saisissez la nouvelle adresse affichée sur le serveur."
   },
   "language": {
     "title": "Choisissez votre langue",

@@ -66,6 +66,19 @@ function Wait-FilesRemoved { Wait-Until { -not (Test-Path "$App\unins000.exe") }
 function ResultIni { Get-Content "$Data\setup-result.json.ini" -ErrorAction SilentlyContinue }
 function IniValue($key) { ((ResultIni) | Where-Object { $_ -like "$key=*" } | Select-Object -First 1) -replace "^$key=", "" }
 
+# SHA-256 fingerprint of the certificate the server shows when reached by this name or number.
+function PeerFingerprint([string]$server) {
+  try {
+    $tcp = [System.Net.Sockets.TcpClient]::new($server, $Port)
+    try {
+      $ssl = [System.Net.Security.SslStream]::new($tcp.GetStream(), $false, { $true })
+      $ssl.AuthenticateAsClient($server)
+      $hash = [System.Security.Cryptography.SHA256]::Create().ComputeHash($ssl.RemoteCertificate.GetRawCertData())
+      return (($hash | ForEach-Object { $_.ToString("X2") }) -join ":")
+    } finally { $tcp.Dispose() }
+  } catch { return "" }
+}
+
 function Health {
   try {
     $json = & curl.exe -sk --max-time 5 "https://127.0.0.1:$Port/api/health"
@@ -221,7 +234,11 @@ try {
   Write-Host "  address: $url"
   Write-Host "  fingerprint: $fingerprint"
   Check ($fingerprint -match "^([0-9A-F]{2}:){31}[0-9A-F]{2}$") "fingerprint shown in the expected format"
-  Check ($url -match "^https://\d+\.\d+\.\d+\.\d+:$Port$") "network address shown"
+  # Review 02/11/2026: the computer's name first (it survives a new number from the router), then the number.
+  $name = [System.Net.Dns]::GetHostName()
+  Check ($url -eq "https://$($name):$Port") "the first address uses the computer's name ($name)"
+  Check ((IniValue "url1") -match "^https://\d+\.\d+\.\d+\.\d+:$Port$") "the numeric network address is shown as well"
+  Check ((IniValue "localUrl") -eq "https://127.0.0.1:$Port") "the address for the server computer itself is shown"
 
   foreach ($name in @("AlyassirPostgres", "AlyassirServer")) {
     $svc = Get-Service $name
@@ -241,6 +258,8 @@ try {
 
   $h = Health
   Check ($h -and $h.status -eq "ok" -and $h.database -eq "ok") "health check over HTTPS: server OK, database OK"
+  Check ((PeerFingerprint $name) -eq $fingerprint) "by the computer's name, the server shows the same certificate"
+  Check ((PeerFingerprint "127.0.0.1") -eq $fingerprint) "on the server computer (127.0.0.1), the server shows the same certificate"
   foreach ($dir in @("$Data\pgdata", "$Data\secrets", "$Data\certs", "$Data\service", "$Data\backups")) { Assert-Private $dir }
 
   $secrets = Get-Content "$Data\secrets\secrets.json" | ConvertFrom-Json

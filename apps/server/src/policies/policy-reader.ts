@@ -27,6 +27,7 @@ import {
 import { ApiException } from "../common/errors";
 import { DatabaseService, type DbOrTx } from "../database.service";
 import { opDay, statusDay } from "../common/clock";
+import { currentPrice } from "./policy-core";
 
 interface SummaryRow extends Record<string, unknown> {
   id: string;
@@ -186,6 +187,7 @@ export class PolicyReader {
       replaces: replaces[0] ? { id: replaces[0].id, policyNumber: replaces[0].policyNumber } : null,
       replacedBy: replacedBy[0] ? { id: replacedBy[0].id, policyNumber: replacedBy[0].policyNumber } : null,
       currentPeriodId: last.id,
+      currentPriceCents: await currentPrice(db, last),
       vehicles: vehiclesOf(last.id, true),
       periods: periods.map((x) => ({
         id: x.id,

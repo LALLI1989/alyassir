@@ -433,8 +433,10 @@ function VehicleChangeDialog({ policy, onClose }: DialogProps) {
   const [oldId, setOldId] = useState(policy.vehicles[0]?.vehicleId ?? "");
   const [newId, setNewId] = useState("");
   const [certificate, setCertificate] = useState("");
-  const [oldPrice, setOldPrice] = useState<number | null>(policy.isFleet ? null : policy.totalAmountCents);
-  const [newPrice, setNewPrice] = useState<number | null>(policy.isFleet ? null : policy.totalAmountCents);
+  // Owner decision 02/11/2026: a single-vehicle policy keeps its own current price as the old price.
+  const [oldPrice, setOldPrice] = useState<number | null>(null);
+  const [newPrice, setNewPrice] = useState<number | null>(policy.isFleet ? null : policy.currentPriceCents);
+  const typedOld = policy.isFleet ? { oldPriceCents: oldPrice } : {};
   const [reason, setReason] = useState("");
   const [receipt, setReceipt] = useState("");
   const [adding, setAdding] = useState(false);
@@ -447,9 +449,9 @@ function VehicleChangeDialog({ policy, onClose }: DialogProps) {
       <OperationFrame
         title={t("policies.vehicleChangeTitle", { number: policy.policyNumber })}
         path={`/api/policies/${policy.id}/vehicle-change`}
-        body={() => ({ idempotencyKey: key, oldVehicleId: oldId, newVehicleId: newId, certificateNumber: certificate, oldPriceCents: oldPrice, newPriceCents: newPrice, reason, paperReceiptNo: receipt, settlement, refundAccount: account })}
+        body={() => ({ idempotencyKey: key, oldVehicleId: oldId, newVehicleId: newId, certificateNumber: certificate, ...typedOld, newPriceCents: newPrice, reason, paperReceiptNo: receipt, settlement, refundAccount: account })}
         summary={async () => {
-          const p = await api<AmountsPreviewDto>("POST", "/api/policies/vehicle-change-preview", { oldPriceCents: oldPrice, newPriceCents: newPrice });
+          const p = await api<AmountsPreviewDto>("POST", "/api/policies/vehicle-change-preview", { policyId: policy.id, ...typedOld, newPriceCents: newPrice });
           return [
             [t("policies.number"), <Code key="n">{policy.policyNumber}</Code>],
             [t("policies.oldVehicle"), <Code key="o">{plate(oldId)}</Code>],
@@ -483,9 +485,17 @@ function VehicleChangeDialog({ policy, onClose }: DialogProps) {
               <Input id="vcCert" dir="ltr" value={certificate} onChange={(e) => setCertificate(e.target.value)} />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="vcOldPrice" label={t("policies.oldPrice")} error={err("oldPriceCents")}>
-                <MoneyInput id="vcOldPrice" cents={oldPrice} onChange={setOldPrice} />
-              </Field>
+              {policy.isFleet ? (
+                <Field id="vcOldPrice" label={t("policies.oldPrice")} error={err("oldPriceCents")}>
+                  <MoneyInput id="vcOldPrice" cents={oldPrice} onChange={setOldPrice} />
+                </Field>
+              ) : (
+                <div className="grid content-start gap-1" data-testid="vc-old-price">
+                  <span className="text-sm font-medium">{t("policies.oldPrice")}</span>
+                  <Money cents={policy.currentPriceCents} className="font-bold" />
+                  <span className="text-xs text-muted-foreground">{t("policies.oldPriceFromPolicy")}</span>
+                </div>
+              )}
               <Field id="vcNewPrice" label={t("policies.newPrice")} error={err("newPriceCents")}>
                 <MoneyInput id="vcNewPrice" cents={newPrice} onChange={setNewPrice} />
               </Field>

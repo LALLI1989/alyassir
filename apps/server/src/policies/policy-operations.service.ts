@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { schema } from "@alyassir/db";
 import {
   businessDay,
@@ -41,6 +41,7 @@ import {
   bumpPolicy,
   certificateFee,
   claimIdempotencyKey,
+  currentPrice,
   currentVehicles,
   insertCertificate,
   insertOperation,
@@ -122,7 +123,16 @@ export class PolicyOperationsService {
     l: Locked,
     periodId: string,
     op: { id: string; type: string },
-    v: { netCents: number; source: "certificate_fee" | "price_increase"; settlement: "pay_now" | "defer"; refundAccount: RefundAccount; againstDues: boolean; lines: ReceiptLine[] },
+    v: {
+      netCents: number;
+      source: "certificate_fee" | "price_increase";
+      settlement: "pay_now" | "defer";
+      refundAccount: RefundAccount;
+      againstDues: boolean;
+      lines: ReceiptLine[];
+      /** Never more cash back than the client paid on the period (owner decision 02/11/2026). */
+      capToPaid?: boolean;
+    },
   ): Promise<void> {
     if (v.netCents === 0) return;
     const lines: ReceiptLine[] = [...v.lines, { label: "settlement", value: v.netCents > 0 ? v.settlement : "refund" }];
@@ -130,7 +140,7 @@ export class PolicyOperationsService {
     if (v.netCents > 0) {
       await this.finance.charge(tx, user, this.ref(l), periodId, { cents: v.netCents, source: v.source, settlement: v.settlement, today: l.today, operationId: op.id, receiptId });
     } else {
-      await this.finance.credit(tx, user, this.ref(l), periodId, { cents: -v.netCents, account: v.refundAccount, today: l.today, operationId: op.id, receiptId, againstDues: v.againstDues });
+      await this.finance.credit(tx, user, this.ref(l), periodId, { cents: -v.netCents, account: v.refundAccount, today: l.today, operationId: op.id, receiptId, againstDues: v.againstDues, capToPaid: v.capToPaid ?? false });
     }
     await tx.update(schema.policyOperations).set({ settlementStatus: "settled" }).where(eq(schema.policyOperations.id, op.id));
     await this.finance.refreshStatus(tx, l.policy.id);
@@ -174,9 +184,30 @@ export class PolicyOperationsService {
 
   // ---------------------------------------------------------------- previews for the confirmation window
 
-  async vehicleChangePreview(oldPriceCents: number, newPriceCents: number): Promise<AmountsPreviewDto> {
-    const fee = await this.database.db.transaction((tx) => certificateFee(tx));
-    return vehicleChangeAmounts(oldPriceCents, newPriceCents, fee);
+  /**
+   * The old price (owner decision 02/11/2026): for a single-vehicle policy, its current price, never
+   * typed; for a fleet (one price for all its vehicles), the price typed for the vehicle leaving.
+   */
+  private async oldPrice(tx: Tx, policy: { fleetId: string | null }, period: PeriodRow, typed: number | undefined): Promise<number> {
+    if (!policy.fleetId) return currentPrice(tx, period);
+    if (typed === undefined) throw new ApiException("VALIDATION", { fields: { oldPriceCents: "required" } });
+    return typed;
+  }
+
+  async vehicleChangePreview(input: { policyId?: string | undefined; oldPriceCents?: number | undefined; newPriceCents: number }): Promise<AmountsPreviewDto> {
+    return this.database.db.transaction(async (tx) => {
+      const fee = await certificateFee(tx);
+      let old = input.oldPriceCents;
+      if (input.policyId) {
+        const [policy] = await tx.select().from(schema.policies).where(eq(schema.policies.id, input.policyId));
+        if (!policy) throw new ApiException("NOT_FOUND");
+        const [period] = await tx.select().from(schema.policyPeriods).where(eq(schema.policyPeriods.policyId, policy.id)).orderBy(desc(schema.policyPeriods.seq)).limit(1);
+        if (!period) throw new ApiException("NOT_FOUND");
+        old = await this.oldPrice(tx, policy, period, input.oldPriceCents);
+      }
+      if (old === undefined) throw new ApiException("VALIDATION", { fields: { oldPriceCents: "required" } });
+      return vehicleChangeAmounts(old, input.newPriceCents, fee);
+    });
   }
 
   async feePreview(): Promise<AmountsPreviewDto> {
@@ -197,7 +228,8 @@ export class PolicyOperationsService {
       await lockVehicles(tx, [first as string, second as string]);
       const newVehicle = await this.joiningVehicle(tx, l.policy, input.newVehicleId, l.today);
       const [oldVehicle] = await tx.select().from(schema.vehicles).where(eq(schema.vehicles.id, input.oldVehicleId));
-      const amounts = vehicleChangeAmounts(input.oldPriceCents, input.newPriceCents, await certificateFee(tx));
+      const oldPriceCents = await this.oldPrice(tx, l.policy, period, input.oldPriceCents);
+      const amounts = vehicleChangeAmounts(oldPriceCents, input.newPriceCents, await certificateFee(tx));
 
       const op = await insertOperation(tx, {
         policyId,
@@ -213,7 +245,7 @@ export class PolicyOperationsService {
           newPlate: newVehicle.plate,
           oldCertificate: old.certificateNumber,
           newCertificate: input.certificateNumber,
-          oldPriceCents: input.oldPriceCents,
+          oldPriceCents,
           newPriceCents: input.newPriceCents,
           direction: amounts.direction,
         },
@@ -246,6 +278,7 @@ export class PolicyOperationsService {
         settlement: input.settlement,
         refundAccount: input.refundAccount,
         againstDues: true,
+        capToPaid: true,
         lines: [
           { label: "oldVehicle", value: oldVehicle?.plate ?? "" },
           { label: "newVehicle", value: newVehicle.plate },
@@ -473,6 +506,7 @@ export class PolicyOperationsService {
         settlement: "pay_now",
         refundAccount: input.refundAccount,
         againstDues: true,
+        capToPaid: true,
         lines: [{ label: "vehicle", value: vehicle?.plate ?? "" }, { label: "amount", value: "", cents: -input.refundCents }],
       });
       await bumpPolicy(tx, l.policy);

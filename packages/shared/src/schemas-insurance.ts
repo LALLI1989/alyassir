@@ -176,7 +176,8 @@ export const vehicleChangeSchema = z.object({
   oldVehicleId: uuid,
   newVehicleId: uuid,
   certificateNumber: documentNumber,
-  oldPriceCents: amountOrZero,
+  /** Fleet only (owner decision 02/11/2026): a single-vehicle policy takes its own current price. */
+  oldPriceCents: amountOrZero.optional(),
   newPriceCents: amountOrZero,
   reason,
   paperReceiptNo: trimmed(40).default(""),
@@ -184,7 +185,8 @@ export const vehicleChangeSchema = z.object({
   refundAccount: z.enum(REFUND_ACCOUNTS).default("drawer"),
 });
 export type VehicleChangeInput = z.infer<typeof vehicleChangeSchema>;
-export const vehicleChangePreviewSchema = vehicleChangeSchema.pick({ oldPriceCents: true, newPriceCents: true });
+/** With the policy, the server takes its current price as the old price (fleet: typed). */
+export const vehicleChangePreviewSchema = z.object({ policyId: uuid.optional(), oldPriceCents: amountOrZero.optional(), newPriceCents: amountOrZero });
 
 export const plateChangeSchema = z
   .object({ idempotencyKey, vehicleId: uuid, ...plateFields, certificateNumber: documentNumber, reason, paperReceiptNo: trimmed(40).default(""), settlement: z.enum(["pay_now", "defer"]).default("pay_now") })

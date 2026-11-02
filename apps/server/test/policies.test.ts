@@ -284,7 +284,8 @@ describe("vehicle change (SPEC 15)", () => {
   it("moves the policy to B with a new certificate; A stays in the client file without policy", async () => {
     const { client, vehicle: a, policy } = await insuredVehicle();
     const b = await createVehicle(t, manager, client);
-    const res = await change(policy.id, a, b, 100_000, 130_000);
+    // The old price is the policy's own 2 500 (owner decision 02/11/2026): 2 500 -> 2 800.
+    const res = await change(policy.id, a, b, 100_000, 280_000);
     expect(res.status).toBe(200);
     expect(res.body.policyNumber).toBe(policy.policyNumber);
     expect(res.body.endDate).toBe(policy.endDate);

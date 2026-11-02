@@ -53,6 +53,8 @@ export const ERROR_CODES = [
   "FUTURE_PERIOD_EXISTS",
   "ANNULMENT_PERIOD_OVER",
   "REFUND_TOO_LARGE",
+  // Review 02/11/2026: never more back than the client paid on the period.
+  "REFUND_ABOVE_PAID",
   "PLATE_CHANGE_NEEDS_OPERATION",
   "SAME_VEHICLE",
   "IDEMPOTENCY_MISMATCH",

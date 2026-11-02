@@ -105,7 +105,8 @@ describe("historical entry, as if live since 01/05/2026", () => {
   });
 
   it("statuses on the real day (owner decision 02/11/2026): ended 31/05, shown expired whatever the bar date; the buttons follow the bar", async () => {
-    const { policy } = await insured("2026-05-01", { finance: { payments: [{ method: "cash", amountCents: 200_000 }] } });
+    // Not paid: no cash on 01/05, so the drawer days checked below stay as they were.
+    const { policy } = await insured("2026-05-01");
     expect(policy.periods[0]).toMatchObject({ endDate: "2026-05-31" });
     const list = (await t.call("GET", `/api/policies?q=${policy.policyNumber}`, { token: manager, headers: at("2026-05-01") })).body;
     expect(list.items[0]?.validity).toBe("expired");

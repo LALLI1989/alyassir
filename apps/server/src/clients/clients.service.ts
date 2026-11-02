@@ -21,7 +21,7 @@ import { DatabaseService, type DbOrTx } from "../database.service";
 import { PolicyReader } from "../policies/policy-reader";
 import { RealtimeService } from "../realtime/realtime.service";
 import { VehiclesService } from "../vehicles/vehicles.service";
-import { opDay } from "../common/clock";
+import { opDay, statusDay } from "../common/clock";
 
 type Row = typeof schema.clients.$inferSelect;
 
@@ -89,7 +89,8 @@ export class ClientsService {
   /** Quick search by part of the name, by phone or by identity number (SPEC 9.1). */
   async search(q: ClientSearch): Promise<Page<ClientDto>> {
     const c = schema.clients;
-    const today = opDay();
+    // Policies covering the real day (owner decision 02/11/2026).
+    const today = statusDay();
     const text = q.q.trim();
     const filters = [];
     if (!q.includeArchived) filters.push(sql`${c.archivedAt} IS NULL`);
@@ -116,8 +117,9 @@ export class ClientsService {
     return { items: rows.map((r) => this.toDto(r.client, r.active)), total: total[0]?.n ?? 0, page: q.page, pageSize: q.pageSize };
   }
 
-  async get(id: string, db: DbOrTx = this.database.db): Promise<ClientDto> {
-    const today = opDay();
+  /** `day`: the real day for what people read; the operation date for a rule (archiving). */
+  async get(id: string, db: DbOrTx = this.database.db, day: string = statusDay()): Promise<ClientDto> {
+    const today = day;
     const [row] = await db.select({ client: schema.clients, active: this.activeCount(today) }).from(schema.clients).where(eq(schema.clients.id, id));
     if (!row) throw new ApiException("NOT_FOUND");
     return this.toDto(row.client, row.active);
@@ -174,7 +176,7 @@ export class ClientsService {
       if (!before) throw new ApiException("NOT_FOUND");
       await this.access.require(tx, ctx, user, "clients.edit", { entityType: "client", entityId: id, operation: "archive" });
       if (before.version !== version) throw new ApiException("VERSION_CONFLICT");
-      if (archived && (await this.get(id, tx)).activePolicies > 0) throw new ApiException("HAS_ACTIVE_POLICY");
+      if (archived && (await this.get(id, tx, opDay())).activePolicies > 0) throw new ApiException("HAS_ACTIVE_POLICY");
       await tx
         .update(schema.clients)
         .set({ archivedAt: archived ? new Date() : null, updatedAt: new Date(), version: before.version + 1 })

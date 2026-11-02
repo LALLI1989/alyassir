@@ -26,7 +26,7 @@ import {
 } from "@alyassir/shared";
 import { ApiException } from "../common/errors";
 import { DatabaseService, type DbOrTx } from "../database.service";
-import { opDay } from "../common/clock";
+import { opDay, statusDay } from "../common/clock";
 
 interface SummaryRow extends Record<string, unknown> {
   id: string;
@@ -101,14 +101,15 @@ export class PolicyReader {
     return { items, total: res.rows[0]?.total ?? 0 };
   }
 
+  /** Statuses on the real day (owner decision 02/11/2026), even during the historical entry. */
   async summaries(by: { clientId: string }): Promise<PolicySummaryDto[]> {
-    const today = opDay();
+    const today = statusDay();
     return (await this.query([sql`client_id = ${by.clientId}`], today, 500, 0)).items;
   }
 
   /** Search by policy number, certificate, plate, client name, identity or phone. */
   async search(q: PolicySearch): Promise<Page<PolicySummaryDto>> {
-    const today = opDay();
+    const today = statusDay();
     const filters: SQL[] = [];
     if (q.validity !== "all") filters.push(sql`validity = ${q.validity}`);
     if (q.endingWithinDays !== undefined) filters.push(sql`validity = 'active' AND sort_end <= ${addDays(today, q.endingWithinDays)}`);
@@ -129,11 +130,13 @@ export class PolicyReader {
   }
 
   async get(id: string, db: DbOrTx = this.database.db): Promise<PolicyDto> {
+    // The actions follow the operation date; the statuses shown follow the real day.
     const today = opDay();
+    const shown = statusDay();
     const now = new Date();
     const [p] = await db.select().from(schema.policies).where(eq(schema.policies.id, id));
     if (!p) throw new ApiException("NOT_FOUND");
-    const [summary] = (await this.query([sql`id = ${id}`], today, 1, 0)).items;
+    const [summary] = (await this.query([sql`id = ${id}`], shown, 1, 0)).items;
     if (!summary) throw new ApiException("NOT_FOUND");
 
     const [type, periods, users, fleet, replaces, replacedBy, ops] = await Promise.all([
@@ -191,7 +194,7 @@ export class PolicyReader {
         endDate: x.endDate,
         months: x.months,
         totalAmountCents: x.totalAmountCents,
-        validity: validityOn(x.validityStatus, x.endDate, today),
+        validity: validityOn(x.validityStatus, x.endDate, shown),
         operation: x.operation,
         createdAt: x.createdAt.toISOString(),
         createdByName: name(x.createdBy),

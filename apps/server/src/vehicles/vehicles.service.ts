@@ -17,7 +17,7 @@ import { rethrowConstraint } from "../common/db-errors";
 import { ApiException } from "../common/errors";
 import { DatabaseService, type DbOrTx } from "../database.service";
 import { RealtimeService } from "../realtime/realtime.service";
-import { opDay } from "../common/clock";
+import { opDay, statusDay } from "../common/clock";
 
 type Row = typeof schema.vehicles.$inferSelect;
 
@@ -62,7 +62,8 @@ export class VehiclesService {
 
   private async toDtos(db: DbOrTx, rows: Row[]): Promise<VehicleDto[]> {
     if (!rows.length) return [];
-    const today = opDay();
+    // "Insured by ..." is read on the real day (owner decision 02/11/2026); the rules use opDay().
+    const today = statusDay();
     const ids = rows.map((r) => r.id);
     const h = schema.vehiclePlateHistory;
     const [history, users] = await Promise.all([

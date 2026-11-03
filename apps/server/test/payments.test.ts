@@ -228,6 +228,24 @@ describe("late instalment becomes a debt (SPEC 14.6)", () => {
     const res = await pay(policy.id, cash(201_700));
     expect(res.body.debts.find((d: { source: string; debtDate: string }) => d.source === "installment" && d.debtDate === D).status).toBe("paid");
   });
+
+  it("a run cut short (power cut) is taken up again the same day after 10 minutes (review 03/11/2026)", async () => {
+    const jobs = t.app.get(JobsService);
+    const { policy } = await insured({ instalments: { count: 2 } }, 400_000);
+    // Dates before every other instalment of this test database, so only this policy is concerned.
+    await ownerQuery(t.db, "UPDATE installments SET due_date = '2025-12-01' WHERE policy_id = $1 AND seq = 1", [policy.id]);
+    await ownerQuery(t.db, "UPDATE installments SET due_date = '2025-12-02' WHERE policy_id = $1 AND seq = 2", [policy.id]);
+    // Started an hour ago, never finished: taken up again.
+    await ownerQuery(t.db, "INSERT INTO job_runs (job, run_date, started_at) VALUES ('instalments_to_debt', '2025-12-10', now() - interval '1 hour')");
+    expect(await jobs.runDebtConversion("2025-12-10")).toBe(2);
+    expect((await finance(policy.id)).instalments.map((i) => i.status)).toEqual(["converted_to_debt", "converted_to_debt"]);
+    // Started a moment ago (still running elsewhere): left alone.
+    const other = await insured({ instalments: { count: 2 } }, 400_000);
+    await ownerQuery(t.db, "UPDATE installments SET due_date = '2025-12-03' WHERE policy_id = $1", [other.policy.id]);
+    await ownerQuery(t.db, "INSERT INTO job_runs (job, run_date, started_at) VALUES ('instalments_to_debt', '2025-12-11', now())");
+    expect(await jobs.runDebtConversion("2025-12-11")).toBe(0);
+    expect((await finance(other.policy.id)).instalments[0]?.status).toBe("pending");
+  });
 });
 
 describe("annulment and cancellation with money (SPEC 13)", () => {
@@ -274,14 +292,47 @@ describe("annulment and cancellation with money (SPEC 13)", () => {
     expect(f.debts.find((d) => d.source === "direct")?.remainingCents).toBe(50_000);
   });
 
-  it("cancellation: the manager may pay the refund out instead, from the account he chooses", async () => {
-    await insured({ payments: [cash(300_000)] }, 300_000); // cash in the drawer
-    const { policy } = await insured({}, 100_000);
+  it("cancellation: the manager may pay the refund out instead, never more than the client paid (owner decision 03/11/2026)", async () => {
+    const { policy } = await insured({ payments: [cash(40_000)] }, 100_000); // 400 paid, 600 still owed
     const before = await drawer();
+    const tooMuch = await t.call("POST", `/api/policies/${policy.id}/cancel`, { token: manager, body: { idempotencyKey: randomUUID(), reason: "صرف المبلغ", refundCents: 50_000, payOut: true } });
+    expect(tooMuch.body).toMatchObject({ code: "REFUND_ABOVE_PAID", maxCents: 40_000 });
     const res = await t.call("POST", `/api/policies/${policy.id}/cancel`, { token: manager, body: { idempotencyKey: randomUUID(), reason: "صرف المبلغ", refundCents: 40_000, payOut: true } });
     expect(res.status).toBe(200);
     expect(await drawer()).toBe(before - 40_000);
-    expect((await finance(policy.id)).debts.find((d) => d.source === "direct")?.remainingCents).toBe(100_000);
+    expect((await finance(policy.id)).debts.find((d) => d.source === "direct")?.remainingCents).toBe(60_000);
+  });
+});
+
+describe("a cash payment typed by mistake (owner decision 03/11/2026)", () => {
+  it("the manager cancels it: the cash leaves the drawer, the amount is owed again, the receipt is cancelled", async () => {
+    const { policy } = await insured({}, 100_000);
+    expect((await pay(policy.id, cash(50_000))).status).toBe(200);
+    const p = (await finance(policy.id)).payments[0];
+    const before = await drawer();
+    const emp = await employee("wrongcash", ["payments.view", "payments.create"]);
+    expect((await t.call("POST", `/api/payments/${p?.id}/cancel`, { token: emp, body: { version: p?.version, reason: "x" } })).status).toBe(403);
+    expect((await t.call("POST", `/api/payments/${p?.id}/cancel`, { token: manager, body: { version: p?.version } })).status).toBe(400);
+    const res = await t.call("POST", `/api/payments/${p?.id}/cancel`, { token: manager, body: { version: p?.version, reason: "500 au lieu de 50" } });
+    expect(res.body).toMatchObject({ status: "cancelled", cancelReason: "500 au lieu de 50" });
+    expect(await drawer()).toBe(before - 50_000);
+    const f = await finance(policy.id);
+    expect(f.totals.remainingCents).toBe(100_000);
+    expect(f.receipts.find((r) => r.id === p?.receiptId)?.status).toBe("cancelled");
+    expect((await t.call("POST", `/api/payments/${p?.id}/cancel`, { token: manager, body: { version: res.body.version, reason: "encore" } })).body.code).toBe("PAYMENT_NOT_CASH");
+    const moves = await ownerQuery(t.db, "SELECT amount_cents, kind FROM financial_transactions WHERE payment_id = $1 ORDER BY id", [p?.id]);
+    expect(moves.rows).toEqual([{ amount_cents: "50000", kind: "payment_cash" }, { amount_cents: "-50000", kind: "payment_reversed" }]);
+  });
+
+  it("not for a cheque (it is rejected instead), nor on an annulled policy", async () => {
+    const { policy } = await insured({}, 100_000);
+    expect((await pay(policy.id, cheque(30_000))).status).toBe(200);
+    const chq = (await finance(policy.id)).payments[0];
+    expect((await t.call("POST", `/api/payments/${chq?.id}/cancel`, { token: manager, body: { version: chq?.version, reason: "x" } })).body.code).toBe("PAYMENT_NOT_CASH");
+    const paid = await insured({ payments: [cash(100_000)] }, 100_000);
+    const cashPay = (await finance(paid.policy.id)).payments[0];
+    expect((await t.call("POST", `/api/policies/${paid.policy.id}/annul`, { token: manager, body: { idempotencyKey: randomUUID(), reason: "x" } })).status).toBe(200);
+    expect((await t.call("POST", `/api/payments/${cashPay?.id}/cancel`, { token: manager, body: { version: cashPay?.version, reason: "x" } })).body.code).toBe("POLICY_CLOSED");
   });
 });
 

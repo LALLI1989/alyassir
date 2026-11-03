@@ -266,6 +266,29 @@ describe("editing a policy (SPEC 11.5)", () => {
   });
 });
 
+describe("editing after the issue (owner decision 03/11/2026)", () => {
+  it("after 48 hours the end date and the duration are locked like the amount", async () => {
+    const editor = await employee("dateeditor", ["policies.view", "policies.edit"]);
+    const { policy } = await insuredVehicle();
+    await setPeriod(t, policy.id, today(), policy.endDate, 49);
+    const p = await getPolicy(t, manager, policy.id);
+    const later = addDays(policy.endDate, 365);
+    const locked = await t.call("PATCH", `/api/policies/${policy.id}`, { token: editor, body: { version: p.version, endDate: later } });
+    expect(locked.body).toMatchObject({ code: "DATES_LOCKED", requestable: { operation: "edit_dates" } });
+    expect((await t.call("PATCH", `/api/policies/${policy.id}`, { token: editor, body: { version: p.version, coverageDurationId: s.months1 } })).body.code).toBe("DATES_LOCKED");
+    expect((await t.call("PATCH", `/api/policies/${policy.id}`, { token: manager, body: { version: p.version, endDate: later } })).body.code).toBe("REASON_REQUIRED");
+    const ok = await t.call("PATCH", `/api/policies/${policy.id}`, { token: manager, body: { version: p.version, endDate: later, reason: "خطأ في الإدخال" } });
+    expect(ok.body.endDate).toBe(later);
+  });
+
+  it("instalments keep a 6 or 12 month cover and never end before the last instalment", async () => {
+    const c = await createClient(t, manager);
+    const inst = await mustCreatePolicy(t, manager, s, c, [await createVehicle(t, manager, c)], { totalAmountCents: 400_000, finance: { instalments: { count: 2 } } });
+    expect((await t.call("PATCH", `/api/policies/${inst.id}`, { token: manager, body: { version: inst.version, coverageDurationId: s.months1 } })).body.code).toBe("INSTALMENTS_NOT_ALLOWED");
+    expect((await t.call("PATCH", `/api/policies/${inst.id}`, { token: manager, body: { version: inst.version, endDate: addDays(today(), 10) } })).body.code).toBe("INSTALMENT_DATES_INVALID");
+  });
+});
+
 describe("vehicle change (SPEC 15)", () => {
   async function change(policyId: string, oldVehicleId: string, newVehicleId: string, oldPrice: number, newPrice: number, certificateNumber = cert()) {
     return t.call("POST", `/api/policies/${policyId}/vehicle-change`, {

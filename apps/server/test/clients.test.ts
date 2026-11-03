@@ -120,6 +120,17 @@ describe("vehicles (SPEC 9.2)", () => {
     expect(wrong.body.fields.plate).toBe("plate_format_ma");
   });
 
+  it("another Moroccan plate (owner decision 03/11/2026): free Latin letters and digits, never the normal shape", async () => {
+    const c = await createClient(t, manager);
+    const add = (plate: string) => t.call("POST", "/api/vehicles", { token: manager, body: { clientId: c, plateType: "ma_other", plate, fiscalPower: 6, fuel: "diesel", brand: "Peugeot" } });
+    expect((await add("000000-00")).body).toMatchObject({ plateType: "ma_other", plate: "000000-00" });
+    expect((await add("adr536aq66")).body.plate).toBe("ADR536AQ66");
+    expect((await add("00123-B-01")).body.fields?.plate).toBe("plate_is_standard_ma");
+    expect((await add("12-أ-34")).body.fields?.plate).toBe("plate_format_ma_other");
+    // Unique with every other type, after removing dashes and spaces.
+    expect((await t.call("POST", "/api/vehicles", { token: manager, body: { clientId: c, plateType: "foreign", plate: "ADR 536 AQ66", fiscalPower: 6, fuel: "diesel", brand: "Fiat" } })).body.code).toBe("PLATE_TAKEN");
+  });
+
   it("never allows two vehicles with the same plate, whatever the type or the dashes", async () => {
     const c = await createClient(t, manager);
     await createVehicle(t, manager, c, { plateType: "ma", plate: "01234-B-45" });

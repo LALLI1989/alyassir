@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { schema } from "@alyassir/db";
 import {
   businessDay,
@@ -8,6 +8,7 @@ import {
   instalmentSchedule,
   isAmountLocked,
   isFleetSizeAllowed,
+  isInstalmentAllowed,
   isRenewalStartAllowed,
   renewalMode,
 } from "@alyassir/domain";
@@ -478,11 +479,17 @@ export class PoliciesService {
         const periods = await lockPeriods(tx, policyId);
         const last = latest(periods);
         const amountChanges = input.totalAmountCents !== undefined && input.totalAmountCents !== last.totalAmountCents;
+        // Owner decision 03/11/2026: after 48 hours the end date and the duration are locked like the amount.
+        const datesChange =
+          (input.endDate !== undefined && input.endDate !== last.endDate) ||
+          (input.coverageDurationId !== undefined && input.coverageDurationId !== last.coverageDurationId);
         const locked = isAmountLocked(last.createdAt, new Date());
-        if (amountChanges && locked) {
+        if (locked && (amountChanges || datesChange)) {
           // After 48 hours only the manager, a supervisor with this power, or a one-time grant.
-          await this.access.require(tx, ctx, user, "sup.policy_edit_after_48h", { entityType: "policy", entityId: policyId, operation: "edit_amount" }).catch((e: unknown) => {
-            if (e instanceof ApiException && e.code === "FORBIDDEN") throw new ApiException("AMOUNT_LOCKED", { requestable: { entityType: "policy", entityId: policyId, operation: "edit_amount" } });
+          const operation = amountChanges ? "edit_amount" : "edit_dates";
+          const code = amountChanges ? "AMOUNT_LOCKED" : "DATES_LOCKED";
+          await this.access.require(tx, ctx, user, "sup.policy_edit_after_48h", { entityType: "policy", entityId: policyId, operation }).catch((e: unknown) => {
+            if (e instanceof ApiException && e.code === "FORBIDDEN") throw new ApiException(code, { requestable: { entityType: "policy", entityId: policyId, operation } });
             throw e;
           });
           if (!input.reason) throw new ApiException("REASON_REQUIRED");
@@ -516,6 +523,21 @@ export class PoliciesService {
         if (input.endDate !== undefined && input.endDate !== last.endDate) periodChanges.endDate = input.endDate;
         const newEnd = periodChanges.endDate ?? last.endDate;
         if (newEnd < last.startDate) throw new ApiException("END_BEFORE_START");
+        // Instalments only on a 6 or 12 month cover (SPEC 14.4), never ending before the last instalment.
+        if (periodChanges.months !== undefined || periodChanges.endDate !== undefined) {
+          const [plan] = await tx.select({ id: schema.installmentPlans.id }).from(schema.installmentPlans).where(eq(schema.installmentPlans.periodId, last.id));
+          if (plan) {
+            const months = periodChanges.months ?? last.months;
+            if (!isInstalmentAllowed({ requiresVehicle: true, isFleet: policy.fleetId !== null, months })) throw new ApiException("INSTALMENTS_NOT_ALLOWED");
+            const [lastDue] = await tx
+              .select({ day: schema.installments.dueDate })
+              .from(schema.installments)
+              .where(eq(schema.installments.planId, plan.id))
+              .orderBy(desc(schema.installments.dueDate))
+              .limit(1);
+            if (lastDue && newEnd < lastDue.day) throw new ApiException("INSTALMENT_DATES_INVALID");
+          }
+        }
         if (amountChanges && input.totalAmountCents !== undefined) {
           periodChanges.totalAmountCents = input.totalAmountCents;
           await this.reprice(tx, last, input.totalAmountCents);

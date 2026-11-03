@@ -6,9 +6,10 @@ import {
   instalmentPreviewSchema,
   paymentSearchSchema,
   recordPaymentSchema,
+  cancelPaymentSchema,
   rejectPaymentSchema,
 } from "@alyassir/shared";
-import { RequirePermission } from "./common/access";
+import { ManagerOnly, RequirePermission } from "./common/access";
 import { Ctx, CurrentUser, type AuthUser, type RequestContext } from "./common/context";
 import { ApiException } from "./common/errors";
 import { parse } from "./common/zod";
@@ -79,6 +80,15 @@ export class PaymentsController {
   reject(@Param("id", uuid) id: string, @Body() body: unknown, @Ctx() ctx: RequestContext, @CurrentUser() user: AuthUser) {
     const input = parse(rejectPaymentSchema, body);
     return this.payments.reject(ctx, user, id, input.version, input.reason);
+  }
+
+  /** A cash payment typed by mistake: the manager only, with a reason (owner decision 03/11/2026). */
+  @ManagerOnly()
+  @Post(":id/cancel")
+  @HttpCode(200)
+  cancel(@Param("id", uuid) id: string, @Body() body: unknown, @Ctx() ctx: RequestContext, @CurrentUser() user: AuthUser) {
+    const input = parse(cancelPaymentSchema, body);
+    return this.payments.cancel(ctx, user, id, input.version, input.reason);
   }
 }
 

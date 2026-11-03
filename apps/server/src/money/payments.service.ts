@@ -136,7 +136,7 @@ export class PaymentsService {
       const payment = await this.lockPayment(tx, paymentId);
       if (payment.version !== version) throw new ApiException("VERSION_CONFLICT");
       if (payment.status === "rejected") throw new ApiException("PAYMENT_ALREADY_REJECTED");
-      if (payment.status === "collected") throw new ApiException("PAYMENT_NOT_IN_COLLECTION");
+      if (payment.status === "collected" || payment.status === "cancelled") throw new ApiException("PAYMENT_NOT_IN_COLLECTION");
       const today = opDay();
       let bankBalance: number | null = null;
       if (payment.status === "confirmed") {
@@ -178,6 +178,67 @@ export class PaymentsService {
     });
     if (managerId) this.messages.notify([managerId]);
     this.changed();
+    return this.get(paymentId);
+  }
+
+  /**
+   * A cash payment typed by mistake (owner decision 03/11/2026): the manager cancels it, with a reason,
+   * at any date. Its cash leaves the drawer, what it paid is owed again, its receipt stays numbered as
+   * "cancelled"; nothing is deleted. Refused on an annulled or cancelled policy, for the fee of an
+   * operation, or when what it paid has since become a debt or fell.
+   */
+  async cancel(ctx: RequestContext, user: AuthUser, paymentId: string, version: number, reason: string): Promise<PaymentDto> {
+    await this.database.db.transaction(async (tx) => {
+      const payment = await this.lockPayment(tx, paymentId);
+      if (payment.version !== version) throw new ApiException("VERSION_CONFLICT");
+      if (payment.method !== "cash" || payment.status !== "collected") throw new ApiException("PAYMENT_NOT_CASH");
+      if (payment.operationId) throw new ApiException("PAYMENT_CANNOT_BE_CANCELLED");
+      const [period] = await tx.select().from(schema.policyPeriods).where(eq(schema.policyPeriods.id, payment.periodId));
+      if (!period || period.validityStatus !== "active") throw new ApiException("POLICY_CLOSED");
+      // What it paid is owed again, on the same instalments and debts (locked after the policy and the payment).
+      const allocations = await tx.select().from(schema.paymentAllocations).where(eq(schema.paymentAllocations.paymentId, paymentId));
+      for (const a of allocations) {
+        if (a.installmentId) {
+          const [i] = await tx.select().from(schema.installments).where(eq(schema.installments.id, a.installmentId)).for("update");
+          if (!i || !["pending", "partial", "paid"].includes(i.status) || i.paidCents < a.cents) throw new ApiException("PAYMENT_CANNOT_BE_CANCELLED");
+          const paid = i.paidCents - a.cents;
+          await tx
+            .update(schema.installments)
+            .set({ paidCents: paid, status: paid >= i.amountCents ? "paid" : paid > 0 ? "partial" : "pending", updatedAt: new Date(), version: i.version + 1 })
+            .where(eq(schema.installments.id, i.id));
+        } else if (a.debtId) {
+          const [d] = await tx.select().from(schema.debts).where(eq(schema.debts.id, a.debtId)).for("update");
+          if (!d || d.status === "written_off" || d.paidCents < a.cents) throw new ApiException("PAYMENT_CANNOT_BE_CANCELLED");
+          const paid = d.paidCents - a.cents;
+          await tx
+            .update(schema.debts)
+            .set({ paidCents: paid, status: d.amountCents - paid - d.writtenOffCents > 0 ? "open" : "paid", updatedAt: new Date(), version: d.version + 1 })
+            .where(eq(schema.debts.id, d.id));
+        }
+      }
+      // The cash leaves the drawer: the manager holds it (live work); never below zero.
+      await lockAccounts(tx, ["drawer"], { holder: user.id });
+      const [original] = await tx
+        .select({ id: schema.financialTransactions.id })
+        .from(schema.financialTransactions)
+        .where(and(eq(schema.financialTransactions.paymentId, paymentId), eq(schema.financialTransactions.kind, "payment_cash")));
+      await post(tx, { groupId: randomUUID(), account: "drawer", amountCents: -payment.amountCents, kind: "payment_reversed", businessDate: opDay(), userId: user.id, paymentId, reverses: original?.id ?? null, note: reason });
+      await tx
+        .update(schema.payments)
+        .set({ status: "cancelled", cancelledAt: moneyInstant(), cancelledBy: user.id, cancelReason: reason, version: payment.version + 1 })
+        .where(eq(schema.payments.id, paymentId));
+      if (payment.receiptId) {
+        await tx
+          .update(schema.receipts)
+          .set({ status: "cancelled", cancelReason: reason, cancelledAt: new Date(), cancelledBy: user.id })
+          .where(eq(schema.receipts.id, payment.receiptId));
+      }
+      await this.finance.refreshStatus(tx, payment.policyId);
+      await this.audit.record(tx, ctx, { action: "payment.cancel", entityType: "payment", entityId: paymentId, before: { status: "collected", amountCents: payment.amountCents }, after: { status: "cancelled" }, reason });
+    });
+    this.changed();
+    this.realtime.notifyAll("accounts");
+    this.realtime.notifyAll("drawer");
     return this.get(paymentId);
   }
 

@@ -552,6 +552,9 @@
       "FUTURE_PERIOD_EXISTS": "Un renouvellement n'a pas encore commencé : attendez son début.",
       "ANNULMENT_PERIOD_OVER": "Plus de 15 jours depuis la date d'effet : annulation impossible.",
       "REFUND_TOO_LARGE": "Le remboursement dépasse la prime de la police.",
+      "PAYMENT_NOT_CASH": "Seul un paiement en espèces encaissé s'annule ainsi. Chèque, virement et carte se rejettent.",
+      "PAYMENT_CANNOT_BE_CANCELLED": "Ce paiement ne peut pas être annulé : c'est le frais d'une opération, ou ce qu'il a réglé est devenu une dette ou a été abandonné depuis.",
+      "DATES_LOCKED": "48 heures écoulées : la date de fin et la durée sont verrouillées ; seuls le gérant ou un superviseur autorisé les modifient, avec un motif.",
       "REFUND_ABOVE_PAID": "Impossible de rendre au client plus que ce qu'il a réellement payé sur cette police, moins ce qui lui a déjà été rendu.",
       "PLATE_CHANGE_NEEDS_OPERATION": "Véhicule assuré : utilisez l'opération « Changement d'immatriculation ».",
       "SAME_VEHICLE": "Choisissez un autre véhicule.",
@@ -994,7 +997,14 @@
       "collected": "Encaissé",
       "in_collection": "En cours d'encaissement",
       "confirmed": "Confirmé",
-      "rejected": "Rejeté"
+      "rejected": "Rejeté",
+      "cancelled": "Annulé (erreur de saisie)"
+    },
+    "cancelPayment": {
+      "button": "Annuler le paiement",
+      "title": "Annuler un paiement en espèces saisi par erreur",
+      "intro": "Son montant sort de la caisse, ce que le client devait redevient dû comme avant, et son reçu reste numéroté avec l'état « annulé ». Saisissez ensuite le bon paiement s'il y en a un.",
+      "confirm": "Annuler le paiement"
     },
     "paymentsTitle": "Paiements",
     "paymentsIntro": "Tous les paiements. Chèques, virements et cartes restent « en cours d'encaissement » jusqu'à confirmation.",

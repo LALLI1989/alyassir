@@ -121,7 +121,7 @@ export const REPORTS: ReportDef[] = [
     code: "payments",
     allowed: both("payments.view"),
     filters: ["period", "insurer", "method", "status", "user", "origin"],
-    statuses: { prefix: "finance.paymentStatus", values: ["collected", "in_collection", "confirmed", "rejected"] },
+    statuses: { prefix: "finance.paymentStatus", values: ["collected", "in_collection", "confirmed", "rejected", "cancelled"] },
     columns: [
       { key: "date", type: "date" },
       { key: "receipt", type: "code" },
@@ -491,7 +491,7 @@ export const REPORTS: ReportDef[] = [
         (SELECT count(*) FROM audit_log a WHERE a.user_id = u.id AND a.action NOT LIKE 'auth.%' AND ${between(LOCAL_DAY("a.at"), q)})::int AS actions,
         (SELECT count(*) FROM policy_periods pp WHERE pp.created_by = u.id AND ${between(LOCAL_DAY("pp.created_at"), q)})::int AS policies,
         (SELECT count(*) FROM payments pm WHERE pm.received_by = u.id AND ${between(sql`pm.received_on`, q)})::int AS "paymentsCount",
-        coalesce((SELECT sum(pm.amount_cents) FROM payments pm WHERE pm.received_by = u.id AND pm.status <> 'rejected' AND ${between(sql`pm.received_on`, q)}), 0) AS "paymentsAmount",
+        coalesce((SELECT sum(pm.amount_cents) FROM payments pm WHERE pm.received_by = u.id AND pm.status NOT IN ('rejected', 'cancelled') AND ${between(sql`pm.received_on`, q)}), 0) AS "paymentsAmount",
         (SELECT ${AT("max(a.at)")} FROM audit_log a WHERE a.user_id = u.id AND ${between(LOCAL_DAY("a.at"), q)}) AS "lastAt"
       FROM users u
       WHERE ${where([q.req.userId && sql`u.id = ${q.req.userId}`])}

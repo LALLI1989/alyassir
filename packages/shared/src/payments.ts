@@ -63,6 +63,8 @@ export const recordPaymentSchema = z.intersection(z.object({ idempotencyKey: uui
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
 export const confirmPaymentSchema = z.object({ version });
 export const rejectPaymentSchema = z.object({ version, reason: requiredText(1000) });
+/** The manager cancels a cash payment typed by mistake, with a reason (owner decision 03/11/2026). */
+export const cancelPaymentSchema = rejectPaymentSchema;
 
 /** For operations with a fee or a price change (SPEC 15, 16): pay now in cash, or add it to what is owed. */
 export const settlementFields = {
@@ -72,7 +74,7 @@ export const settlementFields = {
 };
 
 export const paymentSearchSchema = z.object({
-  status: z.enum(["all", "collected", "in_collection", "confirmed", "rejected"]).default("all"),
+  status: z.enum(["all", "collected", "in_collection", "confirmed", "rejected", "cancelled"]).default("all"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(10).max(100).default(25),
 });
@@ -129,12 +131,15 @@ export interface PaymentDto {
   clientName: string;
   method: PaymentMethodCode;
   amountCents: number;
-  status: "collected" | "in_collection" | "confirmed" | "rejected";
+  /** "cancelled": a cash payment typed by mistake, cancelled by the manager (03/11/2026). */
+  status: "collected" | "in_collection" | "confirmed" | "rejected" | "cancelled";
   receivedOn: string;
   receivedByName: string | null;
   confirmedAt: string | null;
   rejectedAt: string | null;
   rejectReason: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
   cheque: { number: string; bank: string; drawerName: string; dueDate: string } | null;
   transfer: { reference: string; bank: string; transferDate: string } | null;
   receiptId: string | null;

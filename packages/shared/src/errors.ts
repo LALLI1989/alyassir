@@ -55,6 +55,10 @@ export const ERROR_CODES = [
   "REFUND_TOO_LARGE",
   // Review 02/11/2026: never more back than the client paid on the period.
   "REFUND_ABOVE_PAID",
+  // Review 03/11/2026: cancelling a cash payment typed by mistake; dates locked after 48 hours.
+  "PAYMENT_NOT_CASH",
+  "PAYMENT_CANNOT_BE_CANCELLED",
+  "DATES_LOCKED",
   "PLATE_CHANGE_NEEDS_OPERATION",
   "SAME_VEHICLE",
   "IDEMPOTENCY_MISMATCH",

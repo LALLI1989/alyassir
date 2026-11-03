@@ -481,6 +481,8 @@ export class FinanceService {
       confirmedAt: r.payment.confirmedAt?.toISOString() ?? null,
       rejectedAt: r.payment.rejectedAt?.toISOString() ?? null,
       rejectReason: r.payment.rejectReason,
+      cancelledAt: r.payment.cancelledAt?.toISOString() ?? null,
+      cancelReason: r.payment.cancelReason,
       cheque: r.cheque ? { number: r.cheque.number, bank: r.cheque.bank, drawerName: r.cheque.drawerName, dueDate: r.cheque.dueDate } : null,
       transfer: r.transfer ? { reference: r.transfer.reference, bank: r.transfer.bank, transferDate: r.transfer.transferDate } : null,
       receiptId: r.payment.receiptId,

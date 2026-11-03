@@ -33,7 +33,7 @@ import { api, useSession } from "../lib/session";
 import { RecordPaymentFlow } from "./PolicyFinance";
 import type { Page } from "./Shell";
 
-const PAYMENT_VARIANT = { collected: "success", confirmed: "success", in_collection: "secondary", rejected: "destructive" } as const;
+const PAYMENT_VARIANT = { collected: "success", confirmed: "success", in_collection: "secondary", rejected: "destructive", cancelled: "outline" } as const;
 
 export function PaymentStatusBadge({ status }: { status: PaymentDto["status"] }) {
   const { t } = useTranslation();
@@ -78,7 +78,7 @@ export function Payments({ onOpen }: { onOpen: (page: Page) => void }) {
         <Label htmlFor="paymentStatus">{t("common.status")}</Label>
         <NativeSelect id="paymentStatus" value={status} onChange={(e) => { setStatus(e.target.value as StatusFilter); setPage(1); }}>
           <option value="all">{t("common.all")}</option>
-          {(["in_collection", "collected", "confirmed", "rejected"] as const).map((s) => <option key={s} value={s}>{t(`finance.paymentStatus.${s}`)}</option>)}
+          {(["in_collection", "collected", "confirmed", "rejected", "cancelled"] as const).map((s) => <option key={s} value={s}>{t(`finance.paymentStatus.${s}`)}</option>)}
         </NativeSelect>
       </div>
       <Card>

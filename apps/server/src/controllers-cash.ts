@@ -105,8 +105,8 @@ class ExpensesController {
 
   @RequirePermission("expenses.view")
   @Get()
-  list(@Query() query: unknown) {
-    return this.expenses.list(parse(expenseSearchSchema, query));
+  list(@Query() query: unknown, @CurrentUser() user: AuthUser) {
+    return this.expenses.list(parse(expenseSearchSchema, query), user);
   }
 
   @RequirePermission("expenses.create")

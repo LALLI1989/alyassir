@@ -1229,7 +1229,9 @@
       "count_adjustment": "تصحيح بعد العدّ",
       "opening_balance": "رصيد افتتاحي",
       "balance_correction": "تصحيح رصيد",
-      "expense_rejected": "مصروف مرفوض (نقص)"
+      "expense_rejected": "مصروف مرفوض (نقص)",
+      "manager_in": "دخول بأمر المدير",
+      "manager_out": "خروج بأمر المدير"
     },
     "reverse": "حركة عكسية",
     "reversed": "عُكست",

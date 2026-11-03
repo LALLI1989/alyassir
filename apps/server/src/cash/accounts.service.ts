@@ -56,8 +56,9 @@ export class AccountsService {
   }
 
   async movements(user: AuthUser, q: MovementSearch): Promise<Page<MovementDto> & { balanceCents: number }> {
+    const vault = this.seesVault(user);
     if (q.account === "drawer") {
-      if (!this.seesVault(user) && !this.access.has(user, "drawer_balance.view")) throw new ApiException("FORBIDDEN");
+      if (!vault && !this.access.has(user, "drawer_balance.view")) throw new ApiException("FORBIDDEN");
     } else this.requireVault(user);
     const db = this.database.db;
     const where = sql`t.account_code = ${q.account}
@@ -103,11 +104,29 @@ export class AccountsService {
       else if (r.cat_code !== null || r.cat_name !== null) ref = { type: "expense", category: { code: s(r.cat_code), name: s(r.cat_name) } };
       else if (r.refund_policy !== null) ref = { type: "refund", policyNumber: s(r.refund_policy) };
       else if (r.policy_number !== null) ref = { type: "payment", policyNumber: s(r.policy_number), clientName: s(r.client_name) };
-      return {
+      const amountCents = Number(r.amount_cents);
+      // Someone who may not know the safe and the bank (SPEC 7.2, 17.4): the manager's moves of the
+      // drawer (transfers, payments to insurers, their reversals) show no other account, reference or note.
+      if (!vault && (ref.type === "transfer" || ref.type === "insurer_payment" || ref.type === "withdrawal")) {
+        const hidden: MovementDto = {
+          id: Number(r.id),
+          groupId: String(r.group_id),
+          account: r.account_code as AccountCode,
+          amountCents,
+          kind: amountCents > 0 ? "manager_in" : "manager_out",
+          businessDate: String(r.business_date),
+          createdAt: new Date(r.created_at as string).toISOString(),
+          userName: s(r.user_name),
+          note: null,
+          ref: { type: "other" },
+        };
+        return hidden;
+      }
+      const dto: MovementDto = {
         id: Number(r.id),
         groupId: String(r.group_id),
         account: r.account_code as AccountCode,
-        amountCents: Number(r.amount_cents),
+        amountCents,
         kind: String(r.kind),
         businessDate: String(r.business_date),
         createdAt: new Date(r.created_at as string).toISOString(),
@@ -115,6 +134,7 @@ export class AccountsService {
         note: s(r.note),
         ref,
       };
+      return dto;
     });
     return { items, total: Number(total.rows[0]?.n ?? 0), page: q.page, pageSize: q.pageSize, balanceCents: acc?.balanceCents ?? 0 };
   }

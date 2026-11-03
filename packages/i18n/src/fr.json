@@ -1229,7 +1229,9 @@
       "count_adjustment": "Ajustement après comptage",
       "opening_balance": "Solde d'ouverture",
       "balance_correction": "Correction de solde",
-      "expense_rejected": "Dépense refusée (manquant)"
+      "expense_rejected": "Dépense refusée (manquant)",
+      "manager_in": "Entrée sur ordre du gérant",
+      "manager_out": "Sortie sur ordre du gérant"
     },
     "reverse": "Mouvement inverse",
     "reversed": "Annulé",

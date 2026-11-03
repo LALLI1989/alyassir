@@ -242,7 +242,7 @@ export const clients = pgTable("clients", {
 export const vehicles = pgTable("vehicles", {
   id: uuid("id").primaryKey().defaultRandom(),
   clientId: uuid("client_id").notNull(),
-  plateType: text("plate_type").$type<"ma" | "ww" | "foreign" | "state">().notNull(),
+  plateType: text("plate_type").$type<"ma" | "ma_other" | "ww" | "foreign" | "state">().notNull(),
   plate: text("plate").notNull(),
   plateNormalized: text("plate_normalized").notNull(),
   fiscalPower: smallint("fiscal_power").notNull(),
@@ -358,9 +358,9 @@ export const periodVehicles = pgTable("period_vehicles", {
 export const vehiclePlateHistory = pgTable("vehicle_plate_history", {
   id: uuid("id").primaryKey().defaultRandom(),
   vehicleId: uuid("vehicle_id").notNull(),
-  oldPlateType: text("old_plate_type").$type<"ma" | "ww" | "foreign" | "state">().notNull(),
+  oldPlateType: text("old_plate_type").$type<"ma" | "ma_other" | "ww" | "foreign" | "state">().notNull(),
   oldPlate: text("old_plate").notNull(),
-  newPlateType: text("new_plate_type").$type<"ma" | "ww" | "foreign" | "state">().notNull(),
+  newPlateType: text("new_plate_type").$type<"ma" | "ma_other" | "ww" | "foreign" | "state">().notNull(),
   newPlate: text("new_plate").notNull(),
   changedAt: ts("changed_at").notNull().defaultNow(),
   changedBy: uuid("changed_by"),
@@ -453,7 +453,7 @@ export const debts = pgTable("debts", {
 });
 
 export type PaymentMethod = "cash" | "cheque" | "transfer" | "card";
-export type PaymentStatus = "collected" | "in_collection" | "confirmed" | "rejected";
+export type PaymentStatus = "collected" | "in_collection" | "confirmed" | "rejected" | "cancelled";
 
 export const payments = pgTable("payments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -473,6 +473,10 @@ export const payments = pgTable("payments", {
   rejectedAt: ts("rejected_at"),
   rejectedBy: uuid("rejected_by"),
   rejectReason: text("reject_reason"),
+  // A cash payment typed by mistake, cancelled by the manager (owner decision 03/11/2026).
+  cancelledAt: ts("cancelled_at"),
+  cancelledBy: uuid("cancelled_by"),
+  cancelReason: text("cancel_reason"),
   receiptId: uuid("receipt_id"),
   isHistorical: boolean("is_historical").notNull().default(false),
   enteredAt: ts("entered_at").notNull().defaultNow(),

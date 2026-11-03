@@ -21,8 +21,11 @@ export const ID_TYPES_BY_KIND: Record<ClientKind, readonly IdType[]> = {
 export const RESIDENCIES = ["resident", "non_resident"] as const;
 export type Residency = (typeof RESIDENCIES)[number];
 
-/** Plate types; WW is the default choice (SPEC 9.2). */
-export const PLATE_TYPES = ["ww", "ma", "foreign", "state"] as const;
+/**
+ * Plate types; WW is the default choice (SPEC 9.2). "ma_other": a Moroccan plate that does not follow
+ * the normal shape 00123-B-01 (owner decision 03/11/2026).
+ */
+export const PLATE_TYPES = ["ww", "ma", "ma_other", "foreign", "state"] as const;
 export type PlateType = (typeof PLATE_TYPES)[number];
 export const DEFAULT_PLATE_TYPE: PlateType = "ww";
 
@@ -112,13 +115,21 @@ const PLATE_FORMATS: Record<PlateType, RegExp> = {
   ma: /^(\d{5})([A-Z])(\d{2})$/,
   // WW then digits: WW123456.
   ww: /^WW\d{1,8}$/,
+  // Owner decision 03/11/2026: another Moroccan shape, free, Latin letters and digits (000000-00, ADR536AQ66).
+  ma_other: /^[A-Z0-9]{2,15}$/,
   // Free, Latin letters and digits only.
   foreign: /^[A-Z0-9]{2,15}$/,
   // One letter then digits: M223355.
   state: /^[A-Z]\d{1,8}$/,
 };
 
+/** The normal Moroccan shape 00123-B-01: such a plate is entered as "ma", never as "ma_other". */
+export function isStandardMoroccanPlate(value: string): boolean {
+  return PLATE_FORMATS.ma.test(normalizePlate(value));
+}
+
 export function isValidPlate(type: PlateType, value: string): boolean {
+  if (type === "ma_other" && isStandardMoroccanPlate(value)) return false;
   return PLATE_FORMATS[type].test(normalizePlate(value));
 }
 
@@ -129,7 +140,7 @@ export function displayPlate(type: PlateType, value: string): string {
     const m = PLATE_FORMATS.ma.exec(n);
     return m ? `${m[1]}-${m[2]}-${m[3]}` : n;
   }
-  if (type === "foreign") return value.trim().toUpperCase().replace(/\s+/g, " ");
+  if (type === "foreign" || type === "ma_other") return value.trim().toUpperCase().replace(/\s+/g, " ");
   return n;
 }
 

@@ -640,6 +640,8 @@
       "plate_format_ww": "Format : WW123456.",
       "plate_format_foreign": "Lettres latines et chiffres uniquement.",
       "plate_format_state": "Format : M223355.",
+      "plate_format_ma_other": "Lettres latines et chiffres uniquement, de 2 à 15.",
+      "plate_is_standard_ma": "Cette plaque a le format marocain habituel : choisissez le type « Marocaine ».",
       "plate_unchanged": "Le nouveau numéro est identique à l'actuel.",
       "fiscal_power_range": "Entre 1 et 99.",
       "latin_only": "Écrivez le nom en lettres latines, comme sur la pièce d'identité.",
@@ -716,12 +718,14 @@
     "plateTypes": {
       "ww": "Provisoire WW",
       "ma": "Marocaine",
+      "ma_other": "Marocaine (autre format)",
       "foreign": "Étrangère",
       "state": "État"
     },
     "plateHints": {
       "ww": "WW puis des chiffres, par ex. WW123456.",
       "ma": "5 chiffres, une lettre latine, puis 2 chiffres, par ex. 00123-B-01.",
+      "ma_other": "Plaque marocaine hors format habituel : lettres latines et chiffres comme sur la plaque, par ex. 000000-00 ou ADR536AQ66.",
       "foreign": "Lettres latines et chiffres, comme sur la plaque.",
       "state": "Une lettre latine puis des chiffres, par ex. M223355."
     },

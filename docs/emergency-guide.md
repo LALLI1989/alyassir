@@ -6,6 +6,7 @@
   - نسخة يومية، تُحفظ 6 أشهر في مجلد لكل شهر.
 - **مفتاح USB:** نسخة كل شهر، يوم أول جمعة. آخر 6 نسخ في المجلد `Alyassir` على المفتاح.
 - **مرة واحدة بعد التثبيت:** افتح Google Drive، ثم «الإعدادات»، ثم «مجلدات من حاسوبي»، وأضف المجلد.
+- **احمِ حساب Google** بالتحقق بخطوتين: النسخ غير مشفّرة، وفيها كل بيانات الوكالة.
 
 ## 1. الخادم معطّل: «استعادة كخادم» (حوالي ساعة)
 1. **أبقِ الخادم القديم مطفأً.** لا يعمل خادمان معًا أبدًا.
@@ -48,6 +49,7 @@
   - Une sauvegarde quotidienne, gardée 6 mois, dans un dossier par mois.
 - **Clé USB :** une copie chaque mois, le premier vendredi. Les 6 dernières sont dans le dossier `Alyassir` de la clé.
 - **Une seule fois après l'installation :** ouvrez Google Drive, puis « Paramètres », puis « Dossiers de mon ordinateur », et ajoutez le dossier.
+- **Protégez le compte Google** par la validation en deux étapes : les sauvegardes ne sont pas chiffrées et contiennent toutes les données de l'agence.
 
 ## 1. Le serveur est en panne : « Restaurer comme serveur » (environ une heure)
 1. **Laissez l'ancien serveur éteint.** Jamais deux serveurs en même temps.

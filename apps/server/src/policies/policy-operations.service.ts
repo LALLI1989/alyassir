@@ -599,6 +599,8 @@ export class PolicyOperationsService {
         settlement: "pay_now",
         refundAccount: input.refundAccount,
         againstDues: !input.payOut,
+        // Owner decision 03/11/2026: the cash given back never exceeds what the client really paid.
+        capToPaid: true,
         lines: [
           { label: "refund", value: "", cents: input.refundCents },
           { label: "debtReduction", value: "", cents: decision.debtReductionCents },

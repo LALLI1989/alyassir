@@ -3,7 +3,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { schema, type AccountCode } from "@alyassir/db";
-import { businessDay, expenseCancelGivesBack, expenseNext } from "@alyassir/domain";
+import { businessDay, canSeeSafeAndBank, expenseCancelGivesBack, expenseNext } from "@alyassir/domain";
 import type { ExpenseDto, ExpenseSearch, ListItemDto, Page } from "@alyassir/shared";
 import { AuditService } from "../audit/audit.service";
 import type { AuthUser, RequestContext } from "../common/context";
@@ -102,12 +102,19 @@ export class ExpensesService {
     }));
   }
 
-  async list(q: ExpenseSearch): Promise<Page<ExpenseDto>> {
+  private seesVault(user: AuthUser): boolean {
+    return canSeeSafeAndBank({ role: user.role, isSupervisor: user.isSupervisor, granted: user.permissions });
+  }
+
+  /** Someone who may not know the safe and the bank sees no account but the drawer (SPEC 7.2, 03/11/2026). */
+  async list(q: ExpenseSearch, user: AuthUser): Promise<Page<ExpenseDto>> {
     const where = q.status === "all" ? undefined : and(eq(schema.expenses.status, q.status));
-    const [items, [total]] = await Promise.all([
+    const [rows, [total]] = await Promise.all([
       this.dtos(this.database.db, where, q.pageSize, (q.page - 1) * q.pageSize),
       this.database.db.select({ n: count() }).from(schema.expenses).where(where),
     ]);
+    const vault = this.seesVault(user);
+    const items = rows.map((e) => (vault || e.account === null || e.account === "drawer" ? e : { ...e, account: null }));
     return { items, total: total?.n ?? 0, page: q.page, pageSize: q.pageSize };
   }
 
@@ -200,6 +207,8 @@ export class ExpensesService {
 
   /** Approval: the money leaves the chosen account now (the drawer by default). */
   async approve(ctx: RequestContext, user: AuthUser, id: string, input: { version: number; account: AccountCode }): Promise<ExpenseDto> {
+    // A supervisor who does not see the safe and the bank pays from the drawer only (review 03/11/2026).
+    if (input.account !== "drawer" && !this.seesVault(user)) throw new ApiException("FORBIDDEN");
     await this.database.db.transaction(async (tx) => {
       const row = await this.lock(tx, id, input.version);
       if (expenseNext(row.status, "approve") === null) throw new ApiException("EXPENSE_NOT_PENDING");

@@ -15,6 +15,7 @@ import {
   isLatinName,
   isValidIdNumber,
   isValidPhone,
+  isStandardMoroccanPlate,
   isValidPlate,
 } from "./insurance";
 import { REFUND_ACCOUNTS, financeSetupSchema } from "./payments";
@@ -97,7 +98,10 @@ export type ClientSearch = z.infer<typeof clientSearchSchema>;
 
 const plateFields = { plateType: z.enum(PLATE_TYPES), plate: requiredText(20) };
 function plateRule(v: { plateType: z.infer<typeof plateFields.plateType>; plate: string }, ctx: z.RefinementCtx): void {
-  if (!isValidPlate(v.plateType, v.plate)) ctx.addIssue({ code: "custom", message: `plate_format_${v.plateType}`, path: ["plate"] });
+  if (isValidPlate(v.plateType, v.plate)) return;
+  // A plate of the normal Moroccan shape typed as "another Moroccan": choose "Moroccan" (03/11/2026).
+  const message = v.plateType === "ma_other" && isStandardMoroccanPlate(v.plate) ? "plate_is_standard_ma" : `plate_format_${v.plateType}`;
+  ctx.addIssue({ code: "custom", message, path: ["plate"] });
 }
 
 const vehicleFields = z.object({

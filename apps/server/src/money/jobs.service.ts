@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from "@nestjs/common";
-import { and, asc, eq, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt, lte } from "drizzle-orm";
 import { schema } from "@alyassir/db";
 import { addDays, businessDay } from "@alyassir/domain";
 import { DatabaseService } from "../database.service";
@@ -59,11 +59,27 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
    */
   async runDebtConversion(today: string, opts: { silent?: boolean } = {}): Promise<number> {
     const db = this.database.db;
-    const claimed = await db
+    let claimed = await db
       .insert(schema.jobRuns)
       .values({ job: DEBT_CONVERSION_JOB, runDate: today, details: {} })
       .onConflictDoNothing()
       .returning();
+    if (!claimed.length) {
+      // Review 03/11/2026: a run cut short (power cut, no UPS) is taken up again after 10 minutes, the
+      // same day. Safe: each policy is converted in its own transaction, only what is still unpaid.
+      claimed = await db
+        .update(schema.jobRuns)
+        .set({ startedAt: new Date() })
+        .where(
+          and(
+            eq(schema.jobRuns.job, DEBT_CONVERSION_JOB),
+            eq(schema.jobRuns.runDate, today),
+            isNull(schema.jobRuns.finishedAt),
+            lt(schema.jobRuns.startedAt, new Date(Date.now() - 10 * 60_000)),
+          ),
+        )
+        .returning();
+    }
     if (!claimed.length) return 0;
     const limit = addDays(today, -3);
     const i = schema.installments;

@@ -384,6 +384,33 @@ describe("accounts: transfers, insurers, withdrawals (SPEC 17.1, 17.4)", () => {
     expect((await t.call("POST", "/api/accounts/insurer-payments", { token: payer, body: { idempotencyKey: randomUUID(), insurerId: s.rma, amountCents: 1, account: "safe" } })).status).toBe(403);
   });
 
+  // Review 03/11/2026 (SPEC 7.2, 17.4): no trace of the safe or the bank for who may not know them.
+  it("seeing the drawer only: the manager's moves show no other account, reference or note", async () => {
+    await receiveDrawer(t, manager);
+    await cashPolicy(manager, 30_000);
+    expect((await t.call("POST", "/api/accounts/transfers", { token: manager, body: { idempotencyKey: randomUUID(), from: "drawer", to: "bank", amountCents: 10_000, reference: "Dépôt AWB" } })).status).toBe(200);
+    const viewer = await employee("drawerseer", ["drawer_balance.view"]);
+    const items = (await t.call("GET", "/api/accounts/movements?account=drawer", { token: viewer })).body.items as MovementDto[];
+    expect(items.some((m) => m.ref.type === "transfer" || m.kind.startsWith("transfer_") || (m.note ?? "").includes("AWB"))).toBe(false);
+    expect(items[0]).toMatchObject({ kind: "manager_out", amountCents: -10_000, note: null, ref: { type: "other" } });
+    const mine = (await t.call("GET", "/api/accounts/movements?account=drawer", { token: manager })).body.items as MovementDto[];
+    expect(mine[0]).toMatchObject({ kind: "transfer_out", ref: { type: "transfer", to: "bank" } });
+  });
+
+  it("an expense paid from the bank shows no account to an employee; a supervisor without the bank pays from the drawer only", async () => {
+    await receiveDrawer(t, manager);
+    const e = (await addExpense(manager, 1_000)).body as ExpenseDto;
+    expect((await t.call("POST", `/api/expenses/${e.id}/approve`, { token: manager, body: { version: e.version, account: "bank" } })).body.status).toBe("approved");
+    const viewer = await employee("expseer", ["expenses.view"]);
+    const list = (await t.call("GET", "/api/expenses?status=approved", { token: viewer })).body.items as ExpenseDto[];
+    expect(list.find((x) => x.id === e.id)?.account).toBeNull();
+    expect(((await t.call("GET", "/api/expenses?status=approved", { token: manager })).body.items as ExpenseDto[]).find((x) => x.id === e.id)?.account).toBe("bank");
+    const sup = await employee("drawerapprover", ["expenses.view", "sup.approve_expenses"], true);
+    const second = (await addExpense(manager, 500)).body as ExpenseDto;
+    expect((await t.call("POST", `/api/expenses/${second.id}/approve`, { token: sup, body: { version: second.version, account: "bank" } })).status).toBe(403);
+    expect((await t.call("POST", `/api/expenses/${second.id}/approve`, { token: sup, body: { version: second.version, account: "drawer" } })).body.status).toBe("approved");
+  });
+
   it("movements, transfers and reversals cannot be changed or deleted", async () => {
     await expect(ownerQuery(t.db, "UPDATE transfers SET amount_cents = 1")).rejects.toThrow(/append-only/);
     await expect(ownerQuery(t.db, "DELETE FROM bank_withdrawals")).rejects.toThrow(/append-only/);

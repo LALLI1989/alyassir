@@ -332,6 +332,7 @@
       "renew": "Renouvellement",
       "policy_change": "Changement de police",
       "edit_amount": "Modifier la prime après 48 h",
+      "edit_dates": "Modifier la date ou la durée après 48 h",
       "vehicle_change": "Changement de véhicule",
       "plate_change": "Changement d'immatriculation",
       "duplicate": "Duplicata",
@@ -552,6 +553,9 @@
       "FUTURE_PERIOD_EXISTS": "Un renouvellement n'a pas encore commencé : attendez son début.",
       "ANNULMENT_PERIOD_OVER": "Plus de 15 jours depuis la date d'effet : annulation impossible.",
       "REFUND_TOO_LARGE": "Le remboursement dépasse la prime de la police.",
+      "PAYMENT_NOT_CASH": "Seul un paiement en espèces encaissé s'annule ainsi. Chèque, virement et carte se rejettent.",
+      "PAYMENT_CANNOT_BE_CANCELLED": "Ce paiement ne peut pas être annulé : c'est le frais d'une opération, ou ce qu'il a réglé est devenu une dette ou a été abandonné depuis.",
+      "DATES_LOCKED": "48 heures écoulées : la date de fin et la durée sont verrouillées ; seuls le gérant ou un superviseur autorisé les modifient, avec un motif.",
       "REFUND_ABOVE_PAID": "Impossible de rendre au client plus que ce qu'il a réellement payé sur cette police, moins ce qui lui a déjà été rendu.",
       "PLATE_CHANGE_NEEDS_OPERATION": "Véhicule assuré : utilisez l'opération « Changement d'immatriculation ».",
       "SAME_VEHICLE": "Choisissez un autre véhicule.",
@@ -640,6 +644,8 @@
       "plate_format_ww": "Format : WW123456.",
       "plate_format_foreign": "Lettres latines et chiffres uniquement.",
       "plate_format_state": "Format : M223355.",
+      "plate_format_ma_other": "Lettres latines et chiffres uniquement, de 2 à 15.",
+      "plate_is_standard_ma": "Cette plaque a le format marocain habituel : choisissez le type « Marocaine ».",
       "plate_unchanged": "Le nouveau numéro est identique à l'actuel.",
       "fiscal_power_range": "Entre 1 et 99.",
       "latin_only": "Écrivez le nom en lettres latines, comme sur la pièce d'identité.",
@@ -716,12 +722,14 @@
     "plateTypes": {
       "ww": "Provisoire WW",
       "ma": "Marocaine",
+      "ma_other": "Marocaine (autre format)",
       "foreign": "Étrangère",
       "state": "État"
     },
     "plateHints": {
       "ww": "WW puis des chiffres, par ex. WW123456.",
       "ma": "5 chiffres, une lettre latine, puis 2 chiffres, par ex. 00123-B-01.",
+      "ma_other": "Plaque marocaine hors format habituel : lettres latines et chiffres comme sur la plaque, par ex. 000000-00 ou ADR536AQ66.",
       "foreign": "Lettres latines et chiffres, comme sur la plaque.",
       "state": "Une lettre latine puis des chiffres, par ex. M223355."
     },
@@ -831,6 +839,7 @@
     "editTitle": "Modifier la police {{number}}",
     "amountLocked": "48 heures écoulées : la prime est verrouillée depuis le {{time}}.",
     "amountLockedHint": "Modifiable par le gérant, ou un superviseur habilité, avec un motif obligatoire.",
+    "datesLockedHint": "48 heures écoulées : la date de fin et la durée sont verrouillées ; seuls le gérant ou un superviseur autorisé les modifient, avec un motif.",
     "amountFreeUntil": "Prime modifiable librement jusqu'au {{time}}.",
     "editReason": "Motif de la modification",
     "vehicleChange": "Changement de véhicule",
@@ -990,7 +999,14 @@
       "collected": "Encaissé",
       "in_collection": "En cours d'encaissement",
       "confirmed": "Confirmé",
-      "rejected": "Rejeté"
+      "rejected": "Rejeté",
+      "cancelled": "Annulé (erreur de saisie)"
+    },
+    "cancelPayment": {
+      "button": "Annuler le paiement",
+      "title": "Annuler un paiement en espèces saisi par erreur",
+      "intro": "Son montant sort de la caisse, ce que le client devait redevient dû comme avant, et son reçu reste numéroté avec l'état « annulé ». Saisissez ensuite le bon paiement s'il y en a un.",
+      "confirm": "Annuler le paiement"
     },
     "paymentsTitle": "Paiements",
     "paymentsIntro": "Tous les paiements. Chèques, virements et cartes restent « en cours d'encaissement » jusqu'à confirmation.",
@@ -1225,7 +1241,9 @@
       "count_adjustment": "Ajustement après comptage",
       "opening_balance": "Solde d'ouverture",
       "balance_correction": "Correction de solde",
-      "expense_rejected": "Dépense refusée (manquant)"
+      "expense_rejected": "Dépense refusée (manquant)",
+      "manager_in": "Entrée sur ordre du gérant",
+      "manager_out": "Sortie sur ordre du gérant"
     },
     "reverse": "Mouvement inverse",
     "reversed": "Annulé",

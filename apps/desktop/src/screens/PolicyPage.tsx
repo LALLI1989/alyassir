@@ -387,7 +387,7 @@ function EditDialog({ policy, onClose }: DialogProps) {
               {types.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
             </NativeSelect>
           </Field>
-          <Field id="editEnd" label={t("policies.end")} error={err("endDate")}>
+          <Field id="editEnd" label={t("policies.end")} hint={policy.actions.amountLocked ? t("policies.datesLockedHint") : undefined} error={err("endDate")}>
             <Input id="editEnd" type="date" dir="ltr" value={end} onChange={(e) => setEnd(e.target.value)} />
           </Field>
           <Field

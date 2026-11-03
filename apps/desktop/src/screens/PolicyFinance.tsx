@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Wallet } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import type { PolicyDto, PolicyFinanceDto } from "@alyassir/shared";
+import type { PaymentDto, PolicyDto, PolicyFinanceDto } from "@alyassir/shared";
 import {
   Alert,
   Badge,
@@ -20,11 +20,13 @@ import {
   Table,
   TBody,
   Td,
+  Textarea,
   Th,
   THead,
   Tr,
 } from "@alyassir/ui";
 import { asClientError } from "../adapters";
+import { Field } from "../components/common";
 import { CollectionBadge, PaymentLineFields, ReceiptButton, ReceiptDialog, emptyLine, toLine, type LineDraft } from "../components/finance";
 import { Code, Money, formatDay, useOperationKey } from "../components/insurance";
 import { ErrorMessage, fieldsOf, useFieldError } from "../lib/errors";
@@ -77,10 +79,11 @@ export function RecordPaymentFlow({ policyId, onClose }: { policyId: string; onC
 /** Money of the current period: totals, instalments, payments, debts, receipts (SPEC 14). */
 export function PolicyFinanceSection({ policy }: { policy: PolicyDto }) {
   const { t } = useTranslation();
-  const { can } = useSession();
+  const { can, isManager } = useSession();
   const finance = useFinance(policy.id);
   const [paying, setPaying] = useState(false);
   const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<PaymentDto | null>(null);
   const f = finance.data;
   if (!can("payments.view")) return null;
   if (finance.error) return <ErrorMessage error={asClientError(finance.error)} />;
@@ -203,12 +206,20 @@ export function PolicyFinanceSection({ policy }: { policy: PolicyDto }) {
                         <span>{t(`finance.methods.${x.method}`)}</span>
                         {x.cheque && <span className="text-xs text-muted-foreground"><Code>{x.cheque.number}</Code> · {formatDay(x.cheque.dueDate)}</span>}
                         {x.rejectReason && <span className="text-xs text-destructive">{x.rejectReason}</span>}
+                        {x.cancelReason && <span className="text-xs text-destructive">{x.cancelReason}</span>}
                       </div>
                     </Td>
                     <Td><Money cents={x.amountCents} /></Td>
                     <Td><PaymentStatusBadge status={x.status} /></Td>
                     <Td>{x.receivedByName}</Td>
-                    <Td className="text-end"><ReceiptButton receiptId={x.receiptId} /></Td>
+                    <Td className="text-end">
+                      <span className="inline-flex gap-1">
+                        {isManager && x.method === "cash" && x.status === "collected" && (
+                          <Button size="sm" variant="outline" onClick={() => setCancelling(x)}>{t("finance.cancelPayment.button")}</Button>
+                        )}
+                        <ReceiptButton receiptId={x.receiptId} />
+                      </span>
+                    </Td>
                   </Tr>
                 ))}
               </TBody>
@@ -255,7 +266,50 @@ export function PolicyFinanceSection({ policy }: { policy: PolicyDto }) {
         </DialogContent>
       </Dialog>
       <ReceiptDialog receiptId={receiptId} onClose={() => setReceiptId(null)} />
+      <Dialog open={cancelling !== null} onOpenChange={(o) => !o && setCancelling(null)}>
+        <DialogContent closeLabel={t("common.close")}>
+          {cancelling && <CancelPaymentDialog payment={cancelling} onClose={() => setCancelling(null)} />}
+        </DialogContent>
+      </Dialog>
     </Card>
+  );
+}
+
+/**
+ * A cash payment typed by mistake (owner decision 03/11/2026): the manager cancels it with a reason.
+ * The server takes the cash out of the drawer, makes the amount owed again and cancels the receipt.
+ */
+function CancelPaymentDialog({ payment, onClose }: { payment: PaymentDto; onClose: () => void }) {
+  const { t } = useTranslation();
+  const queries = useQueryClient();
+  const [reason, setReason] = useState("");
+  const cancel = useMutation({
+    mutationFn: () => api<PaymentDto>("POST", `/api/payments/${payment.id}/cancel`, { version: payment.version, reason }),
+    onSuccess: async () => {
+      await Promise.all(["finance", "policy", "payments", "drawer", "accounts", "movements"].map((k) => queries.invalidateQueries({ queryKey: [k] })));
+      onClose();
+    },
+  });
+  const error = cancel.error ? asClientError(cancel.error) : null;
+  return (
+    <form onSubmit={(e: FormEvent) => { e.preventDefault(); cancel.mutate(); }} className="grid gap-4" data-testid="cancel-payment">
+      <DialogHeader>
+        <DialogTitle>{t("finance.cancelPayment.title")}</DialogTitle>
+        <DialogDescription>{t("finance.cancelPayment.intro")}</DialogDescription>
+      </DialogHeader>
+      <div className="flex items-center justify-between rounded-md border p-3">
+        <span className="text-sm text-muted-foreground">{t("finance.amount")}</span>
+        <Money cents={payment.amountCents} className="text-lg font-bold" />
+      </div>
+      <Field id="cancelPaymentReason" label={t("common.reason")}>
+        <Textarea id="cancelPaymentReason" value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Field>
+      {error && <ErrorMessage error={error} />}
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
+        <Button type="submit" variant="destructive" disabled={cancel.isPending || !reason.trim()}>{t("finance.cancelPayment.confirm")}</Button>
+      </DialogFooter>
+    </form>
   );
 }
 

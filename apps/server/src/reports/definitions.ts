@@ -121,7 +121,7 @@ export const REPORTS: ReportDef[] = [
     code: "payments",
     allowed: both("payments.view"),
     filters: ["period", "insurer", "method", "status", "user", "origin"],
-    statuses: { prefix: "finance.paymentStatus", values: ["collected", "in_collection", "confirmed", "rejected"] },
+    statuses: { prefix: "finance.paymentStatus", values: ["collected", "in_collection", "confirmed", "rejected", "cancelled"] },
     columns: [
       { key: "date", type: "date" },
       { key: "receipt", type: "code" },
@@ -235,10 +235,14 @@ export const REPORTS: ReportDef[] = [
       { key: "note", type: "text" },
     ],
     query: (q) => sql`
-      SELECT ${DAY("t.business_date")} AS date, ${AT("t.created_at")} AS time, t.account_code AS account, t.kind,
+      SELECT ${DAY("t.business_date")} AS date, ${AT("t.created_at")} AS time, t.account_code AS account,
+        -- Without the safe and bank (SPEC 7.2, 17.4): the manager's moves of the drawer, nothing more (03/11/2026).
+        CASE WHEN ${q.seen.vault} OR (t.transfer_id IS NULL AND t.insurer_payment_id IS NULL AND t.withdrawal_id IS NULL) THEN t.kind
+             WHEN t.amount_cents > 0 THEN 'manager_in' ELSE 'manager_out' END AS kind,
         CASE WHEN t.amount_cents > 0 THEN t.amount_cents ELSE 0 END AS "moneyIn",
         CASE WHEN t.amount_cents < 0 THEN -t.amount_cents ELSE 0 END AS "moneyOut",
-        u.display_name AS "user", t.note
+        u.display_name AS "user",
+        CASE WHEN ${q.seen.vault} OR (t.transfer_id IS NULL AND t.insurer_payment_id IS NULL AND t.withdrawal_id IS NULL) THEN t.note END AS note
       FROM financial_transactions t LEFT JOIN users u ON u.id = t.user_id
       WHERE ${where([
         origin("t.is_historical", q), between(sql`t.business_date`, q), accountFilter(sql`t.account_code`, q), q.req.userId && sql`t.user_id = ${q.req.userId}`])}
@@ -295,7 +299,7 @@ export const REPORTS: ReportDef[] = [
     ],
     query: (q) => sql`
       SELECT ${DAY("e.expense_date")} AS date, coalesce('code:' || ec.code, 'name:' || ec.name) AS category, e.amount_cents AS amount,
-        e.account_code AS account, e.status, u.display_name AS "user", e.note
+        CASE WHEN ${q.seen.vault} OR e.account_code = 'drawer' THEN e.account_code END AS account, e.status, u.display_name AS "user", e.note
       FROM expenses e JOIN expense_categories ec ON ec.id = e.category_id LEFT JOIN users u ON u.id = e.created_by
       WHERE ${where([
         origin("e.is_historical", q),
@@ -487,7 +491,7 @@ export const REPORTS: ReportDef[] = [
         (SELECT count(*) FROM audit_log a WHERE a.user_id = u.id AND a.action NOT LIKE 'auth.%' AND ${between(LOCAL_DAY("a.at"), q)})::int AS actions,
         (SELECT count(*) FROM policy_periods pp WHERE pp.created_by = u.id AND ${between(LOCAL_DAY("pp.created_at"), q)})::int AS policies,
         (SELECT count(*) FROM payments pm WHERE pm.received_by = u.id AND ${between(sql`pm.received_on`, q)})::int AS "paymentsCount",
-        coalesce((SELECT sum(pm.amount_cents) FROM payments pm WHERE pm.received_by = u.id AND pm.status <> 'rejected' AND ${between(sql`pm.received_on`, q)}), 0) AS "paymentsAmount",
+        coalesce((SELECT sum(pm.amount_cents) FROM payments pm WHERE pm.received_by = u.id AND pm.status NOT IN ('rejected', 'cancelled') AND ${between(sql`pm.received_on`, q)}), 0) AS "paymentsAmount",
         (SELECT ${AT("max(a.at)")} FROM audit_log a WHERE a.user_id = u.id AND ${between(LOCAL_DAY("a.at"), q)}) AS "lastAt"
       FROM users u
       WHERE ${where([q.req.userId && sql`u.id = ${q.req.userId}`])}

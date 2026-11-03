@@ -198,3 +198,21 @@ describe("Excel (SPEC 19)", () => {
     }
   });
 });
+
+describe("no trace of the safe or the bank in the reports (review 03/11/2026)", () => {
+  it("the movements and expenses reports show the manager's moves without the other account", async () => {
+    expect((await t.call("POST", "/api/accounts/transfers", { token: manager, body: { idempotencyKey: randomUUID(), from: "drawer", to: "bank", amountCents: 20_000, reference: "Dépôt AWB" } })).status).toBe(200);
+    const cats = (await t.call("GET", "/api/expenses/categories", { token: manager })).body as ListItemDto[];
+    const e = (await t.call("POST", "/api/expenses", { token: manager, body: { idempotencyKey: randomUUID(), categoryId: cats[0]?.id, amountCents: 5_000, note: "Frais" } })).body;
+    if (e.status === "pending") expect((await t.call("POST", `/api/expenses/${e.id}/approve`, { token: manager, body: { version: e.version, account: "bank" } })).status).toBe(200);
+    const viewer = await employee("novault", ["reports.view", "drawer_balance.view", "expenses.view"]);
+    const moves = (await report("movements", { account: "drawer" }, viewer)).body as ReportDto;
+    const kinds = moves.rows.map((r) => r.kind);
+    expect(kinds).toContain(ar.cash.kinds.manager_out);
+    expect(kinds).not.toContain(ar.cash.kinds.transfer_out);
+    expect(moves.rows.some((r) => String(r.note ?? "").includes("AWB"))).toBe(false);
+    expect(((await report("movements", { account: "drawer" })).body as ReportDto).rows.map((r) => r.kind)).toContain(ar.cash.kinds.transfer_out);
+    expect(((await report("expenses", {}, viewer)).body as ReportDto).rows.some((r) => r.account === ar.finance.accounts.bank)).toBe(false);
+    expect(((await report("expenses")).body as ReportDto).rows.some((r) => r.account === ar.finance.accounts.bank)).toBe(true);
+  });
+});
